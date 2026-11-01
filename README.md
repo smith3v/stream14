@@ -22,6 +22,11 @@ update the layer over the camera video. Provide a composed preview, Record/Stop,
 and a way to play/export the resulting file. Smooth 1080p30 video takes priority
 over overlay refresh latency.
 
+Streaming failure must not stop a healthy local recording while storage is available.
+If overlay source access/rendering cannot refresh for 10 seconds, hide the overlay
+from preview and recorded/streamed video; restore it automatically after recovery.
+An unchanged score with successful source access is not an outage.
+
 Validate this on the 13 mini before continuing. YouTube login, RTMPS, simultaneous
 streaming/backup, and TestFlight distribution follow the MVP review. See the
 [MVP scope and gates](docs/2026-11-01-stream14-design.md#current-milestone-local-recording-mvp).

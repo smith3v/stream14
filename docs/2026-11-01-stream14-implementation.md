@@ -90,7 +90,10 @@ Add Stream14/Media/WebOverlayRenderer.swift with the smallest public-API WKWebVi
 capture experiment. Use a configurable HTTPS URL and the stream canvas viewport,
 not phone screen dimensions. Exercise the reference page and a small synthetic
 transparent HTML fixture in Stream14Tests/Fixtures/. Begin at 1 Hz with one capture
-in flight, retaining the last valid alpha image during page reloads. Verify
+in flight, retaining the last valid alpha image during brief page reloads. Track
+source access independently of cached snapshots: hide after a 10-second freshness/
+rendering failure and automatically restore a fresh image after recovery unless
+manually hidden. An unchanged score with successful source access stays visible. Verify
 1920×1080 layout/raster dimensions and partial transparency on the physical 13 mini.
 Record observations in docs/feasibility.md, including attached-view requirements,
 memory, capture latency, and any reload flashes. If necessary, propose the smallest
@@ -113,7 +116,9 @@ Add permission purpose strings, URL entry/settings, Record/Stop, elapsed time/st
 and system playback/export. Persist files in Application Support and protect URLs
 as specified. MP4 is preferred; document a supported MOV choice if simpler. Restore
 screen-sleep behavior after recording and finalize on interruption. Test repeated
-recording, overlay updates/failure/outage, permission denial, interrupted capture,
+recording, overlay updates/failure/outage (before and after the 10-second hide
+deadline, automatic fresh-image restoration, unchanged healthy scores, stale cached
+snapshots, and manual hiding), permission denial, interrupted capture,
 and injected writer/storage errors. Save device samples and perform the 30-minute
 M3 run. Record APIs, evidence, and limitations in docs/feasibility.md. Review and commit.
 
@@ -195,7 +200,11 @@ redaction. Use focused state tests and physical failure exercises. Apply the spe
 "keep broadcasting if backup fails" policy visibly. Review and commit.
 
 **Acceptance:** A4–A6 pass and interruption limitations are documented accurately.
-The same composed local video remains usable across a transport outage.
+The same composed local video remains usable across a transport outage. Verify
+startup/API rejection, failed reconnects, and remote event completion leave healthy
+local recording running while storage remains available, with an explicit Stop
+recording action. Verify overlay hiding/restoration affects every composed output
+without affecting camera/audio continuity.
 
 ## Task 11: Qualify the event experience and add useful CI (deferred)
 

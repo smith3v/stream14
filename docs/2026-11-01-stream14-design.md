@@ -27,8 +27,10 @@ for this MVP. This revision changes documentation only; no library or app is add
   straightforward UI/orchestration. Do not start by building custom capture/encoding
   components or adding a second camera session.
 - One configurable HTTPS overlay URL, full 1920×1080 canvas, alpha preserved, with
-  approximately one snapshot per second. Retain the last good image through reloads
-  and errors; smooth camera video has priority. A small in-place DOM update change
+  approximately one snapshot per second. Retain the last good image through brief
+  reloads/errors; hide it after 10 seconds without confirmed source access or a usable
+  render, and restore it automatically on recovery. Smooth camera video has priority.
+  A small in-place DOM update change
   in the overlay project can be considered if needed; it is not part of this change.
 - One native recording screen with composed preview, Record/Stop, recording duration
   and status, permission/error messages, a URL settings sheet, and playback/export
@@ -60,7 +62,7 @@ small, required library product.
 | M1: Library fit | A stable HaishinKit version builds with the chosen Xcode/iOS 27/Swift 6 setup. Document exact public APIs, product/dependency/license footprint, capture ownership, dynamic image layering, and local-recording route; recording works without publishing or connecting to an ingest server. |
 | M2: Actual composition | A saved 1920×1080/30 fps sample and preview contain camera, audio, and the same full-frame web overlay. Check alpha/translucent edges/logos, layout, orientation, a visible score update during recording, and absence of app controls. Repeated reference-page reloads cause no white/blank flashes. |
 | M3: Smooth recording | A 30-minute run has less than 1% measured pipeline frame drops, no repeated video stalls of 500 ms or more, no monotonic memory/queue growth, and measured A/V offset within 100 ms at start and end. Document the measurement method and any library observability limits. |
-| M4: Local usability and failures | Repeated start/stop produces independently playable/exportable files. Test permission denial, overlay unavailability/reloads, a two-minute overlay-network outage, camera/audio/background interruption, and an injected writer/low-storage failure. Retain the last overlay and continuous local A/V during the network outage; interrupted recordings finalize where possible and the UI reports the actual state. |
+| M4: Local usability and failures | Repeated start/stop produces independently playable/exportable files. Test permission denial, overlay unavailability/reloads, a two-minute overlay-network outage, camera/audio/background interruption, and an injected writer/low-storage failure. During the outage local A/V continues; retain the last overlay briefly, hide at 10 seconds, and restore after fresh source access/rendering. Test a brief outage, an unchanged healthy score, cached snapshots during a failed source refresh, and manual hiding during recovery. Interrupted recordings finalize where possible and the UI reports the actual state. |
 | M5: Owner review | Present sample files and a concise feasibility report covering M1–M4, selected library/container APIs, remaining limitations, and the proposed next step. The owner reviews the MVP before work proceeds to broadcasting. |
 
 Crash-fragment recovery, a three-hour soak, wider device coverage, simultaneous local
@@ -87,11 +89,12 @@ and a local backup.
 | R3 | Authorize access to YouTube, show the authorized channel and its scheduled events, and let the operator select one. |
 | R4 | Resolve or establish that event's ingestion-stream binding, transmit media, and start the selected broadcast. |
 | R5 | Save the same composited video and audio locally as a video file. App controls and warnings must not enter the output. |
-| R6 | Continue local recording during internet outages. Automatically reconnect to the same event when possible. |
+| R6 | Keep local recording independent of streaming availability for as long as storage and capture/writing remain healthy, including startup failure, transport loss, failed retries, and remote event completion. Reconnect to the same event when possible; streaming failure alone never stops the writer. |
 | R7 | If recording fails after broadcasting begins, continue broadcasting and display a persistent warning. Preserve previously saved footage. |
 | R8 | Target landscape 1080p30 events lasting approximately one to three hours. Smooth video takes priority over overlay update latency. |
 | R9 | Qualify on iPhone 13 mini with iOS 27, and also validate on iPhone 15 and 17 families, including available Pro models. |
 | R10 | Use a public GitHub repository, BSD-3-Clause, and TestFlight for the owner and a few invited testers. Prefer native frameworks and minimal justified dependencies. |
+| R11 | Hide an overlay after 10 seconds without confirmed source access or a usable render; restore automatically after source access and a fresh render recover, unless the operator manually hid it. Apply this to preview, local recording, and streaming. |
 
 The owner permits changes to the overlay implementation if needed, including
 replacing full-page refreshes with in-place updates. Such a change belongs in the
@@ -227,15 +230,24 @@ Required rendering behavior:
   immutable last-good raster between captures. Drop/skips of overlay work are
   acceptable under load; stalled camera delivery is not. Smooth animation and
   camera-rate browser rendering are not requirements.
-- Keep the last good frame during reload, navigation, and transient snapshot errors.
+- Keep the last good frame during brief reload, navigation, and transient snapshot errors.
   Promote a new frame after a usable load and render, with resource readiness bounded
   so a failing logo/font cannot freeze capture forever. Do not add an app reload
   timer on top of the reference page's own timer.
-- A load failure, WebKit process termination, or no successful capture for five
-  seconds produces an overlay warning while retaining the last frame. Allow retry
-  and explicit hiding. A healthy snapshot does not prove the underlying scoreboard
-  data is fresh; do not claim to detect upstream scoring outages without a source
-  heartbeat.
+- Track source-access health separately from raster capture. A successful page/source
+  refresh or health heartbeat counts even when the score is unchanged. Taking another
+  snapshot of cached/stale content does not reset source freshness. For in-place page
+  updates, establish a minimal source-health signal before claiming to detect their
+  network failures; public browser reachability alone does not prove a scoring backend
+  is reachable.
+- Use a 10-second grace period measured with monotonic time. If confirmed source
+  access or usable rendering has been missing for 10 seconds, automatically remove
+  the overlay layer from preview, recording, and streaming. Preserve camera/audio
+  continuity and show an operator-only overlay-unavailable status. Keep retrying
+  without blocking capture. Brief outages keep the last good image without flashing.
+- After source access succeeds and a fresh usable image is rendered, automatically
+  show that image again and clear the outage status. Do not restore a cached frame
+  on network reachability alone, and do not override an explicit manual hide.
 - Permit HTTPS URLs with normal certificate validation. Prevent popups, downloads,
   and requests for camera/microphone/location/native access from the page. Do not
   expose credentials or native message handlers to arbitrary overlay content.
@@ -312,8 +324,8 @@ Inspect auto-start/auto-stop settings before transmitting:
 Poll at about two-second intervals during a bounded startup window of 60 seconds,
 and about ten seconds while live. Back off on service errors/rate limits, respect
 retry guidance, and avoid tight polling during outages. If startup times out, stop
-upload and finalize the attempt's recording; reconcile whether YouTube went live
-before offering another start. Keep errors such as disabled live streaming, wrong
+upload but keep a healthy local recording running; reconcile whether YouTube went
+live before offering another stream start. Keep errors such as disabled live streaming, wrong
 channel, missing event, insufficient permission, quota exhaustion, and expired consent
 distinct and actionable. A failed status check does not require terminating a
 healthy ongoing media connection.
@@ -328,6 +340,14 @@ Record the pre-upload composition and audio, not a downloaded YouTube rendition.
 Network losses therefore create gaps only in the remote output, not in the backup
 while capture and local writing remain healthy. The clean-stop result must be a
 playable, shareable MP4 with the chosen dimensions, orientation, and synchronized audio.
+
+Once local writing has started, inability to start or maintain a stream must never
+stop it: this includes API/startup errors, RTMPS failures, exhausted retries, and an
+event ended remotely. Continue until the operator stops recording, storage reaches
+the safety reserve, or capture/writing itself fails or is interrupted. Show recording
+status separately and provide an explicit Stop recording action when streaming is
+unavailable. An intentional End broadcast/recording action still ends both outputs.
+An overlay outage changes only the overlay layer under R11, not recording continuity.
 
 Use HaishinKit's verified local recording path first; add a small AVAssetWriter
 adapter only if necessary. The MVP's container exception is defined above. Later, prefer
@@ -420,9 +440,9 @@ YouTube metadata rather than retaining an indefinite API-response archive.
 
 | Condition | Expected behavior |
 | --- | --- |
-| Wi-Fi/cellular outage | Keep capture, composition, and backup running; retry RTMPS to the same binding with increasing delays capped at 30 seconds; reconcile event state on reconnection |
-| YouTube event completed elsewhere | Stop sending to it, finish the session recording, and show that the event ended; no automatic replacement event |
-| Overlay reload/error | Retain last-good image, warn when unhealthy, allow reload/hide, keep video smooth |
+| Wi-Fi/cellular outage or streaming failure | Keep capture and local recording running while storage/capture/writing remain healthy; reconnect to the same eligible binding with delays capped at 30 seconds, without stopping the recorder if retries fail |
+| YouTube event completed elsewhere | Stop sending to it, keep local recording running, and show that the event ended; no automatic replacement event; offer Stop recording |
+| Overlay reload/error | Keep last-good image for brief errors, hide after 10 seconds without source access or usable rendering, automatically restore a fresh image after recovery unless manually hidden; keep camera/audio smooth |
 | Local writer/storage failure | Preserve written data; continue upload; persistent backup-failure indication |
 | Camera/audio interruption or app background/lock | Stop upload and finish local writing with the background execution time available; no guaranteed continuous capture; show interrupted state on return |
 | Foreground return after interruption | Recheck permissions, capture, writer, and remote state; require an explicit resume; create a new local file and resume only if the same event still permits it |
@@ -476,7 +496,7 @@ criteria; the table below qualifies the eventual broadcaster, not the local-only
 | A1: Overlay feasibility | On the 13 mini, a recorded 1080p30 sample contains the reference page at the full 1920×1080 viewport with correct alpha, text, logos, and no app controls; repeated two-second page reloads do not introduce white/blank flashes |
 | A2: Smooth video | A 30-minute compositing/recording run sustains the selected 30 fps profile with less than 1% pipeline frame drops, no repeated stalls of 500 ms or more, and no monotonic memory/queue growth |
 | A3: YouTube end-to-end | Correct channel and scheduled event selected; confirmed start, playback on a second device, correct overlay/audio, and confirmed end; selecting/previewing alone sends no camera media |
-| A4: Independent backup | Two-minute internet loss leaves continuous local A/V; restoring connectivity resumes the same still-open event without duplicating it or creating another event |
+| A4: Independent backup | Startup/API rejection, two-minute internet loss, failed reconnects, and a remotely completed event leave healthy local A/V running while storage remains available. Restoring connectivity resumes only the same eligible event. An overlay outage hides the layer after 10 seconds and restores a fresh image after recovery, without interrupting recording. |
 | A5: Recording recovery | Clean MP4 plays and exports; forced app termination preserves demonstrably recoverable completed fragments or the limitation is resolved before claiming crash recovery |
 | A6: Failure UX | Permission denial, missing/disabled events, expired consent, quota/rate-limit responses, unreachable overlay, local writer failure, low storage, and unknown remote completion are distinct and actionable |
 | A7: Long event | A three-hour 1080p30 broadcast and local recording on the 13 mini, powered and on a stable qualified network, satisfies A2 quality targets and keeps measured A/V offset within 100 ms at start and end |

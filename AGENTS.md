@@ -73,8 +73,12 @@ the outgoing video, and keeping a local copy of that composition.
 - Validate the WebKit capture approach with public APIs on a physical device before
   building the rest of the media pipeline around it. Do not promise OBS-equivalent
   browser-source compatibility or animation performance without measurements.
-- Keep the last good overlay frame through page reloads. A browser or network failure
-  must not block camera capture or corrupt the local recording.
+- Keep the last good overlay frame through brief reloads/errors, then automatically
+  hide it after 10 seconds without confirmed source access or a usable render.
+  Restore it after source access and a fresh render recover, unless manually hidden.
+  An unchanged score is healthy when source access succeeds; re-snapshotting cached
+  content does not prove freshness. Apply visibility to preview and all media outputs.
+  A browser/network failure must not block capture or local recording.
 - Keep capture and media processing off the main thread, except APIs that require
   the main actor, such as WebKit and UI. Use explicit serial ownership or actors for
   state. Never suppress concurrency diagnostics with unchecked annotations without
@@ -82,7 +86,10 @@ the outgoing video, and keeping a local copy of that composition.
 - Use a common media timeline, bounded queues, and measured backpressure. A slow
   uploader must not stop the recorder. Prefer sharing encoded samples where the
   selected library permits it; verify this rather than assuming it.
-- Recording continues through transport outages. If recording fails after going
+- Recording continues independently of streaming availability while storage and
+  capture/writing remain healthy, including stream-start failure, disconnect,
+  reconnect exhaustion, or a remotely ended event. Do not stop the local writer
+  merely because streaming fails. If recording fails after going
   live, keep broadcasting, preserve saved footage, and show a persistent warning.
 - Handle cancellation, audio/camera interruptions, thermal pressure, backgrounding,
   and file finalization explicitly. Do not promise background or locked-screen
