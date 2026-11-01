@@ -150,6 +150,21 @@ the outgoing video, and keeping a local copy of that composition.
   media performance need manual inspection on real phones as well as automation.
 - Documentation-only changes need link/content checks and git diff --check, not
   artificial app tests. Run checks appropriate to the change and state limitations.
-- Before finishing a feature, review the branch against main, fix findings, update
-  affected documentation, and report what changed, what passed, and what remains
-  unverified. Do not label a milestone complete with an unmet acceptance criterion.
+- Prepare a GitHub pull request (the project's MR) from a focused branch into main.
+  Describe the resulting behavior, relevant test results, and material limitations.
+  Keep changes as simple as possible while preserving required behavior and reliability.
+- Before handing off the PR, run an independent review using a separate agent that
+  did not author the change. Give it the full diff against main, relevant requirements,
+  and validation results; ask it to inspect the actual files, not only the PR summary.
+- Focus review on actionable, material issues: correctness, data loss, security/privacy,
+  broken builds, media reliability/performance, or important requirement/test gaps.
+  Include evidence, affected location, and practical impact. Minor style preferences,
+  speculative edge cases without meaningful impact, and unnecessary abstractions
+  are not merge blockers and do not require cleanup. No findings is a valid result.
+- Resolve material findings before handoff, or explicitly record an agreed deferral
+  and its risk. Rerun affected checks after fixes, and request focused re-review when
+  the fixes materially change the reviewed behavior; avoid repetitive review loops
+  for cosmetic edits. Record the independent review outcome in the PR.
+- Report what changed, what passed, and what remains unverified. Do not label a
+  milestone complete with an unmet acceptance criterion. A prepared/reviewed PR
+  does not itself authorize merging it.

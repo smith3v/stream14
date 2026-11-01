@@ -227,6 +227,16 @@ BSD-3-Clause. Use focused branches and reviewed changes after the initial commit
 Track small technical decisions and qualification evidence in the project docs.
 Do not add large process templates or release infrastructure before they are useful.
 
+For each focused change, run checks appropriate to its impact, prepare a GitHub pull
+request (PR, equivalent to an MR), and have a separate agent independently review
+the full diff against main. Code changes need relevant native build/tests and device
+evidence where applicable; docs-only changes need content/link and whitespace checks.
+Record the results and limitations in the PR. Review should identify material bugs,
+data-loss/security risks, reliability failures, and important requirement/test gaps.
+Fix those issues, not every minor style preference or theoretical concern. Preserve
+necessary safeguards while keeping implementation and process small. A no-findings
+review is valid, and preparing/reviewing a PR does not mean it has been merged.
+
 GitHub CLI access should identify the intended owner, smith3v. Check authentication
 with normal permitted network/credential access before concluding that a credential
 is invalid; a restricted sandbox can prevent a valid check. If reauthentication is

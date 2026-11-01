@@ -26,8 +26,11 @@ do not paste guessed library calls from an outdated tutorial. Split a large prom
 into focused changes rather than introducing the complete app at once.
 
 For each task: inspect current code, add the smallest implementation, add meaningful
-tests where the task introduces behavior, run the relevant checks, review the diff
-against main, fix findings, and commit with a concrete summary. Document manual
+tests where the task introduces behavior, run the relevant checks, and commit with
+a concrete summary. Prepare a focused PR into main and have a separate agent review
+the actual diff and requirements for material issues only. Resolve material findings
+and rerun affected checks; record validation, review outcome, and limitations in the PR.
+Do not expand work to satisfy minor nits or speculative concerns. Document manual
 device evidence and limitations; never mark a gate complete on Simulator evidence
 alone. Follow [AGENTS.md](../AGENTS.md), and update the canonical specification if
 measurements require a design change.
@@ -236,17 +239,23 @@ documentation changes without private tester data.
 **Acceptance:** A9 passes. Record build expiry and the replacement-build procedure;
 do not describe TestFlight as a permanent public release.
 
-## Task 13: Review the complete branch against main
+## Task 13: Prepare a PR and independently review the branch against main
 
 **Prompt:**
-Before merging each substantial milestone, inspect the full branch diff against
-main, including project settings, dependencies, source, tests, and docs. Check
-requirements and the milestone's acceptance evidence, identify defects or scope
-drift, fix them, and rerun affected checks. Use git diff --check and the now-verified
-build/test commands. Commit fix-ups with clear summaries and report unresolved
-device/service limitations. Do not merge or publish an unfinished milestone as
-qualified. Initial documentation setup uses a working-tree review because no
-earlier main commit exists.
+Prepare a GitHub pull request (MR) into main describing the final behavior and
+relevant checks. Assign a separate agent that did not author the change to inspect
+the full branch diff, requirements, and actual files, including applicable project
+settings, dependencies, tests, and docs. Review only material correctness, data-loss,
+security/privacy, build, media-reliability/performance, and important requirement or
+test gaps. Require evidence and practical impact; do not request cosmetic changes,
+speculative hardening, or extra abstractions. No findings is valid. Resolve material
+findings or record an agreed deferral/risk, rerun affected checks, and request focused
+re-review only when meaningful changes justify it. Use git diff --check plus the
+verified build/test commands when code exists; documentation-only work uses content
+and link checks. Record the independent outcome and outstanding device/service
+limitations in the PR. Keep the design simple without removing necessary safeguards.
+Do not merge automatically or claim an unfinished milestone is qualified.
 
-**Acceptance:** No unresolved findings invalidate the milestone; final behavior,
-documentation, and recorded evidence agree.
+**Acceptance:** The PR contains relevant check results and an independent agent review
+focused on major issues; no unresolved material findings invalidate the milestone.
+Final behavior, documentation, and recorded evidence agree. Minor nits do not block handoff.
