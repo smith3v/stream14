@@ -1,0 +1,37 @@
+# macOS and editor-local state
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Xcode and Swift build output; shared project files and Package.resolved belong in Git
+DerivedData/
+build/
+.build/
+**/xcuserdata/
+*.xcuserstate
+*.xcarchive/
+*.dSYM/
+*.dSYM.zip
+*.ipa
+*.xcresult/
+
+# Local configuration and signing material
+.env
+.env.*
+!.env.example
+Config/Local.xcconfig
+Secrets/
+*.p12
+*.p8
+*.key
+*.mobileprovision
+*.provisionprofile
+
+# Captured media and diagnostic artifacts; add reviewed synthetic fixtures explicitly
+Recordings/
+artifacts/
+*.mp4
+*.mov
+*.m4v

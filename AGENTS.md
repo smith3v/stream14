@@ -1,0 +1,125 @@
+# Working on stream14
+
+## Project and sources of truth
+
+stream14 is a native iPhone app for broadcasting camera video and microphone audio
+to an existing scheduled YouTube event, compositing a transparent web overlay into
+the outgoing video, and keeping a local copy of that composition.
+
+- Read [the application specification](docs/2026-11-01-stream14-design.md) before
+  changing behavior. It distinguishes confirmed requirements from starting defaults
+  and capabilities that still need device evidence.
+- Use [the development guide](docs/ios-development-guide.md) for Apple, Google, and
+  TestFlight setup, and [the implementation plan](docs/2026-11-01-stream14-implementation.md)
+  for the order of work.
+- Keep these documents consistent with implementation. Record a material technical
+  decision and its evidence in the relevant specification section; create a separate
+  decision document only when the explanation no longer fits there.
+- The repository initially contains documentation only. Do not claim there is a
+  working app, a build pipeline, or a passed device test until it exists.
+
+## Keep the implementation small
+
+- Use Swift 6 and SwiftUI. Bridge to UIKit only where an Apple API requires it.
+- Prefer Apple frameworks: AVFoundation, WebKit, Core Image, VideoToolbox,
+  AuthenticationServices, Security, Foundation, and OSLog as needed.
+- Use a normal Xcode project and Swift Package Manager. Do not add a project
+  generator, CocoaPods, a cross-platform UI framework, a backend, or an architecture
+  framework to solve a problem the app does not have.
+- A dependency needs a concrete reason: the native alternative, maintenance and
+  security tradeoffs, license, selected version, and transitive footprint. Record
+  this before adding it. Google Sign-In and HaishinKit's RTMP products are candidates,
+  not installed or proven dependencies.
+- Link only the package products actually used. Commit Package.resolved when the
+  app acquires packages. Do not follow a moving branch for release builds.
+- Prefer straightforward types and explicit ownership. Avoid speculative protocols,
+  generic service layers, global mutable state, and duplicate sources of truth.
+
+## Media and reliability rules
+
+- The iPhone 13 mini on iOS 27 is the minimum performance target. Test on it before
+  claiming support for long 1080p30 broadcasts. Newer or Pro phones do not substitute
+  for this test.
+- Composite the overlay into the actual video frames. Placing a web view above a
+  camera preview is insufficient. Preview, network output, and recording must use
+  the same composition, without including app buttons or alerts.
+- Lay out the web page at the stream's canvas dimensions, independently of screen
+  points, safe areas, and display scale. Preserve alpha and aspect ratio.
+- Start with about one overlay raster capture per second and reuse the last image
+  between captures. Smooth camera video takes priority over overlay update latency.
+  Prefer a small in-place update change in the overlay project if full reloads cause
+  trouble; do not add animation-rate capture requirements to v1.
+- Validate the WebKit capture approach with public APIs on a physical device before
+  building the rest of the media pipeline around it. Do not promise OBS-equivalent
+  browser-source compatibility or animation performance without measurements.
+- Keep the last good overlay frame through page reloads. A browser or network failure
+  must not block camera capture or corrupt the local recording.
+- Keep capture and media processing off the main thread, except APIs that require
+  the main actor, such as WebKit and UI. Use explicit serial ownership or actors for
+  state. Never suppress concurrency diagnostics with unchecked annotations without
+  a documented, verified ownership argument.
+- Use a common media timeline, bounded queues, and measured backpressure. A slow
+  uploader must not stop the recorder. Prefer sharing encoded samples where the
+  selected library permits it; verify this rather than assuming it.
+- Recording continues through transport outages. If recording fails after going
+  live, keep broadcasting, preserve saved footage, and show a persistent warning.
+- Handle cancellation, audio/camera interruptions, thermal pressure, backgrounding,
+  and file finalization explicitly. Do not promise background or locked-screen
+  camera broadcasting in v1.
+
+## Apple interface and platform practices
+
+- Follow the current Apple Human Interface Guidelines and use standard controls,
+  system typography, SF Symbols, safe areas, and meaningful accessibility labels.
+- Design and inspect the smallest supported screen first. Support Dynamic Type in
+  setup screens, VoiceOver, adequate contrast, and status labels that do not rely
+  on color alone. Keep important touch targets at least 44 by 44 points.
+- Separate the user's local recording state, transport connection, and YouTube
+  broadcast state. Never show "Live" just because a socket connected.
+- Make the channel, event title, and visibility clear before publishing. Confirm
+  the user's intention to end an event. Reconcile remote state before retrying an
+  ambiguous state-changing API call.
+- Request camera and microphone permissions in context with honest purpose strings.
+  Do not request Photos access merely to save in the app's own container or export
+  through the Files/share interface.
+- Use public APIs for their intended purpose. Do not use private WebKit APIs,
+  certificate bypasses, fake background audio, or other App Review workarounds.
+- Recheck Apple's current submission requirements, privacy-manifest requirements,
+  and SDK rules before a TestFlight upload; a beta is not exempt from them.
+
+## Security, privacy, and license
+
+- Use Google authorization through a supported system-browser flow or SDK. Never
+  collect Google passwords or authenticate Google inside the overlay WKWebView.
+- Store credentials using Keychain-backed storage. Treat stream keys and overlay
+  URLs containing access tokens as secrets. Do not duplicate SDK-managed tokens in
+  a second persistence mechanism.
+- Keep credentials, signing identities, provisioning profiles, recordings, and private
+  tester information out of Git, issue attachments, screenshots, and logs. An OAuth
+  client ID is public configuration; it is not a confidential client secret.
+- Do not expose native capabilities or Google tokens to overlay JavaScript. Use
+  HTTPS and RTMPS with normal certificate validation.
+- Do not add analytics, advertising, cloud recording, or crash-reporting SDKs by
+  default. Redact OSLog messages and user-exported diagnostics.
+- Preserve the BSD-3-Clause license and the notices required by any dependencies.
+  The privacy policy and service terms are separate from the source-code license.
+
+## Development and verification
+
+- Explain unfamiliar iOS concepts, why a manual step is needed, what to click or run,
+  and how the user can recognize success. Never ask the user to paste secrets into
+  chat or put them in a committed configuration file.
+- Make small, reviewable changes. Check the working tree before editing; preserve
+  unrelated work. Use focused branches after the initial repository setup, and do
+  not force-push, rewrite shared history, or delete user recordings as routine cleanup.
+- Build and test with Xcode's native tools. Once the project exists, document the
+  actual shared scheme and runnable simulator/device commands in the guide. Until
+  then, do not invent successful xcodebuild or CI results.
+- Add meaningful tests for lifecycle decisions, API parsing, retries, and recording
+  behavior. Use deterministic fixtures and unlisted test broadcasts. UI layout and
+  media performance need manual inspection on real phones as well as automation.
+- Documentation-only changes need link/content checks and git diff --check, not
+  artificial app tests. Run checks appropriate to the change and state limitations.
+- Before finishing a feature, review the branch against main, fix findings, update
+  affected documentation, and report what changed, what passed, and what remains
+  unverified. Do not label a milestone complete with an unmet acceptance criterion.
