@@ -233,3 +233,20 @@ already exist. If the name exists, inspect ownership and contents before doing
 anything; do not overwrite or force-push. Verify the resulting visibility, license,
 default branch, and local/remote commit match. Update this guide with the actual
 result rather than leaving an intended action described as completed.
+
+### Initialization record: 2026-11-01
+
+- Created [smith3v/stream14](https://github.com/smith3v/stream14) as a public repository
+  with default branch main. GitHub recognizes LICENSE as BSD-3-Clause.
+- Initial commit: `33426485fd299c0ee3bbac867989deb8e045781e`. Verified that the remote
+  main branch matched it immediately after publication. Later documentation commits
+  naturally advance both branches.
+- Added the seven intended files: AGENTS.md, README.md, LICENSE, .gitignore, the
+  application specification, implementation plan, and this guide. Validated local
+  Markdown links, reference labels, code fences, requirements R1–R10, acceptance gates
+  A1–A9, ignored secret/media/build paths, and git diff --check.
+- Used the owner's GitHub noreply address for the initial commit. No credentials,
+  signing material, recordings, external packages, or application code were added.
+- Full Xcode was not installed and app compilation/device tests were not run.
+  Apple team enrollment, bundle registration, Google OAuth setup, media feasibility,
+  and TestFlight distribution remain future work.

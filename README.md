@@ -2,6 +2,8 @@
 
 A native iPhone broadcasting app, currently at the specification stage.
 
+Repository: [smith3v/stream14](https://github.com/smith3v/stream14).
+
 The intended app combines camera video, microphone audio, and a full-frame transparent
 web overlay; sends the result to a scheduled YouTube broadcast; and saves a local
 video backup. The overlay URL is configurable. The first release targets landscape

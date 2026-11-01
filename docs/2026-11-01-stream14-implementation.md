@@ -32,6 +32,9 @@ measurements require a design change.
 
 ## Task 1: Establish the documented repository
 
+**Status (2026-11-01): Complete.** The public repository is created; main and the
+BSD-3-Clause license are verified. See the initialization record in the development guide.
+
 **Prompt:**
 Create AGENTS.md, README.md, LICENSE, .gitignore, and the three linked project
 documents. Confirm the agreed priorities: 13 mini/iOS 27, smooth 1080p30 video,
