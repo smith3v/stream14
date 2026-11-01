@@ -5,6 +5,26 @@ for product behavior and the [implementation plan](2026-11-01-stream14-implement
 for development order. This guide explains setup; it does not mean those steps have
 already been performed.
 
+## Current stage: local MVP first
+
+The immediate app records rear-camera video and microphone audio with a configurable
+transparent webpage overlay. HaishinKit is the first capture/composition/encoding/
+recording experiment. The owner reviews the result before broadcasting is added.
+Codex writes and integrates the app; the owner supplies account/device access and
+reviews behavior. Learning Swift or manually writing app code is not a prerequisite.
+
+For this stage, follow Xcode/device setup and the MVP tasks in the implementation
+plan. Install directly from Xcode and validate the local file on the iPhone 13 mini.
+Google Cloud, YouTube events, RTMPS, OAuth, and the TestFlight section below are
+later-stage setup; none is needed to start a local recording. The overlay URL may
+still need internet access. Do not grant extra accounts/permissions or configure an
+ingestion key merely to make the library recorder work.
+
+The MVP needs only URL settings, composed preview, Record/Stop, status/duration,
+and basic playback/export. After a smooth 30-minute device test and failure checks,
+review M1–M5 before expanding UI, streaming, or distribution. A three-hour broadcasting
+qualification remains a later milestone.
+
 ## The essential terms
 
 | Term | What it means for this project |

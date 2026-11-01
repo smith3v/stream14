@@ -18,6 +18,27 @@ the outgoing video, and keeping a local copy of that composition.
 - The repository initially contains documentation only. Do not claim there is a
   working app, a build pipeline, or a passed device test until it exists.
 
+## Current milestone: local-recording MVP
+
+- Build only rear camera + microphone → HaishinKit capture/composition/encoding →
+  local video file, with a configurable transparent WKWebView overlay at about 1 Hz.
+  Preview and the file must show the same composition.
+- Evaluate HaishinKit as the primary media pipeline first. Do not first build custom
+  AVFoundation capture, a Core Image compositor, or VideoToolbox encoding. Use one
+  camera session; add a small native recording adapter only if the verified library
+  API needs it. If the approach fails, document evidence and review the fallback
+  before replacing it with a custom pipeline.
+- Verify the stable package's actual overlay-update and local-recording APIs, license,
+  dependency footprint, and iOS 27/Swift 6 compatibility before adoption. Link only
+  the products needed for local capture/composition/recording; no RTMP product merely
+  in anticipation of streaming. Do not open an ingestion connection to enable recording.
+- Defer YouTube/OAuth, RTMPS transmission, reconnect logic, 720p/60 fps options, extensive controls,
+  and TestFlight distribution until the MVP review. The full-product requirements
+  below apply when those features are implemented, not as MVP completion criteria.
+- Pass the specification's M1–M5 gates on the 13 mini and present the files/measurements
+  for owner review before continuing with broadcasting. A short local demo does not
+  qualify a three-hour stream or prove simultaneous recording/RTMPS independence.
+
 ## Keep the implementation small
 
 - Use Swift 6 and SwiftUI. Bridge to UIKit only where an Apple API requires it.
@@ -28,8 +49,8 @@ the outgoing video, and keeping a local copy of that composition.
   framework to solve a problem the app does not have.
 - A dependency needs a concrete reason: the native alternative, maintenance and
   security tradeoffs, license, selected version, and transitive footprint. Record
-  this before adding it. Google Sign-In and HaishinKit's RTMP products are candidates,
-  not installed or proven dependencies.
+  this before adding it. HaishinKit is the chosen MVP experiment, not yet an installed
+  or proven dependency. Google Sign-In and RTMP products are deferred candidates.
 - Link only the package products actually used. Commit Package.resolved when the
   app acquires packages. Do not follow a moving branch for release builds.
 - Prefer straightforward types and explicit ownership. Avoid speculative protocols,
@@ -109,6 +130,8 @@ the outgoing video, and keeping a local copy of that composition.
 - Explain unfamiliar iOS concepts, why a manual step is needed, what to click or run,
   and how the user can recognize success. Never ask the user to paste secrets into
   chat or put them in a committed configuration file.
+- Codex implements the application. Explain architecture and owner-only setup without
+  expecting the owner to learn Swift or manually write application code.
 - Make small, reviewable changes. Check the working tree before editing; preserve
   unrelated work. Use focused branches after the initial repository setup, and do
   not force-push, rewrite shared history, or delete user recordings as routine cleanup.

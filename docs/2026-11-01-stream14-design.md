@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Date: 2026-11-01. Status: initial specification; application not implemented.
+Date: 2026-11-01. Status: revised for local-recording MVP; application not implemented.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -8,9 +8,74 @@ the agreed behavior. "Starting default" is an explicit engineering choice that c
 be revised using measured results. "Feasibility gate" means the approach is not yet
 proven and must not be presented as a working capability.
 
-## 1. Purpose and agreed requirements
+## Current milestone: local-recording MVP
 
-Enable one person to broadcast a long event from an iPhone without a laptop-based
+The owner's 2026-11-01 architecture handoff and subsequent instruction select a
+smaller first product: validate HaishinKit camera capture, a transparent web overlay,
+and a local video recording before implementing broadcasting. The full YouTube
+product remains the destination. Sections below describing YouTube, RTMPS, dual
+outputs, TestFlight, and gates A3–A9 are later-stage requirements, not prerequisites
+for this MVP. This revision changes documentation only; no library or app is added.
+
+### MVP scope and interface
+
+- Rear wide-angle camera, microphone, landscape 1920×1080 at 30 fps on iPhone 13 mini
+  with iOS 27. Use the main profile's starting encoding settings below. No 720p,
+  60 fps, HDR, camera switching, manual exposure, or advanced audio controls yet.
+- HaishinKit is the first choice to own acquisition, composition, encoding, and
+  recording through its verified public APIs. The app owns WebKit snapshots and
+  straightforward UI/orchestration. Do not start by building custom capture/encoding
+  components or adding a second camera session.
+- One configurable HTTPS overlay URL, full 1920×1080 canvas, alpha preserved, with
+  approximately one snapshot per second. Retain the last good image through reloads
+  and errors; smooth camera video has priority. A small in-place DOM update change
+  in the overlay project can be considered if needed; it is not part of this change.
+- One native recording screen with composed preview, Record/Stop, recording duration
+  and status, permission/error messages, a URL settings sheet, and playback/export
+  of saved files through system UI. No YouTube controls, account setup, or full
+  recordings-management interface is needed to validate the idea.
+- Save composed video and audio persistently in the app container. Prefer MP4 if
+  supported by the library's recording path; a playable H.264/AAC MOV is acceptable
+  for the MVP if that is the simplest supported path. Record the container choice,
+  use its correct extension, and review MP4 compatibility before the full release.
+- Start/stop repeatedly, keep the screen awake while recording, restore normal sleep
+  afterwards, and finalize on stop/interruption. Show a visible failure and preserve
+  saved data if recording fails. Without a network output there is no broadcast to
+  continue on recorder failure. Do not automatically resume recording after returning
+  from background or after relaunch.
+- No YouTube/OAuth, ingestion connection, speculative transport packages, streaming retries, shared
+  encoded-output fan-out, backend, Google setup, or TestFlight upload in this stage.
+  Test by installing directly from Xcode. No internet is required by recording
+  itself; the configured web overlay still needs its own network resources.
+
+Link the core HaishinKit product first. If the verified local recorder API requires
+another product, document that specific dependency before linking it; this does not
+add network transmission to MVP scope. Avoid custom media work solely to remove a
+small, required library product.
+
+### MVP acceptance and decision gate
+
+| Gate | Required evidence on the physical iPhone 13 mini |
+| --- | --- |
+| M1: Library fit | A stable HaishinKit version builds with the chosen Xcode/iOS 27/Swift 6 setup. Document exact public APIs, product/dependency/license footprint, capture ownership, dynamic image layering, and local-recording route; recording works without publishing or connecting to an ingest server. |
+| M2: Actual composition | A saved 1920×1080/30 fps sample and preview contain camera, audio, and the same full-frame web overlay. Check alpha/translucent edges/logos, layout, orientation, a visible score update during recording, and absence of app controls. Repeated reference-page reloads cause no white/blank flashes. |
+| M3: Smooth recording | A 30-minute run has less than 1% measured pipeline frame drops, no repeated video stalls of 500 ms or more, no monotonic memory/queue growth, and measured A/V offset within 100 ms at start and end. Document the measurement method and any library observability limits. |
+| M4: Local usability and failures | Repeated start/stop produces independently playable/exportable files. Test permission denial, overlay unavailability/reloads, a two-minute overlay-network outage, camera/audio/background interruption, and an injected writer/low-storage failure. Retain the last overlay and continuous local A/V during the network outage; interrupted recordings finalize where possible and the UI reports the actual state. |
+| M5: Owner review | Present sample files and a concise feasibility report covering M1–M4, selected library/container APIs, remaining limitations, and the proposed next step. The owner reviews the MVP before work proceeds to broadcasting. |
+
+Crash-fragment recovery, a three-hour soak, wider device coverage, simultaneous local
+recording plus RTMPS, and TestFlight are later gates. Preserve incomplete files now,
+but do not introduce a custom recovery system solely to finish this first experiment.
+A passing MVP does not prove those later capabilities. If library composition or
+recording is unsuitable, report the concrete limitation and review a minimal native
+adapter or fallback with the owner rather than silently expanding the pipeline.
+
+Record actual APIs and measurements in docs/feasibility.md when implementation
+begins; do not create a report claiming success before any device work exists.
+
+## 1. Full-product purpose and agreed requirements
+
+Enable one person to broadcast a long volleyball event from an iPhone without a laptop-based
 video mixer. The operator prepares an event in YouTube Studio, opens stream14,
 checks the picture and sound, selects that event, and broadcasts with a web overlay
 and a local backup.
@@ -33,7 +98,7 @@ replacing full-page refreshes with in-place updates. Such a change belongs in th
 overlay's own project and is not part of this repository's initial documentation
 change. It must preserve the configurable web-URL feature.
 
-## 2. First-release boundaries and starting defaults
+## 2. Full-release boundaries and starting defaults
 
 | Area | Starting default |
 | --- | --- |
@@ -264,7 +329,8 @@ Network losses therefore create gaps only in the remote output, not in the backu
 while capture and local writing remain healthy. The clean-stop result must be a
 playable, shareable MP4 with the chosen dimensions, orientation, and synchronized audio.
 
-Use AVAssetWriter or the selected media library's verified native recorder. Prefer
+Use HaishinKit's verified local recording path first; add a small AVAssetWriter
+adapter only if necessary. The MVP's container exception is defined above. Later, prefer
 one encoding pass feeding both file and RTMPS output if the library exposes this
 cleanly. Do not assume APIs or packet access exist. If a second encode is necessary,
 measure its thermal and performance cost before accepting it.
@@ -307,31 +373,36 @@ protocol for every class.
 | Responsibility | Owns |
 | --- | --- |
 | SwiftUI screens and session coordinator | User intent, readiness, state presentation, and start/stop ordering |
-| Capture and composition | AVFoundation capture, common timing, camera controls, audio route, Core Image/GPU composition |
+| HaishinKit media pipeline | Capture, timing, image composition, encoding, and local recording where supported by its public APIs; one camera session |
 | Web overlay renderer | Main-actor WKWebView, loading/capture health, and last-good alpha image |
 | YouTube client and authorization adapter | Tokens, REST requests, channel/event selection, ingestion binding, lifecycle reconciliation |
-| Media outputs | Encoding, bounded RTMPS output, writer lifecycle, file persistence and export |
+| Output orchestration | Local writer lifecycle, file persistence/export; later, bounded RTMPS output and independent failures |
 
 ```mermaid
 flowchart LR
-    C[Camera frames] --> M[Native compositor]
-    W[WebKit overlay at about 1 Hz] --> M
-    M --> P[Composed preview]
-    M --> E[H.264 encoder]
-    A[Microphone] --> AE[AAC encoder]
-    E --> F[Local MP4 writer]
-    AE --> F
-    E --> T[RTMPS output]
-    AE --> T
-    T --> Y[Selected YouTube event]
+    C[Rear camera] --> H[HaishinKit capture / composition / encoding]
+    W[WebKit alpha image at about 1 Hz] --> H
+    A[Microphone] --> H
+    H --> P[Composed preview]
+    H --> F[Local video file]
 ```
 
-The diagram is the preferred logical data flow. The feasibility work determines
-whether the chosen library exposes a shared encoded-output path; it does not justify
-inventing such an API. Core Image is the first compositing choice; add custom Metal
-code only if measurements justify it. ReplayKit is not the initial capture design:
-the output should contain the camera composition rather than a recording of the
-application's screen.
+The diagram is the preferred MVP experiment, not a verified library integration.
+Verify that dynamically updated alpha images appear in the preview and the local
+file, and that recording does not require a live transport connection. A small
+native recording adapter is acceptable if required by the public API; do not assume
+the library handles every responsibility or automatically shares encoded samples.
+
+The fallback is Apple-native capture/composition/recording with HaishinKit used later
+for RTMPS. This entails more buffer, timing, and encoding ownership, so use it only
+after documenting a specific library limitation and reviewing the change. An
+external encoded-input interface to HaishinKit must also be verified before choosing
+that fallback. Core Image is the first custom compositing option if needed; custom
+Metal requires profiling evidence. ReplayKit is not the initial capture design.
+
+For the later broadcaster, investigate simultaneous file and RTMPS output and
+independence under connection failure before choosing shared or separate encoders.
+Do not add transport plumbing to the MVP merely to investigate this future question.
 
 Use monotonic capture timestamps for A/V synchronization and wall time only for
 labels/filenames. Serialize media ownership, bound queues, and handle backpressure
@@ -382,13 +453,23 @@ not imply otherwise. A new session after interruption may produce another backup
   connecting YouTube; adding an unrelated application account would require a new
   review of the login requirements. This is a design interpretation, not approval
   from Apple. Review the actual app against the [current guidelines][review].
-- Initial dependency candidates: GoogleSignIn for supported Google authorization,
-  and HaishinKit + RTMPHaishinKit for media/RTMPS integration. Inspect stable-release
+- MVP dependency direction: HaishinKit for capture/composition/local recording.
+  GoogleSignIn and RTMPHaishinKit are deferred until the broadcasting stage. Inspect stable-release
   APIs, iOS 27/Swift 6 compatibility, transitive dependencies, privacy manifests,
   maintained status, notices, and the shared-recording path before pinning versions.
   Do not link SRT/WebRTC/MoQT products or add Firebase for convenience.
 
-## 10. Acceptance gates and test matrix
+The upstream [2.2.5 README][hk-readme] advertises bitmap mixing, the
+[package manifest][hk-package] separates HaishinKit and RTMP products, and the
+[license file][hk-license] states BSD-3-Clause. These source checks support the
+experiment, not claims that dynamic alpha updates, local file composition, shared
+encoding, iOS 27 compatibility, or network-independent dual outputs have passed.
+Recheck the current stable release and complete API/notice review before adoption.
+
+## 10. Later full-product acceptance gates and test matrix
+
+M1–M5 above determine MVP completion. A1/A2 remain useful shared video-quality
+criteria; the table below qualifies the eventual broadcaster, not the local-only MVP.
 
 | Gate | Evidence required |
 | --- | --- |
@@ -413,15 +494,23 @@ network conditions, power state, ambient conditions, duration, output files, fra
 statistics, memory/thermal observations, and failures for a qualification run. Keep
 private recordings and credentials out of the public repository.
 
+For long-event qualification, record tripod/mount, wired power source, case,
+brightness, airflow, and thermal behavior. First test without external cooling;
+no power-bank or cooler model is selected. Consider a dimmed in-app foreground UI
+or external cooling only after measurement; neither is an MVP requirement. Any
+cooler evaluation must include microphone noise and mounting interference. No
+claim about battery longevity or cooling effectiveness is established by this design.
+
 If the 13 mini fails a gate, document the measurements and revise the design with
 the owner. Do not quietly change the minimum device, claim 1080p support on the
 basis of a newer phone, or add infrastructure before testing simpler changes.
 
 ## 11. Delivery sequence and unresolved setup
 
-Start with documentation and licensing, then Xcode/device setup, then overlay and
-recording feasibility, then one vertical YouTube broadcasting flow, then failure
-handling and long-event qualification, then the small TestFlight beta. Detailed
+Start with documentation and licensing, then Xcode/device setup and HaishinKit API
+evaluation, then the local-recording MVP and M1–M5 review. Continue to YouTube/RTMPS
+only after that review, then independent-output failure handling, long-event
+qualification, and the small TestFlight beta. Detailed
 work prompts are in [the implementation plan](2026-11-01-stream14-implementation.md).
 
 The Apple team membership, final bundle identifier, Google Cloud project/OAuth
@@ -447,3 +536,6 @@ requirements must be rechecked when their milestone is implemented.
 [rtmps]: https://developers.google.com/youtube/data/live/guides/rtmps-ingestion
 [policies]: https://developers.google.com/youtube/terms/developer-policies
 [review]: https://developer.apple.com/app-store/review/guidelines/
+[hk-readme]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/README.md
+[hk-package]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/Package.swift
+[hk-license]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/LICENSE.md
