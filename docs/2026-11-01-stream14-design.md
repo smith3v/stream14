@@ -574,11 +574,13 @@ qualification, and updated TestFlight builds for the small beta group. Detailed 
 milestone only are in [the MVP implementation plan](2026-11-01-stream14-implementation.md).
 Prepare later implementation plans separately after the MVP review.
 
-The Apple team membership, final bundle identifier, Google Cloud project/OAuth
-client, tester list, and public privacy/support URLs must be supplied/configured
-before distribution. Do not fabricate them or commit private identifiers, tokens,
-or tester addresses. These are setup prerequisites, not reasons to delay local
-camera/overlay feasibility work.
+Before MVP TestFlight distribution, configure Apple team membership, the final
+bundle identifier/app record, signing, tester access, and privacy/support information
+for the local app's actual behavior. No Google Cloud project, OAuth client, or
+YouTube account setup is required for this milestone; those are prerequisites for
+the later broadcasting integration. Do not fabricate setup values or commit private
+credentials, tokens, or tester addresses. Apple distribution setup need not delay
+local camera/overlay feasibility work in development builds.
 
 ## References
 
