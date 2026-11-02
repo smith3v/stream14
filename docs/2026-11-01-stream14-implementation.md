@@ -25,10 +25,12 @@ overlay URL, composed preview, Record/Stop, and a playable/exportable video file
 containing camera, audio, and overlay. Qualify landscape 1080p30, approximately
 1 Hz overlay updates, the 10-second overlay outage hide/restore behavior, and a
 smooth 30-minute recording using specification gates M1–M5.
+The delivered app must be installed and exercised through TestFlight on the testing
+iPhone; a development build run from Xcode is not the finished milestone.
 
-This plan ends with that MVP's validation, independent PR review, and owner review.
+This plan ends with that MVP's TestFlight delivery/validation, independent PR review, and owner review.
 It contains no YouTube login, stream selection, RTMPS transmission, reconnect,
-TestFlight, or three-hour broadcasting implementation tasks. The full-product
+or three-hour broadcasting implementation tasks. The full-product
 requirements remain in the specification for context; they are not this milestone's
 deliverables. Plan a later milestone separately after reviewing the MVP evidence.
 Storage stats, remaining-time estimates, polling, and proactive capacity thresholds
@@ -37,8 +39,9 @@ are also deferred; retain straightforward disk-full/write-error handling.
 ## How to use this plan
 
 The [specification](2026-11-01-stream14-design.md) defines MVP gates M1–M5.
-Task 1 records completed setup; Tasks 2–5 build and validate the MVP, Task 6 is the
-owner review, and Task 7 defines the PR/review process for each focused change
+Task 1 records completed setup; Tasks 2–5 build and provisionally validate the MVP,
+Task 6 delivers it through TestFlight and completes device/owner review, and Task 7
+defines the PR/review process for each focused change
 before handoff. Execute implementation tasks in order. The prompts below define small deliverable slices,
 not claims that a feature is already implemented. Before each media integration,
 inspect the selected stable API and write the concrete code against that API;
@@ -72,6 +75,11 @@ measurements require a design change.
   output framework, or second encoder in this MVP just to anticipate that extension.
   If library ownership would prevent independent outputs, document that limitation
   during MVP review before committing to a broader architecture.
+- Compose before the initial necessary encode; avoid duplicate encoders, decoding
+  and re-encoding already compressed media, or post-save/export transcoding. Prefer
+  HaishinKit's native writer/default MP4 path; use MOV if verified to avoid extra work.
+  Record the sample formats and encoder ownership. Do not infer lower cost from a
+  container extension or assume the library exposes compressed passthrough samples.
 
 ## Task 1: Establish the documented repository
 
@@ -113,7 +121,7 @@ the documented shared scheme. Camera/streaming capability is not yet claimed.
 Inspect a current stable HaishinKit release's public APIs and examples for camera
 and microphone capture, dynamically updated alpha-image layers, composed preview,
 and recording the composed output without publishing or an ingest connection. Record
-the exact APIs, ownership, container/codec support, dependency products and transitive
+the exact APIs, capture/encoder ownership, sample formats, container/codec support, dependency products and transitive
 footprint, licenses/notices, and Swift 6/iOS 27 build result in docs/feasibility.md.
 Add only products required for local operation through SPM and commit Package.resolved.
 Try the smallest library-owned capture/recording sample on the 13 mini. No separate
@@ -157,7 +165,9 @@ document the concrete composition/output boundary without creating streaming stu
 Use a small native writer adapter only if Task 3 establishes the need and API path.
 Add permission purpose strings, URL entry/settings, Record/Stop, elapsed time/status,
 and system playback/export. Persist files in Application Support and protect URLs
-as specified. MP4 is preferred; document a supported MOV choice if simpler. Restore
+as specified. Start with the native writer's MP4 default; choose MOV if it avoids
+additional encoding/conversion. Verify one necessary local encoding stage and no
+save/export transcode; don't add a format picker or duplicate encoder. Restore
 screen-sleep behavior after recording and finalize on interruption. Test repeated
 recording, overlay updates/failure/outage (before and after the 10-second hide
 deadline, automatic fresh-image restoration, unchanged healthy scores, stale cached
@@ -165,24 +175,37 @@ snapshots, and manual hiding), permission denial, interrupted capture,
 and injected disk-full/write errors, including initialization and finalization failure.
 Preserve usable/incomplete files and do not mark failures complete; no remaining-space
 or time estimator, capacity polling, or reserve-threshold logic is required.
-Save device samples and perform the 30-minute
-M3 run. Record APIs, evidence, and limitations in docs/feasibility.md. Review and commit.
+Save device samples and perform a preliminary 30-minute run. Record APIs, evidence,
+and limitations in docs/feasibility.md. Final M3 qualification is on the delivered
+TestFlight build in Task 6. Review and commit.
 
-**Acceptance:** M2–M4 pass on the 13 mini. Files contain synchronized audio, video,
+**Acceptance:** M2/M4 and preliminary M3 checks pass on the 13 mini. Files contain synchronized audio, video,
 and the actual overlay, with no app UI; overlay-network failure does not stop recording.
 
-## Task 6: Review the MVP before expanding scope
+## Task 6: Deliver the MVP through TestFlight and review it
 
 **Prompt:**
+Follow the development guide's TestFlight steps: owner-controlled Apple Developer
+Program membership, app record/bundle identifier, automatic signing, version/build,
+icon, actual permissions/privacy manifests/disclosures, support/privacy information,
+and export compliance. No Google setup or YouTube integration is required. Use
+Xcode Archive/Organizer to validate/upload the signed local-only MVP and resolve
+processing errors. Invite the testing device's user to the appropriate internal or
+external TestFlight group; complete beta review if required. Install via TestFlight
+on the iPhone 13 mini and exercise capture, overlay updates/outage hide/restore,
+stop, playback/export, and a 30-minute M3 run. Record build/device/OS/install route
+and results without private tester data. Do not substitute an Xcode install.
 Review the complete MVP branch against main and M1–M4, fix findings, and rerun
-affected checks. Present sample files privately and commit a concise feasibility
+affected checks in the updated TestFlight build if the tested behavior changes.
+Present sample files privately and commit a concise feasibility
 report: device/OS/build, library/version/products, exact capture/composition/recording
-APIs, file format, duration, measured frame drops/stalls, A/V offset, memory/thermal
+APIs, encoder ownership/sample formats, file format, TestFlight version/build, duration, measured frame drops/stalls, A/V offset, memory/thermal
 observations, failure behavior, and measurement limitations. Distinguish confirmed
 capabilities from untested dual-output or three-hour behavior. Ask the owner to review
 the result and proposed next step. Do not begin a streaming milestone before that review.
 
-**Acceptance:** M5 is complete. A working short sample alone does not authorize
+**Acceptance:** M1–M5 pass for the TestFlight-installed MVP on the testing phone.
+A working short sample or Xcode-only install alone does not authorize
 claiming a fully reliable broadcaster. Record owner feedback before continuing.
 
 ## Task 7: Prepare a PR and independently review the branch against main

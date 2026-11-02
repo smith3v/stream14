@@ -14,8 +14,9 @@ The owner's 2026-11-01 architecture handoff and subsequent instruction select a
 smaller first product: validate HaishinKit camera capture, a transparent web overlay,
 and a local video recording before implementing broadcasting. The full YouTube
 product remains the destination. Sections below describing YouTube, RTMPS, dual
-outputs, TestFlight, and gates A3–A9 are later-stage requirements, not prerequisites
-for this MVP. This revision changes documentation only; no library or app is added.
+outputs, and full broadcast qualification are later-stage requirements. TestFlight
+installation and operation on the testing iPhone are required for this MVP. This
+revision changes documentation only; no library or app is added.
 
 ### MVP scope and interface
 
@@ -39,18 +40,22 @@ for this MVP. This revision changes documentation only; no library or app is add
 - Available-storage stats, remaining-recording-time estimates, capacity polling, and
   proactive capacity thresholds are deferred improvements. Handle actual disk-full
   and writer errors now; no storage estimator is needed for MVP completion.
-- Save composed video and audio persistently in the app container. Prefer MP4 if
-  supported by the library's recording path; a playable H.264/AAC MOV is acceptable
-  for the MVP if that is the simplest supported path. Record the container choice,
-  use its correct extension, and review MP4 compatibility before the full release.
+- Save composed video/audio through the native HaishinKit/AVAssetWriter path with
+  one necessary H.264/AAC encoding stage after composition. Use MP4 as the starting
+  container because it is HaishinKit's default; choose MOV if the verified path avoids
+  additional encoding/conversion or is otherwise simpler. Both are native containers;
+  do not claim one is cheaper from the extension alone. Avoid saving and subsequently
+  transcoding, and export the original file without conversion. Document the actual
+  codec/container, sample formats, and encoder ownership.
 - Start/stop repeatedly, keep the screen awake while recording, restore normal sleep
   afterwards, and finalize on stop/interruption. Show a visible failure and preserve
   saved data if recording fails. Without a network output there is no broadcast to
   continue on recorder failure. Do not automatically resume recording after returning
   from background or after relaunch.
 - No YouTube/OAuth, ingestion connection, speculative transport packages, streaming retries, shared
-  encoded-output fan-out, backend, Google setup, or TestFlight upload in this stage.
-  Test by installing directly from Xcode. No internet is required by recording
+  encoded-output fan-out, backend, or Google setup in this stage.
+  Develop with Xcode, then archive/upload and install the MVP through TestFlight on
+  the testing iPhone. No internet is required by recording
   itself; the configured web overlay still needs its own network resources.
 
 Link the core HaishinKit product first. If the verified local recorder API requires
@@ -62,14 +67,14 @@ small, required library product.
 
 | Gate | Required evidence on the physical iPhone 13 mini |
 | --- | --- |
-| M1: Library fit | A stable HaishinKit version builds with the chosen Xcode/iOS 27/Swift 6 setup. Document exact public APIs, product/dependency/license footprint, capture ownership, dynamic image layering, and local-recording route; recording works without publishing or connecting to an ingest server. |
+| M1: Library fit | A stable HaishinKit version builds with the chosen Xcode/iOS 27/Swift 6 setup. Document exact public APIs, product/dependency/license footprint, capture/encoder ownership, sample formats, codec/container choice, dynamic image layering, and local-recording route. Verify one necessary local encoding path with no decode/re-encode or export transcode; recording works without an ingest connection. |
 | M2: Actual composition | A saved 1920×1080/30 fps sample and preview contain camera, audio, and the same full-frame web overlay. Check alpha/translucent edges/logos, layout, orientation, a visible score update during recording, and absence of app controls. Repeated reference-page reloads cause no white/blank flashes. |
-| M3: Smooth recording | A 30-minute run has less than 1% measured pipeline frame drops, no repeated video stalls of 500 ms or more, no monotonic memory/queue growth, and measured A/V offset within 100 ms at start and end. Document the measurement method and any library observability limits. |
+| M3: Smooth recording | A 30-minute run of the TestFlight-installed MVP has less than 1% measured pipeline frame drops, no repeated video stalls of 500 ms or more, no monotonic memory/queue growth, and measured A/V offset within 100 ms at start and end. Document the build, measurement method and any library observability limits; Xcode-only measurements are preliminary. |
 | M4: Local usability and failures | Repeated start/stop produces independently playable/exportable files. Test permission denial, overlay unavailability/reloads, a two-minute overlay-network outage, camera/audio/background interruption, and an injected disk-full/write failure. During the outage local A/V continues; retain the last overlay briefly, hide at 10 seconds, and restore after fresh source access/rendering. Test a brief outage, an unchanged healthy score, cached snapshots during a failed source refresh, and manual hiding during recovery. Interrupted recordings finalize where possible and the UI reports the actual state; failed/incomplete files are not marked complete. Capacity prediction is not required. |
-| M5: Owner review | Present sample files and a concise feasibility report covering M1–M4, selected library/container APIs, remaining limitations, and the proposed next step. The owner reviews the MVP before work proceeds to broadcasting. |
+| M5: TestFlight delivery and owner review | Archive/upload the signed MVP, invite the owner/tester, and install it via TestFlight on the testing iPhone 13 mini. Exercise recording, overlay updates/hide/restore, stop, playback/export, and the M3 run in that build. Record version/build, device/OS, installation route, and results without private tester data. Present samples and the M1–M4 report for owner review before broadcasting work; Xcode-only installation does not pass this gate. |
 
 Crash-fragment recovery, a three-hour soak, wider device coverage, simultaneous local
-recording plus RTMPS, and TestFlight are later gates. Preserve incomplete files now,
+recording plus RTMPS are later gates. TestFlight delivery is part of M5. Preserve incomplete files now,
 but do not introduce a custom recovery system solely to finish this first experiment.
 A passing MVP does not prove those later capabilities. If library composition or
 recording is unsuitable, report the concrete limitation and review a minimal native
@@ -119,7 +124,7 @@ change. It must preserve the configurable web-URL feature.
 | Lower-bandwidth profile | 1280×720 at 30 fps; selected before a session, without changing resolution during an event |
 | Encoding | CBR target, two-second keyframes; initial video targets 14 Mbps for 1080p and 8 Mbps for 720p; AAC 128 kbps stereo at 44.1 kHz, converting the input route as needed |
 | Overlay | One HTTPS URL; one full-canvas layer; approximately one raster capture per second, plus a capture after a successful load when practical |
-| Backup | One MP4 for an uninterrupted session, using the selected output profile; new files after capture interruptions |
+| Backup | One native MP4 (default) or MOV file for an uninterrupted session, selected for the simplest encoding/writing path; new files after capture interruptions |
 | Operation | Foreground app with automatic screen sleep disabled during recording/broadcasting and restored afterwards |
 | Data / services | Direct phone-to-YouTube upload; no application account, relay server, analytics SDK, subscription, or cloud backup service |
 
@@ -344,7 +349,7 @@ API. Reauthorization/channel selection is required if the wrong channel is retur
 Record the pre-upload composition and audio, not a downloaded YouTube rendition.
 Network losses therefore create gaps only in the remote output, not in the backup
 while capture and local writing remain healthy. The clean-stop result must be a
-playable, shareable MP4 with the chosen dimensions, orientation, and synchronized audio.
+playable, shareable MP4 or MOV with the chosen dimensions, orientation, and synchronized audio.
 
 Once local writing has started, inability to start or maintain a stream must never
 stop it: this includes API/startup errors, RTMPS failures, exhausted retries, and an
@@ -355,18 +360,28 @@ unavailable. An intentional End broadcast/recording action still ends both outpu
 An overlay outage changes only the overlay layer under R11, not recording continuity.
 
 Use HaishinKit's verified local recording path first; add a small AVAssetWriter
-adapter only if necessary. The MVP's container exception is defined above. Later, prefer
+adapter only if necessary. Select the native writer/container path as defined above. Later, prefer
 one encoding pass feeding both file and RTMPS output if the library exposes this
 cleanly. Do not assume APIs or packet access exist. If a second encode is necessary,
 measure its thermal and performance cost before accepting it.
+
+The composited camera frames require an initial encode; "avoid re-encoding" does
+not mean the file can bypass that necessary step. Apple's [writer input][writer]
+supports passing acceptable already-compressed samples through with nil output
+settings. Use that only where the selected public API actually provides suitable
+samples; changing an extension does not create passthrough. HaishinKit's inspected
+[2.2.5 recorder][recorder] supports both MP4 and MOV via AVAssetWriter, defaults to
+MP4, and supplies H.264/AAC encoding settings. This supports the starting MP4 choice,
+not a claim of shared encoded output or measured resource superiority. Do not add
+transcoding, a format-picker UI, or a custom pipeline just to switch containers.
 
 Store working and completed recordings in the app's persistent Application Support
 area, excluded from automatic device/iCloud backup. Use a UUID and timestamp for
 filenames, an in-progress marker, and a small Codable session manifest; no database
 is needed. Only mark a file complete after writer finalization succeeds. An interrupted
-capture starts a new file rather than appending a new timeline to a closed MP4.
+capture starts a new file rather than appending a new timeline to a closed movie.
 
-Evaluate fragmented MP4 writing with an initial ten-second fragment interval and
+Later, evaluate fragmented writing for the chosen container with an initial ten-second interval and
 recovery of fully written fragments after process termination. Apple's
 [fragment-writing documentation][fragments] describes a recovery mechanism, not a
 guarantee that any interrupted file will play. Qualify the selected container/writer
@@ -488,8 +503,10 @@ not imply otherwise. A new session after interruption may produce another backup
 - Provide separate disconnect/revoke authorization and local-recording deletion
   controls. Clear stored YouTube API data on disconnection or detected revoked access;
   do not delete the user's original recordings as if they were cached API data.
-- Before the beta, publish accurate privacy and terms pages, explain Google/YouTube
-  and third-party overlay requests, link required Google/YouTube policies, and expose
+- Before the MVP beta, publish accurate privacy/support/terms information for actual
+  data flows, including third-party overlay requests, with no claim that the local
+  MVP connects YouTube. Add required Google/YouTube disclosures and links when those
+  integrations are introduced, and expose
   a developer contact and authorization-revocation instructions. There is no separate
   stream14 account to register or delete. Follow [YouTube's developer policies][policies].
 - Apple's third-party-client exception in review guideline 4.8 is relevant to
@@ -520,11 +537,11 @@ criteria; the table below qualifies the eventual broadcaster, not the local-only
 | A2: Smooth video | A 30-minute compositing/recording run sustains the selected 30 fps profile with less than 1% pipeline frame drops, no repeated stalls of 500 ms or more, and no monotonic memory/queue growth |
 | A3: YouTube end-to-end | Correct channel and scheduled event selected; confirmed start, playback on a second device, correct overlay/audio, and confirmed end; selecting/previewing alone sends no camera media |
 | A4: Independent backup | Startup/API rejection, two-minute internet loss, failed reconnects, and a remotely completed event leave healthy local A/V running while storage remains available. Restoring connectivity resumes only the same eligible event. An overlay outage hides the layer after 10 seconds and restores a fresh image after recovery, without interrupting recording. |
-| A5: Recording recovery | Clean MP4 plays and exports; forced app termination preserves demonstrably recoverable completed fragments or the limitation is resolved before claiming crash recovery |
+| A5: Recording recovery | The chosen native movie file plays and exports without transcoding; forced app termination preserves demonstrably recoverable completed fragments or the limitation is resolved before claiming crash recovery |
 | A6: Failure UX | Permission denial, missing/disabled events, expired consent, quota/rate-limit responses, unreachable overlay, local writer/disk-full failure, and unknown remote completion are distinct and actionable; predictive storage stats are not required |
 | A7: Long event | A three-hour 1080p30 broadcast and local recording on the 13 mini, powered and on a stable qualified network, satisfies A2 quality targets and keeps measured A/V offset within 100 ms at start and end |
 | A8: Devices/interface | Physical tests on the 13 mini and available iPhone 15/17 representatives; Pro variants use no required Pro-only behavior; test 720p, audio interruptions, screen lock/backgrounding, VoiceOver, larger text, playback/export, and cancellation |
-| A9: TestFlight | Signed archive uploaded and installed through an invite on a tester phone; privacy declarations/notices and beta review information reflect actual behavior |
+| A9: TestFlight regression | The later broadcaster is also uploaded/installed through TestFlight and its privacy declarations/notices/review information reflect the added streaming behavior; initial local-only TestFlight delivery is already required by M5 |
 
 Automate API decoding/pagination, readiness, lifecycle reconciliation, retry/cancellation,
 and independent failure-state decisions with fixtures and fake services. Exercise
@@ -551,9 +568,9 @@ basis of a newer phone, or add infrastructure before testing simpler changes.
 ## 11. Delivery sequence and unresolved setup
 
 Start with documentation and licensing, then Xcode/device setup and HaishinKit API
-evaluation, then the local-recording MVP and M1–M5 review. Continue to YouTube/RTMPS
+evaluation, then the local-recording MVP, TestFlight delivery, and M1–M5 review. Continue to YouTube/RTMPS
 only after that review, then independent-output failure handling, long-event
-qualification, and the small TestFlight beta. Detailed work prompts for the first
+qualification, and updated TestFlight builds for the small beta group. Detailed work prompts for the first
 milestone only are in [the MVP implementation plan](2026-11-01-stream14-implementation.md).
 Prepare later implementation plans separately after the MVP review.
 
@@ -573,6 +590,8 @@ requirements must be rechecked when their milestone is implemented.
 [snapshot]: https://developer.apple.com/documentation/webkit/wkwebview/takesnapshot(with:completionhandler:)
 [fragments]: https://developer.apple.com/documentation/avfoundation/avassetwriter/moviefragmentinterval
 [capacity]: https://developer.apple.com/documentation/foundation/checking-volume-storage-capacity
+[writer]: https://developer.apple.com/documentation/avfoundation/avassetwriterinput/init(mediatype:outputsettings:)
+[recorder]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/HaishinKit/Sources/Stream/StreamRecorder.swift
 [encoder]: https://support.google.com/youtube/answer/2853702
 [broadcast-list]: https://developers.google.com/youtube/data/live/reference/rest/v3/liveBroadcasts/list
 [stream-insert]: https://developers.google.com/youtube/data/live/reference/rest/v3/liveStreams/insert

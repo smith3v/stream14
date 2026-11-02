@@ -14,15 +14,17 @@ Codex writes and integrates the app; the owner supplies account/device access an
 reviews behavior. Learning Swift or manually writing app code is not a prerequisite.
 
 For this stage, follow Xcode/device setup and the MVP tasks in the implementation
-plan. Install directly from Xcode and validate the local file on the iPhone 13 mini.
-Google Cloud, YouTube events, RTMPS, OAuth, and the TestFlight section below are
-later-stage setup; none is needed to start a local recording. The overlay URL may
+plan. Develop and debug using Xcode, then follow the TestFlight section below to
+deliver the MVP to the testing iPhone 13 mini. Installation/use through TestFlight
+is required for completion; repeat the final recording/overlay/export checks and
+30-minute qualification on that build. Google Cloud, YouTube events, RTMPS, and OAuth
+are later-stage setup; none is needed to start a local recording. The overlay URL may
 still need internet access. Do not grant extra accounts/permissions or configure an
 ingestion key merely to make the library recorder work.
 
 The MVP needs only URL settings, composed preview, Record/Stop, status/duration,
 and basic playback/export. After a smooth 30-minute device test and failure checks,
-review M1–M5 before expanding UI, streaming, or distribution. A three-hour broadcasting
+review M1–M5 after TestFlight delivery before expanding UI or streaming. A three-hour broadcasting
 qualification remains a later milestone.
 
 ## The essential terms
@@ -188,8 +190,9 @@ clearly as tests. Do not experiment on a real scheduled public event.
    suitable App Store Connect access; ordinary friends/testers should use an
    external group rather than being granted development-team roles just to install.
 7. For external testing, provide beta description, feedback contact, review notes,
-   and clear steps for the reviewer. Explain camera/microphone use, Google/YouTube
-   setup, local rehearsal, and a reproducible overlay/demo. Arrange review access
+   and clear steps for the reviewer. Explain camera/microphone use, local recording,
+   and a reproducible overlay/demo. The MVP needs no Google/YouTube login; add those
+   review instructions only when streaming is implemented. Arrange review access
    through Apple's designated review-information fields, never in this public repo.
    The first external build needs beta review; later builds can also require review.
 8. Invite the testers, verify installation on a real phone, and collect feedback.

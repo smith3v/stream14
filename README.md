@@ -27,8 +27,12 @@ If overlay source access/rendering cannot refresh for 10 seconds, hide the overl
 from preview and recorded/streamed video; restore it automatically after recovery.
 An unchanged score with successful source access is not an outage.
 
-Validate this on the 13 mini before continuing. YouTube login, RTMPS, simultaneous
-streaming/backup, and TestFlight distribution follow the MVP review. See the
+Deliver and validate this through TestFlight on the testing iPhone 13 mini before
+continuing. YouTube login, RTMPS, and simultaneous streaming/backup follow the MVP
+review. Xcode-only installation does not complete the milestone. Prefer the native
+HaishinKit writer (currently MP4 by default), encode the composition once, and avoid
+transcoding on save/export; choose MOV only if it provides a simpler/lower-work path.
+See the
 [MVP scope and gates](docs/2026-11-01-stream14-design.md#current-milestone-local-recording-mvp).
 
 ## Start here
@@ -59,7 +63,7 @@ must be verified during the MVP. Google Sign-In and RTMP products remain deferre
 
 Install full Xcode, evaluate HaishinKit's stable APIs, and implement the local-recording
 MVP on the iPhone 13 mini. Verify the saved composition, audio, overlay updates, and
-a smooth 30-minute run, then review the evidence before adding broadcasting.
+a smooth 30-minute run using the TestFlight build, then review the evidence before adding broadcasting.
 The implementation plan ends at that review. Keep recording independent of any
 future transport lifecycle; no streaming code or speculative output framework is
 part of this milestone.

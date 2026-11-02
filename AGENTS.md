@@ -23,7 +23,9 @@ the outgoing video, and keeping a local copy of that composition.
 - Build only rear camera + microphone → HaishinKit capture/composition/encoding →
   local video file, with a configurable transparent WKWebView overlay at about 1 Hz.
   Preview and the file must show the same composition.
-- The implementation plan ends at this first milestone's M1–M5 validation and review.
+- The implementation plan ends at this first milestone's M1–M5 validation, TestFlight
+  installation/use on the testing iPhone, and owner review. Xcode installation alone
+  is development evidence, not MVP delivery.
   Keep future broadcasting requirements in the specification; write its implementation
   plan separately after MVP review rather than executing a whole-app roadmap now.
 - Defer available-storage stats, recording-time estimates, periodic capacity polling,
@@ -44,11 +46,17 @@ the outgoing video, and keeping a local copy of that composition.
   the products needed for local capture/composition/recording; no RTMP product merely
   in anticipation of streaming. Do not open an ingestion connection to enable recording.
 - Defer YouTube/OAuth, RTMPS transmission, reconnect logic, 720p/60 fps options, extensive controls,
-  and TestFlight distribution until the MVP review. The full-product requirements
+  until after MVP review. TestFlight distribution is part of the MVP. The full-product requirements
   below apply when those features are implemented, not as MVP completion criteria.
 - Pass the specification's M1–M5 gates on the 13 mini and present the files/measurements
   for owner review before continuing with broadcasting. A short local demo does not
   qualify a three-hour stream or prove simultaneous recording/RTMPS independence.
+- Compose before encoding; use one necessary local video/audio encode path and avoid
+  decode/re-encode, duplicate encoders, and post-record/export transcoding. Prefer
+  the library's native writer/default container (currently MP4); use MOV if a verified
+  path avoids additional work. Neither extension alone establishes lower resource use.
+  Document codec/container and encoding ownership before claiming encode-once or
+  shared encoded output. Do not force a custom pipeline solely to change containers.
 
 ## Keep the implementation small
 
