@@ -225,9 +225,11 @@ bundles are local artifacts, not repository content.
   run is not counted as a pass.
 - Physical iPhone 13 mini: connected by USB, iOS 27.2, Developer Mode enabled.
   Automatic signing registered the device and generated a development profile.
-  The signed build is waiting at codesign, with the owner asked to handle any
-  normal Keychain access prompt. Installation/launch is still pending; do not count
-  this stage's physical-device acceptance as complete. Local signed-build log:
+  The owner ended the session and disconnected the phone before signing completed;
+  the waiting build/codesign operation was canceled. Installation/launch remains
+  pending. Next session, reconnect/unlock the phone, run Stream14 from Xcode, and
+  handle normal Keychain signing prompts in macOS. Do not count this stage's
+  physical-device acceptance as complete. Local signed-build log:
   /tmp/stream14-issue2-signed-device-build.log (contains private signing/device
   details; never attach it publicly). No media gate or TestFlight upload passed.
 - No packages, camera/microphone permission strings, networking, entitlements,
