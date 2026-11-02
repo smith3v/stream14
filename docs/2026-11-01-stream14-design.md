@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Date: 2026-11-01. Status: initial specification; application not implemented.
+Created: 2026-11-01. Updated: 2026-11-02. Status: local-recording MVP; application not implemented.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -8,9 +8,86 @@ the agreed behavior. "Starting default" is an explicit engineering choice that c
 be revised using measured results. "Feasibility gate" means the approach is not yet
 proven and must not be presented as a working capability.
 
-## 1. Purpose and agreed requirements
+## Current milestone: local-recording MVP
 
-Enable one person to broadcast a long event from an iPhone without a laptop-based
+The owner's 2026-11-01 architecture handoff and subsequent instruction select a
+smaller first product: validate HaishinKit camera capture, a transparent web overlay,
+and a local video recording before implementing broadcasting. The full YouTube
+product remains the destination. Sections below describing YouTube, RTMPS, dual
+outputs, and full broadcast qualification are later-stage requirements. TestFlight
+installation and operation on the testing iPhone are required for this MVP. This
+revision changes documentation only; no library or app is added.
+
+### MVP scope and interface
+
+- Rear wide-angle camera, microphone, landscape 1920×1080 at 30 fps on iPhone 13 mini
+  with iOS 27. Use the main profile's starting encoding settings below. No 720p,
+  60 fps, HDR, camera switching, manual exposure, or advanced audio controls yet.
+- HaishinKit is the first choice to own acquisition, composition, encoding, and
+  recording through its verified public APIs. The app owns WebKit snapshots and
+  straightforward UI/orchestration. Do not start by building custom capture/encoding
+  components or adding a second camera session.
+- One configurable HTTPS overlay URL, full 1920×1080 canvas, alpha preserved, with
+  approximately one snapshot per second. Retain the last good image through brief
+  reloads/errors; hide it after 10 seconds without confirmed source access or a usable
+  render, and restore it automatically on recovery. Smooth camera video has priority.
+  A small in-place DOM update change
+  in the overlay project can be considered if needed; it is not part of this change.
+- One native recording screen with composed preview, Record/Stop, recording duration
+  and status, permission/error messages, a URL settings sheet, and playback/export
+  of saved files through system UI. No YouTube controls, account setup, or full
+  recordings-management interface is needed to validate the idea.
+- Available-storage stats, remaining-recording-time estimates, capacity polling, and
+  proactive capacity thresholds are deferred improvements. Handle actual disk-full
+  and writer errors now; no storage estimator is needed for MVP completion.
+- Save composed video/audio through the native HaishinKit/AVAssetWriter path with
+  one necessary H.264/AAC encoding stage after composition. Use MP4 as the starting
+  container because it is HaishinKit's default; choose MOV if the verified path avoids
+  additional encoding/conversion or is otherwise simpler. Both are native containers;
+  do not claim one is cheaper from the extension alone. Avoid saving and subsequently
+  transcoding, and export the original file without conversion. Document the actual
+  codec/container, sample formats, and encoder ownership.
+- Start/stop repeatedly, keep the screen awake while recording, restore normal sleep
+  afterwards, and finalize on stop/interruption. Show a visible failure and preserve
+  saved data if recording fails. Without a network output there is no broadcast to
+  continue on recorder failure. Do not automatically resume recording after returning
+  from background or after relaunch.
+- No YouTube/OAuth, ingestion connection, speculative transport packages, streaming retries, shared
+  encoded-output fan-out, backend, or Google setup in this stage.
+  Develop with Xcode, then archive/upload and install the MVP through TestFlight on
+  the testing iPhone. No internet is required by recording
+  itself; the configured web overlay still needs its own network resources.
+
+Link the core HaishinKit product first. If the verified local recorder API requires
+another product, document that specific dependency before linking it; this does not
+add network transmission to MVP scope. Avoid custom media work solely to remove a
+small, required library product.
+
+### MVP acceptance and decision gate
+
+| Gate | Required evidence on the physical iPhone 13 mini |
+| --- | --- |
+| M1: Library fit | A stable HaishinKit version builds with the chosen Xcode/iOS 27/Swift 6 setup. Document exact public APIs, product/dependency/license footprint, capture/encoder ownership, sample formats, codec/container choice, dynamic image layering, and local-recording route. Verify one necessary local encoding path with no decode/re-encode or export transcode; recording works without an ingest connection. |
+| M2: Actual composition | A saved 1920×1080/30 fps sample and preview contain camera, audio, and the same full-frame web overlay. Check alpha/translucent edges/logos, layout, orientation, a visible score update during recording, and absence of app controls. Repeated reference-page reloads cause no white/blank flashes. |
+| M3: Smooth recording | A 30-minute run of the TestFlight-installed MVP has less than 1% measured pipeline frame drops, no repeated video stalls of 500 ms or more, no monotonic memory/queue growth, and measured A/V offset within 100 ms at start and end. Document the build, measurement method and any library observability limits; Xcode-only measurements are preliminary. |
+| M4: Local usability and failures | Repeated start/stop produces independently playable/exportable files. Test permission denial, overlay unavailability/reloads, a two-minute overlay-network outage, camera/audio/background interruption, and an injected disk-full/write failure. During the outage local A/V continues; retain the last overlay briefly, hide at 10 seconds, and restore after fresh source access/rendering. Test a brief outage, an unchanged healthy score, cached snapshots during a failed source refresh, and manual hiding during recovery. Interrupted recordings finalize where possible and the UI reports the actual state; failed/incomplete files are not marked complete. Capacity prediction is not required. |
+| M5: TestFlight delivery and owner review | Archive/upload the signed MVP, invite the owner/tester, and install it via TestFlight on the testing iPhone 13 mini. Exercise recording, overlay updates/hide/restore, stop, playback/export, and the M3 run in that build. Record version/build, device/OS, installation route, and results without private tester data. Present samples and the M1–M4 report for owner review before broadcasting work; Xcode-only installation does not pass this gate. |
+
+Crash-fragment recovery, a three-hour soak, wider device coverage, simultaneous local
+recording plus RTMPS are later gates. TestFlight delivery is part of M5. Preserve incomplete files now,
+but do not introduce a custom recovery system solely to finish this first experiment.
+A passing MVP does not prove those later capabilities. If library composition or
+recording is unsuitable, report the concrete limitation and review a minimal native
+adapter or fallback with the owner rather than silently expanding the pipeline.
+
+Record actual APIs and measurements in docs/feasibility.md when implementation
+begins; do not create a report claiming success before any device work exists.
+The implementation plan covers only this first milestone through M1–M5 and review;
+prepare a separate streaming milestone plan after the owner reviews the local app.
+
+## 1. Full-product purpose and agreed requirements
+
+Enable one person to broadcast a long volleyball event from an iPhone without a laptop-based
 video mixer. The operator prepares an event in YouTube Studio, opens stream14,
 checks the picture and sound, selects that event, and broadcasts with a web overlay
 and a local backup.
@@ -22,18 +99,19 @@ and a local backup.
 | R3 | Authorize access to YouTube, show the authorized channel and its scheduled events, and let the operator select one. |
 | R4 | Resolve or establish that event's ingestion-stream binding, transmit media, and start the selected broadcast. |
 | R5 | Save the same composited video and audio locally as a video file. App controls and warnings must not enter the output. |
-| R6 | Continue local recording during internet outages. Automatically reconnect to the same event when possible. |
+| R6 | Keep local recording independent of streaming availability for as long as storage and capture/writing remain healthy, including startup failure, transport loss, failed retries, and remote event completion. Reconnect to the same event when possible; streaming failure alone never stops the writer. |
 | R7 | If recording fails after broadcasting begins, continue broadcasting and display a persistent warning. Preserve previously saved footage. |
 | R8 | Target landscape 1080p30 events lasting approximately one to three hours. Smooth video takes priority over overlay update latency. |
 | R9 | Qualify on iPhone 13 mini with iOS 27, and also validate on iPhone 15 and 17 families, including available Pro models. |
 | R10 | Use a public GitHub repository, BSD-3-Clause, and TestFlight for the owner and a few invited testers. Prefer native frameworks and minimal justified dependencies. |
+| R11 | Hide an overlay after 10 seconds without confirmed source access or a usable render; restore automatically after source access and a fresh render recover, unless the operator manually hid it. Apply this to preview, local recording, and streaming. |
 
 The owner permits changes to the overlay implementation if needed, including
 replacing full-page refreshes with in-place updates. Such a change belongs in the
 overlay's own project and is not part of this repository's initial documentation
 change. It must preserve the configurable web-URL feature.
 
-## 2. First-release boundaries and starting defaults
+## 2. Full-release boundaries and starting defaults
 
 | Area | Starting default |
 | --- | --- |
@@ -46,7 +124,7 @@ change. It must preserve the configurable web-URL feature.
 | Lower-bandwidth profile | 1280×720 at 30 fps; selected before a session, without changing resolution during an event |
 | Encoding | CBR target, two-second keyframes; initial video targets 14 Mbps for 1080p and 8 Mbps for 720p; AAC 128 kbps stereo at 44.1 kHz, converting the input route as needed |
 | Overlay | One HTTPS URL; one full-canvas layer; approximately one raster capture per second, plus a capture after a successful load when practical |
-| Backup | One MP4 for an uninterrupted session, using the selected output profile; new files after capture interruptions |
+| Backup | One native MP4 (default) or MOV file for an uninterrupted session, selected for the simplest encoding/writing path; new files after capture interruptions |
 | Operation | Foreground app with automatic screen sleep disabled during recording/broadcasting and restored afterwards |
 | Data / services | Direct phone-to-YouTube upload; no application account, relay server, analytics SDK, subscription, or cloud backup service |
 
@@ -66,8 +144,8 @@ the operator can test the complete composition without going live.
 ### Prepare
 
 The main setup screen presents a composed preview and concise readiness information:
-camera/microphone permission, active audio route, overlay loading state, available
-storage and approximate recording time, selected output profile, and YouTube
+camera/microphone permission, active audio route, overlay loading state,
+selected output profile, and YouTube
 connection/channel/event. Use standard navigation to Settings and Recordings.
 
 Request camera and microphone access when the operator first opens the preview,
@@ -92,7 +170,7 @@ Changing accounts clears the previous channel's selection and credentials as app
 The final action names the channel, event, and visibility. A clear confirmation
 starts this specific event and local recording; opening settings, selecting an
 event, or previewing the camera never transmits camera media to YouTube. Check
-permissions, output configuration, storage, overlay readiness, authentication, and
+permissions, output configuration, local writer readiness, overlay readiness, authentication, and
 event state again before starting.
 
 Start the local writer before publishing media. If backup initialization fails,
@@ -104,8 +182,8 @@ upload connection are separate indicators even during this progress sequence.
 ### During the event
 
 Use a large, correctly letterboxed preview, elapsed time, microphone level/mute,
-zoom, and clear status for YouTube, upload, overlay, and backup. Keep storage/thermal
-warnings available without covering the picture unnecessarily. Starting resolution,
+zoom, and clear status for YouTube, upload, overlay, and backup. Keep recording-failure
+and thermal warnings available without covering the picture unnecessarily. Starting resolution,
 canvas orientation, event, and URL stay fixed; provide overlay reload and hide/show
 controls rather than navigation that could accidentally change the active event.
 Settings changes made later apply to the next session.
@@ -162,15 +240,24 @@ Required rendering behavior:
   immutable last-good raster between captures. Drop/skips of overlay work are
   acceptable under load; stalled camera delivery is not. Smooth animation and
   camera-rate browser rendering are not requirements.
-- Keep the last good frame during reload, navigation, and transient snapshot errors.
+- Keep the last good frame during brief reload, navigation, and transient snapshot errors.
   Promote a new frame after a usable load and render, with resource readiness bounded
   so a failing logo/font cannot freeze capture forever. Do not add an app reload
   timer on top of the reference page's own timer.
-- A load failure, WebKit process termination, or no successful capture for five
-  seconds produces an overlay warning while retaining the last frame. Allow retry
-  and explicit hiding. A healthy snapshot does not prove the underlying scoreboard
-  data is fresh; do not claim to detect upstream scoring outages without a source
-  heartbeat.
+- Track source-access health separately from raster capture. A successful page/source
+  refresh or health heartbeat counts even when the score is unchanged. Taking another
+  snapshot of cached/stale content does not reset source freshness. For in-place page
+  updates, establish a minimal source-health signal before claiming to detect their
+  network failures; public browser reachability alone does not prove a scoring backend
+  is reachable.
+- Use a 10-second grace period measured with monotonic time. If confirmed source
+  access or usable rendering has been missing for 10 seconds, automatically remove
+  the overlay layer from preview, recording, and streaming. Preserve camera/audio
+  continuity and show an operator-only overlay-unavailable status. Keep retrying
+  without blocking capture. Brief outages keep the last good image without flashing.
+- After source access succeeds and a fresh usable image is rendered, automatically
+  show that image again and clear the outage status. Do not restore a cached frame
+  on network reachability alone, and do not override an explicit manual hide.
 - Permit HTTPS URLs with normal certificate validation. Prevent popups, downloads,
   and requests for camera/microphone/location/native access from the page. Do not
   expose credentials or native message handlers to arbitrary overlay content.
@@ -247,8 +334,8 @@ Inspect auto-start/auto-stop settings before transmitting:
 Poll at about two-second intervals during a bounded startup window of 60 seconds,
 and about ten seconds while live. Back off on service errors/rate limits, respect
 retry guidance, and avoid tight polling during outages. If startup times out, stop
-upload and finalize the attempt's recording; reconcile whether YouTube went live
-before offering another start. Keep errors such as disabled live streaming, wrong
+upload but keep a healthy local recording running; reconcile whether YouTube went
+live before offering another stream start. Keep errors such as disabled live streaming, wrong
 channel, missing event, insufficient permission, quota exhaustion, and expired consent
 distinct and actionable. A failed status check does not require terminating a
 healthy ongoing media connection.
@@ -262,20 +349,39 @@ API. Reauthorization/channel selection is required if the wrong channel is retur
 Record the pre-upload composition and audio, not a downloaded YouTube rendition.
 Network losses therefore create gaps only in the remote output, not in the backup
 while capture and local writing remain healthy. The clean-stop result must be a
-playable, shareable MP4 with the chosen dimensions, orientation, and synchronized audio.
+playable, shareable MP4 or MOV with the chosen dimensions, orientation, and synchronized audio.
 
-Use AVAssetWriter or the selected media library's verified native recorder. Prefer
+Once local writing has started, inability to start or maintain a stream must never
+stop it: this includes API/startup errors, RTMPS failures, exhausted retries, and an
+event ended remotely. Continue until the operator stops recording or capture/writing
+itself fails (including storage exhaustion) or is interrupted. Show recording
+status separately and provide an explicit Stop recording action when streaming is
+unavailable. An intentional End broadcast/recording action still ends both outputs.
+An overlay outage changes only the overlay layer under R11, not recording continuity.
+
+Use HaishinKit's verified local recording path first; add a small AVAssetWriter
+adapter only if necessary. Select the native writer/container path as defined above. Later, prefer
 one encoding pass feeding both file and RTMPS output if the library exposes this
 cleanly. Do not assume APIs or packet access exist. If a second encode is necessary,
 measure its thermal and performance cost before accepting it.
+
+The composited camera frames require an initial encode; "avoid re-encoding" does
+not mean the file can bypass that necessary step. Apple's [writer input][writer]
+supports passing acceptable already-compressed samples through with nil output
+settings. Use that only where the selected public API actually provides suitable
+samples; changing an extension does not create passthrough. HaishinKit's inspected
+[2.2.5 recorder][recorder] supports both MP4 and MOV via AVAssetWriter, defaults to
+MP4, and supplies H.264/AAC encoding settings. This supports the starting MP4 choice,
+not a claim of shared encoded output or measured resource superiority. Do not add
+transcoding, a format-picker UI, or a custom pipeline just to switch containers.
 
 Store working and completed recordings in the app's persistent Application Support
 area, excluded from automatic device/iCloud backup. Use a UUID and timestamp for
 filenames, an in-progress marker, and a small Codable session manifest; no database
 is needed. Only mark a file complete after writer finalization succeeds. An interrupted
-capture starts a new file rather than appending a new timeline to a closed MP4.
+capture starts a new file rather than appending a new timeline to a closed movie.
 
-Evaluate fragmented MP4 writing with an initial ten-second fragment interval and
+Later, evaluate fragmented writing for the chosen container with an initial ten-second interval and
 recovery of fully written fragments after process termination. Apple's
 [fragment-writing documentation][fragments] describes a recovery mechanism, not a
 guarantee that any interrupted file will play. Qualify the selected container/writer
@@ -283,14 +389,24 @@ combination and recovery/export behavior on the device. Keep incomplete files fo
 recovery or explicit deletion; never silently discard them. A crash can still lose
 the current fragment and must be described honestly.
 
-Display estimated space/time from the selected bitrate and actual free capacity.
-At 14 Mbps video plus 128 kbps audio, three hours is approximately 19.1 GB before
-container overhead; at 8 Mbps it is approximately 11.0 GB. These are decimal GB
-estimates, not reserved storage or maximum file sizes. Warn when capacity is below
-the intended event length. Block startup below 1 GiB free, warn persistently below
-approximately ten minutes remaining, and stop/finalize local writing before free
-capacity reaches 250 MiB where possible. Continue the live broadcast after a later
-recording failure, with an explicit degraded-backup state.
+Storage reporting and forecasting are deferred improvements, not MVP requirements.
+There is no required free-space display, time-remaining estimate, periodic capacity
+polling, or fixed 1 GiB/250 MiB reserve policy. Do not implement those thresholds
+implicitly as part of writer readiness.
+
+iOS does provide a native [volume-capacity query][capacity], including
+`volumeAvailableCapacityForImportantUsageKey`; the reason for deferral is scope,
+not absence of an API. A future simple check can be evaluated separately without
+promising an exact recording duration or reserved space. Do not add a custom storage
+model or dependency for this MVP.
+
+Handle actual recording initialization, append, and finalization failures, including
+disk-full errors surfaced through HaishinKit/the native writer. Report the failed
+recording, attempt supported finalization where possible, retain usable/incomplete
+files, and never mark a failed file complete. Do not promise the current file is
+recoverable after storage exhaustion. Test this with injected failures rather than
+filling the user's device. For the later broadcaster, a recorder failure must still
+leave healthy streaming running with the explicit degraded-backup state.
 
 Playback/export requires no Photos-library permission. Export is deliberate; the
 system Files picker can include iCloud destinations. Explain that a file kept only
@@ -307,31 +423,44 @@ protocol for every class.
 | Responsibility | Owns |
 | --- | --- |
 | SwiftUI screens and session coordinator | User intent, readiness, state presentation, and start/stop ordering |
-| Capture and composition | AVFoundation capture, common timing, camera controls, audio route, Core Image/GPU composition |
+| HaishinKit media pipeline | Capture, timing, image composition, encoding, and local recording where supported by its public APIs; one camera session |
 | Web overlay renderer | Main-actor WKWebView, loading/capture health, and last-good alpha image |
 | YouTube client and authorization adapter | Tokens, REST requests, channel/event selection, ingestion binding, lifecycle reconciliation |
-| Media outputs | Encoding, bounded RTMPS output, writer lifecycle, file persistence and export |
+| Output orchestration | Local writer lifecycle, file persistence/export; later, bounded RTMPS output and independent failures |
 
 ```mermaid
 flowchart LR
-    C[Camera frames] --> M[Native compositor]
-    W[WebKit overlay at about 1 Hz] --> M
-    M --> P[Composed preview]
-    M --> E[H.264 encoder]
-    A[Microphone] --> AE[AAC encoder]
-    E --> F[Local MP4 writer]
-    AE --> F
-    E --> T[RTMPS output]
-    AE --> T
-    T --> Y[Selected YouTube event]
+    C[Rear camera] --> H[HaishinKit capture / composition / encoding]
+    W[WebKit alpha image at about 1 Hz] --> H
+    A[Microphone] --> H
+    H --> P[Composed preview]
+    H --> F[Local video file]
 ```
 
-The diagram is the preferred logical data flow. The feasibility work determines
-whether the chosen library exposes a shared encoded-output path; it does not justify
-inventing such an API. Core Image is the first compositing choice; add custom Metal
-code only if measurements justify it. ReplayKit is not the initial capture design:
-the output should contain the camera composition rather than a recording of the
-application's screen.
+The diagram is the preferred MVP experiment, not a verified library integration.
+Verify that dynamically updated alpha images appear in the preview and the local
+file, and that recording does not require a live transport connection. A small
+native recording adapter is acceptable if required by the public API; do not assume
+the library handles every responsibility or automatically shares encoded samples.
+
+The fallback is Apple-native capture/composition/recording with HaishinKit used later
+for RTMPS. This entails more buffer, timing, and encoding ownership, so use it only
+after documenting a specific library limitation and reviewing the change. An
+external encoded-input interface to HaishinKit must also be verified before choosing
+that fallback. Core Image is the first custom compositing option if needed; custom
+Metal requires profiling evidence. ReplayKit is not the initial capture design.
+
+For the later broadcaster, investigate simultaneous file and RTMPS output and
+independence under connection failure before choosing shared or separate encoders.
+Do not add transport plumbing to the MVP merely to investigate this future question.
+
+Preserve that extension opportunity now through clear ownership: the media pipeline
+owns camera/composition, and the local recorder owns its writer state and start/stop.
+Recording must work without a publisher or connection. Document the concrete library
+composition/output boundary and whether it permits another output later; do not
+invent an API or implement a generic output framework. Adding a future streaming
+output must not give transport startup, shutdown, or errors ownership of the recorder's
+lifecycle. Validate actual dual-output independence in the later streaming milestone.
 
 Use monotonic capture timestamps for A/V synchronization and wall time only for
 labels/filenames. Serialize media ownership, bound queues, and handle backpressure
@@ -349,9 +478,9 @@ YouTube metadata rather than retaining an indefinite API-response archive.
 
 | Condition | Expected behavior |
 | --- | --- |
-| Wi-Fi/cellular outage | Keep capture, composition, and backup running; retry RTMPS to the same binding with increasing delays capped at 30 seconds; reconcile event state on reconnection |
-| YouTube event completed elsewhere | Stop sending to it, finish the session recording, and show that the event ended; no automatic replacement event |
-| Overlay reload/error | Retain last-good image, warn when unhealthy, allow reload/hide, keep video smooth |
+| Wi-Fi/cellular outage or streaming failure | Keep capture and local recording running while storage/capture/writing remain healthy; reconnect to the same eligible binding with delays capped at 30 seconds, without stopping the recorder if retries fail |
+| YouTube event completed elsewhere | Stop sending to it, keep local recording running, and show that the event ended; no automatic replacement event; offer Stop recording |
+| Overlay reload/error | Keep last-good image for brief errors, hide after 10 seconds without source access or usable rendering, automatically restore a fresh image after recovery unless manually hidden; keep camera/audio smooth |
 | Local writer/storage failure | Preserve written data; continue upload; persistent backup-failure indication |
 | Camera/audio interruption or app background/lock | Stop upload and finish local writing with the background execution time available; no guaranteed continuous capture; show interrupted state on return |
 | Foreground return after interruption | Recheck permissions, capture, writer, and remote state; require an explicit resume; create a new local file and resume only if the same event still permits it |
@@ -374,33 +503,45 @@ not imply otherwise. A new session after interruption may produce another backup
 - Provide separate disconnect/revoke authorization and local-recording deletion
   controls. Clear stored YouTube API data on disconnection or detected revoked access;
   do not delete the user's original recordings as if they were cached API data.
-- Before the beta, publish accurate privacy and terms pages, explain Google/YouTube
-  and third-party overlay requests, link required Google/YouTube policies, and expose
+- Before the MVP beta, publish accurate privacy/support/terms information for actual
+  data flows, including third-party overlay requests, with no claim that the local
+  MVP connects YouTube. Add required Google/YouTube disclosures and links when those
+  integrations are introduced, and expose
   a developer contact and authorization-revocation instructions. There is no separate
   stream14 account to register or delete. Follow [YouTube's developer policies][policies].
 - Apple's third-party-client exception in review guideline 4.8 is relevant to
   connecting YouTube; adding an unrelated application account would require a new
   review of the login requirements. This is a design interpretation, not approval
   from Apple. Review the actual app against the [current guidelines][review].
-- Initial dependency candidates: GoogleSignIn for supported Google authorization,
-  and HaishinKit + RTMPHaishinKit for media/RTMPS integration. Inspect stable-release
+- MVP dependency direction: HaishinKit for capture/composition/local recording.
+  GoogleSignIn and RTMPHaishinKit are deferred until the broadcasting stage. Inspect stable-release
   APIs, iOS 27/Swift 6 compatibility, transitive dependencies, privacy manifests,
   maintained status, notices, and the shared-recording path before pinning versions.
   Do not link SRT/WebRTC/MoQT products or add Firebase for convenience.
 
-## 10. Acceptance gates and test matrix
+The upstream [2.2.5 README][hk-readme] advertises bitmap mixing, the
+[package manifest][hk-package] separates HaishinKit and RTMP products, and the
+[license file][hk-license] states BSD-3-Clause. These source checks support the
+experiment, not claims that dynamic alpha updates, local file composition, shared
+encoding, iOS 27 compatibility, or network-independent dual outputs have passed.
+Recheck the current stable release and complete API/notice review before adoption.
+
+## 10. Later full-product acceptance gates and test matrix
+
+M1–M5 above determine MVP completion. A1/A2 remain useful shared video-quality
+criteria; the table below qualifies the eventual broadcaster, not the local-only MVP.
 
 | Gate | Evidence required |
 | --- | --- |
 | A1: Overlay feasibility | On the 13 mini, a recorded 1080p30 sample contains the reference page at the full 1920×1080 viewport with correct alpha, text, logos, and no app controls; repeated two-second page reloads do not introduce white/blank flashes |
 | A2: Smooth video | A 30-minute compositing/recording run sustains the selected 30 fps profile with less than 1% pipeline frame drops, no repeated stalls of 500 ms or more, and no monotonic memory/queue growth |
 | A3: YouTube end-to-end | Correct channel and scheduled event selected; confirmed start, playback on a second device, correct overlay/audio, and confirmed end; selecting/previewing alone sends no camera media |
-| A4: Independent backup | Two-minute internet loss leaves continuous local A/V; restoring connectivity resumes the same still-open event without duplicating it or creating another event |
-| A5: Recording recovery | Clean MP4 plays and exports; forced app termination preserves demonstrably recoverable completed fragments or the limitation is resolved before claiming crash recovery |
-| A6: Failure UX | Permission denial, missing/disabled events, expired consent, quota/rate-limit responses, unreachable overlay, local writer failure, low storage, and unknown remote completion are distinct and actionable |
+| A4: Independent backup | Startup/API rejection, two-minute internet loss, failed reconnects, and a remotely completed event leave healthy local A/V running while storage remains available. Restoring connectivity resumes only the same eligible event. An overlay outage hides the layer after 10 seconds and restores a fresh image after recovery, without interrupting recording. |
+| A5: Recording recovery | The chosen native movie file plays and exports without transcoding; forced app termination preserves demonstrably recoverable completed fragments or the limitation is resolved before claiming crash recovery |
+| A6: Failure UX | Permission denial, missing/disabled events, expired consent, quota/rate-limit responses, unreachable overlay, local writer/disk-full failure, and unknown remote completion are distinct and actionable; predictive storage stats are not required |
 | A7: Long event | A three-hour 1080p30 broadcast and local recording on the 13 mini, powered and on a stable qualified network, satisfies A2 quality targets and keeps measured A/V offset within 100 ms at start and end |
 | A8: Devices/interface | Physical tests on the 13 mini and available iPhone 15/17 representatives; Pro variants use no required Pro-only behavior; test 720p, audio interruptions, screen lock/backgrounding, VoiceOver, larger text, playback/export, and cancellation |
-| A9: TestFlight | Signed archive uploaded and installed through an invite on a tester phone; privacy declarations/notices and beta review information reflect actual behavior |
+| A9: TestFlight regression | The later broadcaster is also uploaded/installed through TestFlight and its privacy declarations/notices/review information reflect the added streaming behavior; initial local-only TestFlight delivery is already required by M5 |
 
 Automate API decoding/pagination, readiness, lifecycle reconciliation, retry/cancellation,
 and independent failure-state decisions with fixtures and fake services. Exercise
@@ -413,22 +554,33 @@ network conditions, power state, ambient conditions, duration, output files, fra
 statistics, memory/thermal observations, and failures for a qualification run. Keep
 private recordings and credentials out of the public repository.
 
+For long-event qualification, record tripod/mount, wired power source, case,
+brightness, airflow, and thermal behavior. First test without external cooling;
+no power-bank or cooler model is selected. Consider a dimmed in-app foreground UI
+or external cooling only after measurement; neither is an MVP requirement. Any
+cooler evaluation must include microphone noise and mounting interference. No
+claim about battery longevity or cooling effectiveness is established by this design.
+
 If the 13 mini fails a gate, document the measurements and revise the design with
 the owner. Do not quietly change the minimum device, claim 1080p support on the
 basis of a newer phone, or add infrastructure before testing simpler changes.
 
 ## 11. Delivery sequence and unresolved setup
 
-Start with documentation and licensing, then Xcode/device setup, then overlay and
-recording feasibility, then one vertical YouTube broadcasting flow, then failure
-handling and long-event qualification, then the small TestFlight beta. Detailed
-work prompts are in [the implementation plan](2026-11-01-stream14-implementation.md).
+Start with documentation and licensing, then Xcode/device setup and HaishinKit API
+evaluation, then the local-recording MVP, TestFlight delivery, and M1–M5 review. Continue to YouTube/RTMPS
+only after that review, then independent-output failure handling, long-event
+qualification, and updated TestFlight builds for the small beta group. Detailed work prompts for the first
+milestone only are in [the MVP implementation plan](2026-11-01-stream14-implementation.md).
+Prepare later implementation plans separately after the MVP review.
 
-The Apple team membership, final bundle identifier, Google Cloud project/OAuth
-client, tester list, and public privacy/support URLs must be supplied/configured
-before distribution. Do not fabricate them or commit private identifiers, tokens,
-or tester addresses. These are setup prerequisites, not reasons to delay local
-camera/overlay feasibility work.
+Before MVP TestFlight distribution, configure Apple team membership, the final
+bundle identifier/app record, signing, tester access, and privacy/support information
+for the local app's actual behavior. No Google Cloud project, OAuth client, or
+YouTube account setup is required for this milestone; those are prerequisites for
+the later broadcasting integration. Do not fabricate setup values or commit private
+credentials, tokens, or tester addresses. Apple distribution setup need not delay
+local camera/overlay feasibility work in development builds.
 
 ## References
 
@@ -439,6 +591,9 @@ requirements must be rechecked when their milestone is implemented.
 [hig]: https://developer.apple.com/design/human-interface-guidelines/
 [snapshot]: https://developer.apple.com/documentation/webkit/wkwebview/takesnapshot(with:completionhandler:)
 [fragments]: https://developer.apple.com/documentation/avfoundation/avassetwriter/moviefragmentinterval
+[capacity]: https://developer.apple.com/documentation/foundation/checking-volume-storage-capacity
+[writer]: https://developer.apple.com/documentation/avfoundation/avassetwriterinput/init(mediatype:outputsettings:)
+[recorder]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/HaishinKit/Sources/Stream/StreamRecorder.swift
 [encoder]: https://support.google.com/youtube/answer/2853702
 [broadcast-list]: https://developers.google.com/youtube/data/live/reference/rest/v3/liveBroadcasts/list
 [stream-insert]: https://developers.google.com/youtube/data/live/reference/rest/v3/liveStreams/insert
@@ -447,3 +602,6 @@ requirements must be rechecked when their milestone is implemented.
 [rtmps]: https://developers.google.com/youtube/data/live/guides/rtmps-ingestion
 [policies]: https://developers.google.com/youtube/terms/developer-policies
 [review]: https://developer.apple.com/app-store/review/guidelines/
+[hk-readme]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/README.md
+[hk-package]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/Package.swift
+[hk-license]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/LICENSE.md

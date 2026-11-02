@@ -5,6 +5,28 @@ for product behavior and the [implementation plan](2026-11-01-stream14-implement
 for development order. This guide explains setup; it does not mean those steps have
 already been performed.
 
+## Current stage: local MVP first
+
+The immediate app records rear-camera video and microphone audio with a configurable
+transparent webpage overlay. HaishinKit is the first capture/composition/encoding/
+recording experiment. The owner reviews the result before broadcasting is added.
+Codex writes and integrates the app; the owner supplies account/device access and
+reviews behavior. Learning Swift or manually writing app code is not a prerequisite.
+
+For this stage, follow Xcode/device setup and the MVP tasks in the implementation
+plan. Develop and debug using Xcode, then follow the TestFlight section below to
+deliver the MVP to the testing iPhone 13 mini. Installation/use through TestFlight
+is required for completion; repeat the final recording/overlay/export checks and
+30-minute qualification on that build. Google Cloud, YouTube events, RTMPS, and OAuth
+are later-stage setup; none is needed to start a local recording. The overlay URL may
+still need internet access. Do not grant extra accounts/permissions or configure an
+ingestion key merely to make the library recorder work.
+
+The MVP needs only URL settings, composed preview, Record/Stop, status/duration,
+and basic playback/export. After a smooth 30-minute device test and failure checks,
+review M1–M5 after TestFlight delivery before expanding UI or streaming. A three-hour broadcasting
+qualification remains a later milestone.
+
 ## The essential terms
 
 | Term | What it means for this project |
@@ -168,8 +190,9 @@ clearly as tests. Do not experiment on a real scheduled public event.
    suitable App Store Connect access; ordinary friends/testers should use an
    external group rather than being granted development-team roles just to install.
 7. For external testing, provide beta description, feedback contact, review notes,
-   and clear steps for the reviewer. Explain camera/microphone use, Google/YouTube
-   setup, local rehearsal, and a reproducible overlay/demo. Arrange review access
+   and clear steps for the reviewer. Explain camera/microphone use, local recording,
+   and a reproducible overlay/demo. The MVP needs no Google/YouTube login; add those
+   review instructions only when streaming is implemented. Arrange review access
    through Apple's designated review-information fields, never in this public repo.
    The first external build needs beta review; later builds can also require review.
 8. Invite the testers, verify installation on a real phone, and collect feedback.
@@ -206,6 +229,16 @@ The agreed destination is the public repository smith3v/stream14, on main, under
 BSD-3-Clause. Use focused branches and reviewed changes after the initial commit.
 Track small technical decisions and qualification evidence in the project docs.
 Do not add large process templates or release infrastructure before they are useful.
+
+For each focused change, run checks appropriate to its impact, prepare a GitHub pull
+request (PR, equivalent to an MR), and have a separate agent independently review
+the full diff against main. Code changes need relevant native build/tests and device
+evidence where applicable; docs-only changes need content/link and whitespace checks.
+Record the results and limitations in the PR. Review should identify material bugs,
+data-loss/security risks, reliability failures, and important requirement/test gaps.
+Fix those issues, not every minor style preference or theoretical concern. Preserve
+necessary safeguards while keeping implementation and process small. A no-findings
+review is valid, and preparing/reviewing a PR does not mean it has been merged.
 
 GitHub CLI access should identify the intended owner, smith3v. Check authentication
 with normal permitted network/credential access before concluding that a credential
