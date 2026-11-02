@@ -1,7 +1,10 @@
-# stream14 Implementation Plan
+# stream14 Local-Recording MVP Implementation Plan
 
-**Goal:** First validate a HaishinKit-based local-recording MVP with camera, audio,
-and a transparent web overlay; continue to broadcasting after the owner's MVP review.
+Scope clarified: 2026-11-02. This plan covers the first milestone only.
+
+**Goal:** Deliver an iPhone app that captures camera video and microphone audio,
+adds a transparent HTML overlay, and saves the composition locally through
+HaishinKit, with no streaming.
 
 **Architecture:** HaishinKit is the preferred owner of capture, image composition,
 encoding, and local recording through verified public APIs. The app supplies a
@@ -15,11 +18,26 @@ API requires another product, document that need without adding network transmis
 
 ---
 
+## First milestone and stopping point
+
+Milestone 1 is a usable local-recording app on the iPhone 13 mini: configurable
+overlay URL, composed preview, Record/Stop, and a playable/exportable video file
+containing camera, audio, and overlay. Qualify landscape 1080p30, approximately
+1 Hz overlay updates, the 10-second overlay outage hide/restore behavior, and a
+smooth 30-minute recording using specification gates M1–M5.
+
+This plan ends with that MVP's validation, independent PR review, and owner review.
+It contains no YouTube login, stream selection, RTMPS transmission, reconnect,
+TestFlight, or three-hour broadcasting implementation tasks. The full-product
+requirements remain in the specification for context; they are not this milestone's
+deliverables. Plan a later milestone separately after reviewing the MVP evidence.
+
 ## How to use this plan
 
-The [specification](2026-11-01-stream14-design.md) defines MVP gates M1–M5 and later
-full-product gates A1–A9. Tasks 2–6 deliver the MVP; Tasks 7–12 are deferred until
-owner review. Execute milestones in order. The prompts below define small deliverable slices,
+The [specification](2026-11-01-stream14-design.md) defines MVP gates M1–M5.
+Task 1 records completed setup; Tasks 2–5 build and validate the MVP, Task 6 is the
+owner review, and Task 7 defines the PR/review process for each focused change
+before handoff. Execute implementation tasks in order. The prompts below define small deliverable slices,
 not claims that a feature is already implemented. Before each media integration,
 inspect the selected stable API and write the concrete code against that API;
 do not paste guessed library calls from an outdated tutorial. Split a large prompt
@@ -34,6 +52,24 @@ Do not expand work to satisfy minor nits or speculative concerns. Document manua
 device evidence and limitations; never mark a gate complete on Simulator evidence
 alone. Follow [AGENTS.md](../AGENTS.md), and update the canonical specification if
 measurements require a design change.
+
+## Allow independent streaming later without building it now
+
+- Keep capture/composition ownership distinct from local recording's start/stop and
+  writer state. Use one HaishinKit media pipeline and a small concrete integration;
+  do not make recording depend on a publisher, connection, account, or stream key.
+- Document the actual library boundary used for composed media and local output in
+  the feasibility report. Prefer a path that permits another output to be attached
+  later, if supported, without replacing the camera/composition pipeline. Do not
+  assume a shared encoder or external encoded-input API exists.
+- A future streaming output must have independent start/stop/error handling: stream
+  startup, shutdown, or failure must not stop an active healthy recorder while
+  storage remains available. This constrains ownership now; network-failure tests
+  and simultaneous-output qualification belong to the later streaming milestone.
+- Do not implement a streaming adapter, placeholder network state machine, generic
+  output framework, or second encoder in this MVP just to anticipate that extension.
+  If library ownership would prevent independent outputs, document that limitation
+  during MVP review before committing to a broader architecture.
 
 ## Task 1: Establish the documented repository
 
@@ -114,6 +150,8 @@ using the actual API path established in Task 3. Supply WebOverlayRenderer's lat
 alpha image to the library's composition layer and update it during recording.
 Use one library-owned rear-camera/microphone pipeline for preview and recorded
 output. Do not add a custom CapturePipeline/VideoCompositor/encoder in parallel.
+Keep recorder state and start/stop independent from any future transport lifecycle;
+document the concrete composition/output boundary without creating streaming stubs.
 Use a small native writer adapter only if Task 3 establishes the need and API path.
 Add permission purpose strings, URL entry/settings, Record/Stop, elapsed time/status,
 and system playback/export. Persist files in Application Support and protect URLs
@@ -137,109 +175,12 @@ report: device/OS/build, library/version/products, exact capture/composition/rec
 APIs, file format, duration, measured frame drops/stalls, A/V offset, memory/thermal
 observations, failure behavior, and measurement limitations. Distinguish confirmed
 capabilities from untested dual-output or three-hour behavior. Ask the owner to review
-the result and proposed next step. Do not start the deferred tasks before that review.
+the result and proposed next step. Do not begin a streaming milestone before that review.
 
 **Acceptance:** M5 is complete. A working short sample alone does not authorize
 claiming a fully reliable broadcaster. Record owner feedback before continuing.
 
-## Task 7: Select and prove the RTMPS path (after MVP review)
-
-**Prompt:**
-Inspect HaishinKit's current stable release and RTMPHaishinKit product APIs before
-adding packages. Record the justification, version, products, transitive footprint,
-license/notices, iOS 27/Swift 6 build result, and whether a common encoded sample
-path can feed local recording and RTMPS in docs/feasibility.md. Extend the MVP's
-library-owned pipeline with only necessary RTMP products via SPM and commit
-Package.resolved. Keep protocol-specific integration in
-Stream14/Media/StreamingOutput.swift. Verify any required ownership change rather
-than assuming an external encoded-input API; do not introduce a competing camera
-session or rebuild a working pipeline without evidence. Use an
-unlisted test destination supplied securely at runtime. Demonstrate that stopping
-the network path leaves the recorder healthy, inspect the result, and commit.
-
-**Acceptance:** Real YouTube ingestion works securely and recording is independent;
-the selected architecture is supported by actual library APIs and measurements.
-
-## Task 8: Connect YouTube and select scheduled events (deferred)
-
-**Prompt:**
-Guide owner-controlled Google Cloud/OAuth setup. Evaluate and add only the required
-Google Sign-In products, pinned through SPM, with correct notices and callback
-configuration. Implement Stream14/YouTube/Authorization.swift and
-Stream14/YouTube/YouTubeClient.swift using URLSession/Codable for the specified REST
-surface. Add a native channel/event selection screen and fixtures under
-Stream14Tests/Fixtures/. Cover pagination, mutually exclusive list filters, wrong
-channel, missing scope, no upcoming events, revoked tokens, and useful error messages.
-Keep configuration examples free of tokens. Verify the actual authorized channel
-and the unlisted test event on device, review the branch, and commit.
-
-**Acceptance:** The intended channel's complete scheduled-event list can be used;
-preview/selection performs no camera upload and no remote event transition.
-
-## Task 9: Implement one safe Go Live / End flow (deferred)
-
-**Prompt:**
-Implement the session orchestration in Stream14/Session/SessionCoordinator.swift.
-Apply the specification's dedicated-binding, auto-start/auto-stop, and reconciliation
-rules. Start the local writer before transmitting. Read ingestion activity before
-requesting live; verify the broadcast's actual state. Add distinct recording,
-transport, overlay, and YouTube status presentation to the native live screen.
-Use fake services to test ambiguous responses, double taps, cancellation, partial
-startup failure, already completed events, and unconfirmed end. Demonstrate start,
-viewing on a second device, and end on the real unlisted event. Review and commit.
-
-**Acceptance:** A3 passes; the app never equates a socket connection with a confirmed
-live broadcast and never retries a potentially successful mutation blindly.
-
-## Task 10: Qualify recovery, local files, and operator controls (deferred)
-
-**Prompt:**
-Add capped reconnect backoff, independent output failures, overlay health/reload/hide,
-background/capture interruption handling, and foreground resume. Add persistent
-recording manifests plus Recordings playback, export, and confirmed deletion. Validate
-fragmented MP4 interruption recovery rather than assuming it works. Cover storage
-thresholds, thermal degradation of overlay work, audio-route changes, and diagnostics
-redaction. Use focused state tests and physical failure exercises. Apply the specified
-"keep broadcasting if backup fails" policy visibly. Review and commit.
-
-**Acceptance:** A4–A6 pass and interruption limitations are documented accurately.
-The same composed local video remains usable across a transport outage. Verify
-startup/API rejection, failed reconnects, and remote event completion leave healthy
-local recording running while storage remains available, with an explicit Stop
-recording action. Verify overlay hiding/restoration affects every composed output
-without affecting camera/audio continuity.
-
-## Task 11: Qualify the event experience and add useful CI (deferred)
-
-**Prompt:**
-Run the three-hour 13 mini qualification and available iPhone 15/17 matrix from A7/A8.
-Keep raw media private; commit a concise report with the measured metadata described
-in the specification. Inspect the 13 mini landscape layout, larger text, VoiceOver,
-warnings, input permissions, playback, and export. Fix failures before declaring
-support. Once local build/test commands are verified, add a small GitHub Actions
-workflow using an actually available macOS/Xcode runner and the shared Stream14
-scheme. Keep distribution credentials out of initial CI. Review and commit.
-
-**Acceptance:** A7/A8 pass with explicit evidence; CI runs the verified tests rather
-than substituting for physical media qualification.
-
-## Task 12: Prepare the first TestFlight build (deferred)
-
-**Prompt:**
-Walk the owner through program membership, app record, and normal automatic signing.
-Finalize privacy/support/terms content and contact details based on the actual data
-flows. Check current App Review, Google authorization, privacy-manifest, notices,
-SDK, export-compliance, icon, version/build, and beta review requirements. Do not add
-Sign in with Apple solely because the app connects YouTube. Archive, validate, and
-upload using Xcode. Start with the owner, then the small external group with suitable
-review instructions and separately authorized Google test users. Verify installation
-and a rehearsal on a tester phone; record build number and limitations, then commit
-documentation changes without private tester data.
-
-**Acceptance:** A9 passes. Record build expiry and the replacement-build procedure;
-do not describe TestFlight as a permanent public release.
-
-## Task 13: Prepare a PR and independently review the branch against main
+## Task 7: Prepare a PR and independently review the branch against main
 
 **Prompt:**
 Prepare a GitHub pull request (MR) into main describing the final behavior and

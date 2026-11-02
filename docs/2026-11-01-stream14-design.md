@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Date: 2026-11-01. Status: revised for local-recording MVP; application not implemented.
+Created: 2026-11-01. Updated: 2026-11-02. Status: local-recording MVP; application not implemented.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -74,6 +74,8 @@ adapter or fallback with the owner rather than silently expanding the pipeline.
 
 Record actual APIs and measurements in docs/feasibility.md when implementation
 begins; do not create a report claiming success before any device work exists.
+The implementation plan covers only this first milestone through M1–M5 and review;
+prepare a separate streaming milestone plan after the owner reviews the local app.
 
 ## 1. Full-product purpose and agreed requirements
 
@@ -424,6 +426,14 @@ For the later broadcaster, investigate simultaneous file and RTMPS output and
 independence under connection failure before choosing shared or separate encoders.
 Do not add transport plumbing to the MVP merely to investigate this future question.
 
+Preserve that extension opportunity now through clear ownership: the media pipeline
+owns camera/composition, and the local recorder owns its writer state and start/stop.
+Recording must work without a publisher or connection. Document the concrete library
+composition/output boundary and whether it permits another output later; do not
+invent an API or implement a generic output framework. Adding a future streaming
+output must not give transport startup, shutdown, or errors ownership of the recorder's
+lifecycle. Validate actual dual-output independence in the later streaming milestone.
+
 Use monotonic capture timestamps for A/V synchronization and wall time only for
 labels/filenames. Serialize media ownership, bound queues, and handle backpressure
 separately for file and transport. If dropping network backlog is necessary, recover
@@ -530,8 +540,9 @@ basis of a newer phone, or add infrastructure before testing simpler changes.
 Start with documentation and licensing, then Xcode/device setup and HaishinKit API
 evaluation, then the local-recording MVP and M1–M5 review. Continue to YouTube/RTMPS
 only after that review, then independent-output failure handling, long-event
-qualification, and the small TestFlight beta. Detailed
-work prompts are in [the implementation plan](2026-11-01-stream14-implementation.md).
+qualification, and the small TestFlight beta. Detailed work prompts for the first
+milestone only are in [the MVP implementation plan](2026-11-01-stream14-implementation.md).
+Prepare later implementation plans separately after the MVP review.
 
 The Apple team membership, final bundle identifier, Google Cloud project/OAuth
 client, tester list, and public privacy/support URLs must be supplied/configured

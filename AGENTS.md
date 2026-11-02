@@ -23,6 +23,13 @@ the outgoing video, and keeping a local copy of that composition.
 - Build only rear camera + microphone → HaishinKit capture/composition/encoding →
   local video file, with a configurable transparent WKWebView overlay at about 1 Hz.
   Preview and the file must show the same composition.
+- The implementation plan ends at this first milestone's M1–M5 validation and review.
+  Keep future broadcasting requirements in the specification; write its implementation
+  plan separately after MVP review rather than executing a whole-app roadmap now.
+- Keep recording ownership/start/stop independent from a future streaming output.
+  Document the actual composed-media/output boundary so streaming can be added later
+  without controlling the recorder. Do not add streaming stubs, generic output
+  abstractions, or a second encoder to demonstrate extensibility in the MVP.
 - Evaluate HaishinKit as the primary media pipeline first. Do not first build custom
   AVFoundation capture, a Core Image compositor, or VideoToolbox encoding. Use one
   camera session; add a small native recording adapter only if the verified library

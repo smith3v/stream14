@@ -35,7 +35,7 @@ streaming/backup, and TestFlight distribution follow the MVP review. See the
 
 - [Application specification and design](docs/2026-11-01-stream14-design.md)
 - [iOS development and TestFlight guide](docs/ios-development-guide.md)
-- [Implementation plan and acceptance gates](docs/2026-11-01-stream14-implementation.md)
+- [First-milestone implementation plan: local-recording MVP](docs/2026-11-01-stream14-implementation.md)
 - [Instructions for development agents](AGENTS.md)
 
 ## Initial choices
@@ -60,6 +60,9 @@ must be verified during the MVP. Google Sign-In and RTMP products remain deferre
 Install full Xcode, evaluate HaishinKit's stable APIs, and implement the local-recording
 MVP on the iPhone 13 mini. Verify the saved composition, audio, overlay updates, and
 a smooth 30-minute run, then review the evidence before adding broadcasting.
+The implementation plan ends at that review. Keep recording independent of any
+future transport lifecycle; no streaming code or speculative output framework is
+part of this milestone.
 See the [implementation plan](docs/2026-11-01-stream14-implementation.md).
 
 ## License
