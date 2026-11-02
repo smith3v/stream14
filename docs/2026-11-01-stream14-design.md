@@ -36,6 +36,9 @@ for this MVP. This revision changes documentation only; no library or app is add
   and status, permission/error messages, a URL settings sheet, and playback/export
   of saved files through system UI. No YouTube controls, account setup, or full
   recordings-management interface is needed to validate the idea.
+- Available-storage stats, remaining-recording-time estimates, capacity polling, and
+  proactive capacity thresholds are deferred improvements. Handle actual disk-full
+  and writer errors now; no storage estimator is needed for MVP completion.
 - Save composed video and audio persistently in the app container. Prefer MP4 if
   supported by the library's recording path; a playable H.264/AAC MOV is acceptable
   for the MVP if that is the simplest supported path. Record the container choice,
@@ -62,7 +65,7 @@ small, required library product.
 | M1: Library fit | A stable HaishinKit version builds with the chosen Xcode/iOS 27/Swift 6 setup. Document exact public APIs, product/dependency/license footprint, capture ownership, dynamic image layering, and local-recording route; recording works without publishing or connecting to an ingest server. |
 | M2: Actual composition | A saved 1920×1080/30 fps sample and preview contain camera, audio, and the same full-frame web overlay. Check alpha/translucent edges/logos, layout, orientation, a visible score update during recording, and absence of app controls. Repeated reference-page reloads cause no white/blank flashes. |
 | M3: Smooth recording | A 30-minute run has less than 1% measured pipeline frame drops, no repeated video stalls of 500 ms or more, no monotonic memory/queue growth, and measured A/V offset within 100 ms at start and end. Document the measurement method and any library observability limits. |
-| M4: Local usability and failures | Repeated start/stop produces independently playable/exportable files. Test permission denial, overlay unavailability/reloads, a two-minute overlay-network outage, camera/audio/background interruption, and an injected writer/low-storage failure. During the outage local A/V continues; retain the last overlay briefly, hide at 10 seconds, and restore after fresh source access/rendering. Test a brief outage, an unchanged healthy score, cached snapshots during a failed source refresh, and manual hiding during recovery. Interrupted recordings finalize where possible and the UI reports the actual state. |
+| M4: Local usability and failures | Repeated start/stop produces independently playable/exportable files. Test permission denial, overlay unavailability/reloads, a two-minute overlay-network outage, camera/audio/background interruption, and an injected disk-full/write failure. During the outage local A/V continues; retain the last overlay briefly, hide at 10 seconds, and restore after fresh source access/rendering. Test a brief outage, an unchanged healthy score, cached snapshots during a failed source refresh, and manual hiding during recovery. Interrupted recordings finalize where possible and the UI reports the actual state; failed/incomplete files are not marked complete. Capacity prediction is not required. |
 | M5: Owner review | Present sample files and a concise feasibility report covering M1–M4, selected library/container APIs, remaining limitations, and the proposed next step. The owner reviews the MVP before work proceeds to broadcasting. |
 
 Crash-fragment recovery, a three-hour soak, wider device coverage, simultaneous local
@@ -136,8 +139,8 @@ the operator can test the complete composition without going live.
 ### Prepare
 
 The main setup screen presents a composed preview and concise readiness information:
-camera/microphone permission, active audio route, overlay loading state, available
-storage and approximate recording time, selected output profile, and YouTube
+camera/microphone permission, active audio route, overlay loading state,
+selected output profile, and YouTube
 connection/channel/event. Use standard navigation to Settings and Recordings.
 
 Request camera and microphone access when the operator first opens the preview,
@@ -162,7 +165,7 @@ Changing accounts clears the previous channel's selection and credentials as app
 The final action names the channel, event, and visibility. A clear confirmation
 starts this specific event and local recording; opening settings, selecting an
 event, or previewing the camera never transmits camera media to YouTube. Check
-permissions, output configuration, storage, overlay readiness, authentication, and
+permissions, output configuration, local writer readiness, overlay readiness, authentication, and
 event state again before starting.
 
 Start the local writer before publishing media. If backup initialization fails,
@@ -174,8 +177,8 @@ upload connection are separate indicators even during this progress sequence.
 ### During the event
 
 Use a large, correctly letterboxed preview, elapsed time, microphone level/mute,
-zoom, and clear status for YouTube, upload, overlay, and backup. Keep storage/thermal
-warnings available without covering the picture unnecessarily. Starting resolution,
+zoom, and clear status for YouTube, upload, overlay, and backup. Keep recording-failure
+and thermal warnings available without covering the picture unnecessarily. Starting resolution,
 canvas orientation, event, and URL stay fixed; provide overlay reload and hide/show
 controls rather than navigation that could accidentally change the active event.
 Settings changes made later apply to the next session.
@@ -345,8 +348,8 @@ playable, shareable MP4 with the chosen dimensions, orientation, and synchronize
 
 Once local writing has started, inability to start or maintain a stream must never
 stop it: this includes API/startup errors, RTMPS failures, exhausted retries, and an
-event ended remotely. Continue until the operator stops recording, storage reaches
-the safety reserve, or capture/writing itself fails or is interrupted. Show recording
+event ended remotely. Continue until the operator stops recording or capture/writing
+itself fails (including storage exhaustion) or is interrupted. Show recording
 status separately and provide an explicit Stop recording action when streaming is
 unavailable. An intentional End broadcast/recording action still ends both outputs.
 An overlay outage changes only the overlay layer under R11, not recording continuity.
@@ -371,14 +374,24 @@ combination and recovery/export behavior on the device. Keep incomplete files fo
 recovery or explicit deletion; never silently discard them. A crash can still lose
 the current fragment and must be described honestly.
 
-Display estimated space/time from the selected bitrate and actual free capacity.
-At 14 Mbps video plus 128 kbps audio, three hours is approximately 19.1 GB before
-container overhead; at 8 Mbps it is approximately 11.0 GB. These are decimal GB
-estimates, not reserved storage or maximum file sizes. Warn when capacity is below
-the intended event length. Block startup below 1 GiB free, warn persistently below
-approximately ten minutes remaining, and stop/finalize local writing before free
-capacity reaches 250 MiB where possible. Continue the live broadcast after a later
-recording failure, with an explicit degraded-backup state.
+Storage reporting and forecasting are deferred improvements, not MVP requirements.
+There is no required free-space display, time-remaining estimate, periodic capacity
+polling, or fixed 1 GiB/250 MiB reserve policy. Do not implement those thresholds
+implicitly as part of writer readiness.
+
+iOS does provide a native [volume-capacity query][capacity], including
+`volumeAvailableCapacityForImportantUsageKey`; the reason for deferral is scope,
+not absence of an API. A future simple check can be evaluated separately without
+promising an exact recording duration or reserved space. Do not add a custom storage
+model or dependency for this MVP.
+
+Handle actual recording initialization, append, and finalization failures, including
+disk-full errors surfaced through HaishinKit/the native writer. Report the failed
+recording, attempt supported finalization where possible, retain usable/incomplete
+files, and never mark a failed file complete. Do not promise the current file is
+recoverable after storage exhaustion. Test this with injected failures rather than
+filling the user's device. For the later broadcaster, a recorder failure must still
+leave healthy streaming running with the explicit degraded-backup state.
 
 Playback/export requires no Photos-library permission. Export is deliberate; the
 system Files picker can include iCloud destinations. Explain that a file kept only
@@ -508,7 +521,7 @@ criteria; the table below qualifies the eventual broadcaster, not the local-only
 | A3: YouTube end-to-end | Correct channel and scheduled event selected; confirmed start, playback on a second device, correct overlay/audio, and confirmed end; selecting/previewing alone sends no camera media |
 | A4: Independent backup | Startup/API rejection, two-minute internet loss, failed reconnects, and a remotely completed event leave healthy local A/V running while storage remains available. Restoring connectivity resumes only the same eligible event. An overlay outage hides the layer after 10 seconds and restores a fresh image after recovery, without interrupting recording. |
 | A5: Recording recovery | Clean MP4 plays and exports; forced app termination preserves demonstrably recoverable completed fragments or the limitation is resolved before claiming crash recovery |
-| A6: Failure UX | Permission denial, missing/disabled events, expired consent, quota/rate-limit responses, unreachable overlay, local writer failure, low storage, and unknown remote completion are distinct and actionable |
+| A6: Failure UX | Permission denial, missing/disabled events, expired consent, quota/rate-limit responses, unreachable overlay, local writer/disk-full failure, and unknown remote completion are distinct and actionable; predictive storage stats are not required |
 | A7: Long event | A three-hour 1080p30 broadcast and local recording on the 13 mini, powered and on a stable qualified network, satisfies A2 quality targets and keeps measured A/V offset within 100 ms at start and end |
 | A8: Devices/interface | Physical tests on the 13 mini and available iPhone 15/17 representatives; Pro variants use no required Pro-only behavior; test 720p, audio interruptions, screen lock/backgrounding, VoiceOver, larger text, playback/export, and cancellation |
 | A9: TestFlight | Signed archive uploaded and installed through an invite on a tester phone; privacy declarations/notices and beta review information reflect actual behavior |
@@ -559,6 +572,7 @@ requirements must be rechecked when their milestone is implemented.
 [hig]: https://developer.apple.com/design/human-interface-guidelines/
 [snapshot]: https://developer.apple.com/documentation/webkit/wkwebview/takesnapshot(with:completionhandler:)
 [fragments]: https://developer.apple.com/documentation/avfoundation/avassetwriter/moviefragmentinterval
+[capacity]: https://developer.apple.com/documentation/foundation/checking-volume-storage-capacity
 [encoder]: https://support.google.com/youtube/answer/2853702
 [broadcast-list]: https://developers.google.com/youtube/data/live/reference/rest/v3/liveBroadcasts/list
 [stream-insert]: https://developers.google.com/youtube/data/live/reference/rest/v3/liveStreams/insert

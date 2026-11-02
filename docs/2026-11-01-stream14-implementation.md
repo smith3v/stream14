@@ -31,6 +31,8 @@ It contains no YouTube login, stream selection, RTMPS transmission, reconnect,
 TestFlight, or three-hour broadcasting implementation tasks. The full-product
 requirements remain in the specification for context; they are not this milestone's
 deliverables. Plan a later milestone separately after reviewing the MVP evidence.
+Storage stats, remaining-time estimates, polling, and proactive capacity thresholds
+are also deferred; retain straightforward disk-full/write-error handling.
 
 ## How to use this plan
 
@@ -160,7 +162,10 @@ screen-sleep behavior after recording and finalize on interruption. Test repeate
 recording, overlay updates/failure/outage (before and after the 10-second hide
 deadline, automatic fresh-image restoration, unchanged healthy scores, stale cached
 snapshots, and manual hiding), permission denial, interrupted capture,
-and injected writer/storage errors. Save device samples and perform the 30-minute
+and injected disk-full/write errors, including initialization and finalization failure.
+Preserve usable/incomplete files and do not mark failures complete; no remaining-space
+or time estimator, capacity polling, or reserve-threshold logic is required.
+Save device samples and perform the 30-minute
 M3 run. Record APIs, evidence, and limitations in docs/feasibility.md. Review and commit.
 
 **Acceptance:** M2–M4 pass on the 13 mini. Files contain synchronized audio, video,

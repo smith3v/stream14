@@ -26,6 +26,10 @@ the outgoing video, and keeping a local copy of that composition.
 - The implementation plan ends at this first milestone's M1–M5 validation and review.
   Keep future broadcasting requirements in the specification; write its implementation
   plan separately after MVP review rather than executing a whole-app roadmap now.
+- Defer available-storage stats, recording-time estimates, periodic capacity polling,
+  and proactive capacity thresholds. The MVP must still handle disk-full/write errors,
+  report recording failure, and preserve usable or incomplete files without claiming
+  they are complete. Do not add a storage-estimation subsystem or dependency.
 - Keep recording ownership/start/stop independent from a future streaming output.
   Document the actual composed-media/output boundary so streaming can be added later
   without controlling the recorder. Do not add streaming stubs, generic output
