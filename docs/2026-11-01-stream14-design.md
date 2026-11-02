@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Created: 2026-11-01. Updated: 2026-11-02. Status: local-recording MVP; application not implemented.
+Created: 2026-11-01. Updated: 2026-11-02. Status: native setup app; media not implemented.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -16,7 +16,23 @@ and a local video recording before implementing broadcasting. The full YouTube
 product remains the destination. Sections below describing YouTube, RTMPS, dual
 outputs, and full broadcast qualification are later-stage requirements. TestFlight
 installation and operation on the testing iPhone are required for this MVP. This
-revision changes documentation only; no library or app is added.
+milestone is being implemented in separately reviewed stages.
+
+### Stage 1: native app foundation (issue #2)
+
+Stream14.xcodeproj provides an iPhone-only SwiftUI app, shared Stream14 scheme,
+hosted Swift Testing configuration tests, and XCTest UI tests. The owner confirmed
+com.smith3v.stream14 on 2026-11-02. Deployment starts at iOS 27.0; Swift language
+mode is 6. The setup screen uses a native Form and system typography, supports
+portrait and both landscape orientations, and explicitly states that recording and
+web overlays are unavailable. No media controls, permissions, networking, packages,
+or extra architecture are introduced. The UI uses main-actor isolation; there is
+no capture or processing work yet.
+
+Xcode 27.2 and the iOS 27.2 SDK are installed. See the
+[development guide](ios-development-guide.md#stage-1-verification-record-2026-11-02)
+for exact build/test evidence and pending physical-device setup. No M1–M5 media
+gate or TestFlight delivery is established by this foundation.
 
 ### MVP scope and interface
 

@@ -101,6 +101,13 @@ the intended files. No app implementation is claimed.
 
 ## Task 2: Create and run the smallest native app
 
+**Status (2026-11-02): In progress in issue #2.** The project, minimal native screen,
+shared scheme, and native test targets are implemented. Physical 13 mini acceptance
+remains pending; see the [stage verification record](ios-development-guide.md#stage-1-verification-record-2026-11-02)
+and [focused implementation plan](2026-11-02-native-app-implementation.md).
+Do not begin Task 3 until this stage's prerequisite PR merges unless the owner
+explicitly coordinates stacked work.
+
 **Prompt:**
 Guide the owner through installing full Xcode and configuring a development team
 without requesting secrets. Confirm the bundle identifier before registration.

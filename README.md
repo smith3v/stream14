@@ -1,6 +1,6 @@
 # stream14
 
-A native iPhone broadcasting app, currently at the specification stage.
+A native iPhone broadcasting app, currently at the native app setup stage.
 
 Repository: [smith3v/stream14](https://github.com/smith3v/stream14).
 
@@ -10,8 +10,10 @@ video backup. The overlay URL is configurable. The first release targets landsca
 1080p30 events lasting one to three hours and distribution through TestFlight.
 That is the full-product goal; the immediate MVP records locally without streaming.
 
-**There is no application implementation or Xcode project yet.** Browser-overlay
-capture and sustained performance must first be proven on an iPhone 13 mini.
+**The native app currently shows a setup screen only.** Stream14.xcodeproj contains
+the iPhone app, shared Stream14 scheme, Swift Testing configuration checks, and
+XCUITest launch/accessibility checks. Recording, browser overlays, and broadcasting
+are not implemented. Device acceptance and media feasibility remain separate checks.
 
 ## Current MVP
 
@@ -49,6 +51,7 @@ See the
 | Platform | iPhone; initial deployment target iOS 27.0 |
 | Minimum performance device | iPhone 13 mini; also validate iPhone 15 and 17 families |
 | Interface | SwiftUI with small UIKit bridges where required |
+| App identity | com.smith3v.stream14; owner confirmed 2026-11-02 |
 | Media | HaishinKit as the first capture/composition/recording experiment; RTMPS deferred |
 | Overlay | User-provided HTTPS URL, full video canvas, transparency preserved |
 | Backup | Same composition and audio as the outgoing video; survives network outages |
@@ -61,7 +64,9 @@ must be verified during the MVP. Google Sign-In and RTMP products remain deferre
 
 ## Next milestone
 
-Install full Xcode, evaluate HaishinKit's stable APIs, and implement the local-recording
+Finish [issue #2's](https://github.com/smith3v/stream14/issues/2) physical iPhone setup
+check using the [development guide](docs/ios-development-guide.md#4-how-we-will-build-and-test).
+After that PR merges, evaluate HaishinKit's stable APIs and implement the local-recording
 MVP on the iPhone 13 mini. Verify the saved composition, audio, overlay updates, and
 a smooth 30-minute run using the TestFlight build, then review the evidence before adding broadcasting.
 The implementation plan ends at that review. Keep recording independent of any

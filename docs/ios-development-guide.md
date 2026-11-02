@@ -1,14 +1,15 @@
 # iOS development and TestFlight: a first-project guide
 
-Checked: 2026-11-01. Read the [application specification](2026-11-01-stream14-design.md)
+Checked: 2026-11-02. Read the [application specification](2026-11-01-stream14-design.md)
 for product behavior and the [implementation plan](2026-11-01-stream14-implementation.md)
 for development order. This guide explains setup; it does not mean those steps have
 already been performed.
 
 ## Current stage: local MVP first
 
-The immediate app records rear-camera video and microphone audio with a configurable
-transparent webpage overlay. HaishinKit is the first capture/composition/encoding/
+The immediate milestone will record rear-camera video and microphone audio with a
+configurable transparent webpage overlay. The current app only displays its setup
+screen; recording and web overlays are not implemented. HaishinKit is the first capture/composition/encoding/
 recording experiment. The owner reviews the result before broadcasting is added.
 Codex writes and integrates the app; the owner supplies account/device access and
 reviews behavior. Learning Swift or manually writing app code is not a prerequisite.
@@ -37,7 +38,7 @@ qualification remains a later milestone.
 | SDK / deployment target | The APIs available to build against / the oldest iOS version allowed to run the app. We initially target iOS 27.0. |
 | Bundle identifier | The app's stable unique identity, usually reverse-domain text. It connects signing, App Store Connect, and Google's iOS OAuth client. |
 | Signing / provisioning | Apple's mechanism for identifying the developer and permitting a build to run on devices. Start with Xcode's automatic signing. |
-| Scheme / target | A saved build/test configuration / a product such as the app or its tests. Our future shared scheme will be Stream14. |
+| Scheme / target | A saved build/test configuration / a product such as the app or its tests. The committed shared scheme is Stream14. |
 | Archive | A distribution build produced by Xcode, then validated/uploaded through Organizer. |
 | App Store Connect | Apple's portal for app records, builds, TestFlight invitations, feedback, and distribution information. |
 | TestFlight | Apple's beta distribution service. It does not require publishing the app publicly on the App Store. |
@@ -46,9 +47,11 @@ qualification remains a later milestone.
 
 ## 1. Install full Xcode
 
-The initial environment inspection found Apple Command Line Tools selected and no
-full Xcode application in /Applications. Install a current stable Xcode release
-that supports the phone's iOS 27 version and the Mac's installed macOS. Check
+Xcode 27.2 (27B52) is now installed at /Applications/Xcode.app, including the iOS
+27.2 SDK and Simulator runtime. The owner selected Xcode as the system developer tools during stage 1;
+`xcode-select -p` now points inside Xcode.app. Commands below also set
+DEVELOPER_DIR explicitly for a reproducible terminal session. On another Mac,
+install a current Xcode release that supports the phone's iOS 27 version and macOS. Check
 [Apple's live compatibility table](https://developer.apple.com/xcode/system-requirements)
 rather than copying an outdated version requirement.
 
@@ -88,15 +91,28 @@ Developer Mode if Xcode/iOS requests it. Select the phone as the run destination
 Use Xcode's normal signing diagnostics rather than downloading random provisioning
 profiles or disabling security settings.
 
-Before the first signed app target is created, choose a bundle identifier controlled
-by the owner's team; `com.smith3v.stream14` is a proposed value, not a registered
-identifier. Keep the chosen identifier identical in Xcode, Apple identifiers,
+The owner confirmed `com.smith3v.stream14` on 2026-11-02; it is now the app target's
+bundle identifier. Confirmation does not establish Apple registration or signing.
+Keep the identifier identical in Xcode, Apple identifiers,
 App Store Connect, and Google's iOS OAuth client. Avoid renaming it casually after
 distribution begins.
 
-When the project exists, its first milestone is a basic app running on the phone.
-Then test camera access with meaningful permission strings. A preview on Simulator
-does not qualify a real camera or sustained media performance.
+Open Stream14.xcodeproj. Select the blue project in the navigator, then TARGETS →
+Stream14 → Signing & Capabilities. Keep Automatically manage signing enabled and
+select your own Team. No team is fabricated or committed by this stage. Select the
+connected 13 mini in the toolbar and press Run (▶ or ⌘R). Success is the stream14
+screen with “App setup ready” and an explanation that recording is not available.
+Check it in portrait and both landscape orientations. If signing fails, use the
+displayed Xcode diagnostic; share only error text, never credentials or keys.
+
+Selecting a team may edit project.pbxproj. Keep personal signing changes local;
+inspect the diff before committing. For terminal builds, pass DEVELOPMENT_TEAM as
+a local build-setting override instead of saving it in the shared project. The
+test targets also need your team if running tests on a physical phone.
+
+This stage requests no camera/microphone permissions. Camera access and honest
+purpose strings belong to the media stage. Simulator success does not qualify a
+real camera or sustained performance.
 
 See [Apple's developer-account guidance](https://developer.apple.com/help/account/basics/about-your-developer-account)
 for personal-team restrictions and membership capabilities.
@@ -138,30 +154,95 @@ configuration for development-only values when needed.
 
 ## 4. How we will build and test
 
-Create one ordinary Xcode iOS App project at the repository root using SwiftUI and
-Swift, with project Stream14.xcodeproj and shared scheme Stream14. Do not create a
-second Git repository from Xcode. Keep shared project/scheme files in Git and
-user-specific Xcode state out of it. The initial repository deliberately has no
-generated project yet.
+The root-level Stream14.xcodeproj is an ordinary SwiftUI/Swift 6 project with no
+external packages or project generator. It contains:
 
-After the project exists, confirm its actual scheme and destinations:
+- Stream14/App/Stream14App.swift: application entry point.
+- Stream14/App/SetupView.swift: native scrollable setup screen.
+- Stream14Tests/AppConfigurationTests.swift: hosted Swift Testing checks of the
+  built app's identity, deployment target, device family, and supported orientations.
+- Stream14UITests/SetupScreenTests.swift: launch/status checks, landscape at the
+  largest accessibility text size, screenshots, and system accessibility audits.
+- Stream14.xcodeproj/xcshareddata/xcschemes/Stream14.xcscheme: shared build/test/run/archive scheme.
+
+Run these commands from the repository root. The export applies to this terminal
+session only. Confirm the scheme and available destinations:
 
 ```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 xcodebuild -list -project Stream14.xcodeproj
 xcodebuild -showdestinations -project Stream14.xcodeproj -scheme Stream14
 ```
 
-Record an installed simulator name and OS in this guide before adopting a concrete
-test command. The future command shape is:
+Build Release against the iPhone SDK without provisioning/signing:
 
-```text
-xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
-  -destination 'platform=iOS Simulator,name=<installed device>,OS=<installed OS>' test
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /tmp/stream14-issue2-device CODE_SIGNING_ALLOWED=NO build
 ```
 
-Angle-bracket values above are placeholders, not a currently runnable command or
-evidence that a test passed. CI must use the same verified shared scheme and a
-runner with the required Xcode/SDK; do not add a workflow that only looks plausible.
+The installed iOS 27.2 runtime includes an iPhone 13 mini device type. A dedicated
+simulator named Stream14 iPhone 13 mini was created for the smallest-screen checks.
+On another Mac with this runtime, create it once if absent:
+
+```sh
+xcrun simctl create 'Stream14 iPhone 13 mini' \
+  com.apple.CoreSimulator.SimDeviceType.iPhone-13-mini \
+  com.apple.CoreSimulator.SimRuntime.iOS-27-2
+```
+
+Run the hosted and UI tests on it:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /tmp/stream14-issue2-simulator \
+  -resultBundlePath /tmp/stream14-issue2-verified-layout-2.xcresult test
+```
+
+Result bundle paths must be new for each run; choose a new filename when repeating
+tests rather than deleting evidence. CI is not configured. Build logs and xcresult
+bundles are local artifacts, not repository content.
+
+### Stage 1 verification record: 2026-11-02
+
+- Toolchain: Xcode 27.2 (27B52), Swift 6 language mode, iOS SDK/Simulator 27.2.
+- App: com.smith3v.stream14, version 0.1, build 1, iPhone only, minimum iOS 27.0.
+  Owner confirmed the bundle identifier in chat; no Apple team value is committed.
+- `xcodebuild -list` finds Stream14, Stream14Tests, Stream14UITests and the shared
+  Stream14 scheme. `-showdestinations` finds the installed iOS 27.2 simulators.
+- The unsigned generic-iOS Release build above passed. Local log:
+  /tmp/stream14-issue2-device-build.log. This is compilation, not a signed install.
+- All four tests passed on Stream14 iPhone 13 mini / iOS 27.2 Simulator: two
+  hosted Swift Testing checks and two UI tests with full accessibility audits.
+  Largest accessibility text in landscape and default text in portrait passed.
+  Final log: /tmp/stream14-issue2-verified-layout-2-test.log; result bundle:
+  /tmp/stream14-issue2-verified-layout-2.xcresult. UI screenshots are kept in that bundle.
+  Earlier runs exposed status-label clipping and section-header contrast issues;
+  the final view uses wrapping headline text and an explicit adaptive system text
+  color. An initial iPhone 17 automation launch failed and was interrupted; that
+  run is not counted as a pass.
+- Physical iPhone 13 mini: connected by USB, iOS 27.2, Developer Mode enabled.
+  Automatic signing registered the device and generated a development profile.
+  The signed build is waiting at codesign, with the owner asked to handle any
+  normal Keychain access prompt. Installation/launch is still pending; do not count
+  this stage's physical-device acceptance as complete. Local signed-build log:
+  /tmp/stream14-issue2-signed-device-build.log (contains private signing/device
+  details; never attach it publicly). No media gate or TestFlight upload passed.
+- No packages, camera/microphone permission strings, networking, entitlements,
+  credentials, recordings, or signing profiles are added. User-local Xcode state,
+  build/test results, signing material, and captured media remain ignored.
+- Independent review: a separate agent inspected the full diff and actual project,
+  scheme, app, tests, docs, and ignore rules; no material code/project/privacy
+  findings. Focused review caught the unresolved contrast audit; explicit
+  Color.primary fixed it and all four native tests then passed. Physical launch
+  remains the open acceptance item, not an agreed waiver.
+- Next stage, after this stage's PR merges and device acceptance: Task 3,
+  HaishinKit feasibility. Re-run the scheme/destination and build/test commands above
+  before selecting a stable package; do not implement recording APIs from guesses.
+  TestFlight still needs owner membership/agreements, app registration, signing,
+  metadata/privacy review, and the later local-media implementation and M1–M5 checks.
 
 Use unit tests for state/API behavior, UI tests and manual inspection for screens,
 and physical phones for real video/audio, transparent browser capture, network
