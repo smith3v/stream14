@@ -325,8 +325,7 @@ handling, thermal policy, URL retention copy and a fixture compile error were fi
 focused re-review found no remaining material implementation issue. The final complete Simulator suite then passed 14 active hosted tests and three
 UI/accessibility tests, with four opt-in skips. Denied-camera UI was separately
 enabled after Simulator permission revocation and passed; permission was reset
-afterwards. Layout screenshots were inspected privately. Native device fault checks
-and the long report must still be recorded before qualification claims.
+afterwards. Layout screenshots were inspected privately. Native device fault checks and the long report are detailed below, with remaining qualification limits.
 
 The first long device run ended after about 130 seconds with a remote-process
 communication failure while the owner disabled networking. The owner observed
@@ -338,8 +337,7 @@ The run does not count as successful outage recovery or 30-minute qualification.
 The restarted run uses a two-minute public WebKit document-request block, distinct
 from disabling the phone's actual networking, and leaves the debugging link alone.
 
-Validation and remaining qualification will be recorded below after the running
-device checks. A development run never completes M3/M5; final qualification must
+Validation evidence and remaining qualification are recorded below. A development run never completes M3/M5; final qualification must
 use the TestFlight-installed build. Two-minute real outage, live fixture replacement,
 manual hide/recovery, actual interruptions, playback/export owner review, permission
 denial and physical A/V offset measurements must not be inferred from a build or
@@ -367,7 +365,7 @@ image. Clearing `ImageScreenObject.ciImage` therefore cannot implement hiding.
 WebOverlayLayer now explicitly gates drawing with `isVisible`; a new regression
 observes actual NV12 compositor output through show → hide → restore, not merely
 model flags. This fixes automatic expiry and manual hiding at the shared preview/
-writer boundary. Corrected device output is being rechecked separately.
+writer boundary. Corrected device output was rechecked separately below.
 
 Host resident memory sampled every ten seconds ranged 45.8–521.7 MiB, ending
 442.5 MiB. First/last five-minute means were 82.5/358.3 MiB, with a full-run linear
@@ -433,5 +431,19 @@ Independent review inspected each material correction and regression, including
 actual dependency cache behavior, failure/interruption tests and playback state.
 No remaining material implementation finding was identified after the fixes.
 Release and Simulator/device results are listed in the development guide. Issue #5
-stays open and its PR remains draft while remaining owner review/qualification is
-pending; M3/M5 and broadcasting are not claimed complete.
+stays open and its PR remains draft while long-run qualification is pending; M3/M5 and broadcasting are not claimed complete.
+
+
+### Owner short-flow review
+
+On 2026-11-04 the owner confirmed playback and saving the original to Files worked,
+and the camera/overlay/sound looked right. The newly reviewed 5.825-second MP4 and
+completed sidecar were copied privately to `/tmp/stream14-issue5-owner-review/`;
+no media or private face/scene images are published. Native video/audio decode
+completes. The clap's 10 ms audio RMS peak bin starts at 2.64 s; timestamped
+adjacent frames place visible hand contact around 2.68–2.71 s. This suggests video
+roughly 40–70 ms later, with about one 30 fps frame of visual/contact uncertainty.
+It is useful short-sample physical sync evidence, not a precision instrument or a
+measurement of drift at both ends of the thirty-minute run. Keep full-length
+start/end sync and charged-footprint qualification pending for the next validation
+pass; do not promote M3/M5 from this short owner review.

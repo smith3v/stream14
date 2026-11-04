@@ -797,3 +797,12 @@ rear-camera image (not cropped at an edge). Stop, play and export the original t
 Files. Record the actual review outcome separately; neither a test runner's pass
 nor opening a player proves perceived sync or a successful Files export. Full M3
 qualification still needs the TestFlight build and fresh start/end sync markers.
+
+
+Owner short-flow review was completed on 2026-11-04: playback, original save to
+Files and subjective camera/overlay/audio appearance were confirmed. Private
+reviewed clip/sidecar and timestamped clap analysis are under
+`/tmp/stream14-issue5-owner-review/`. Estimated short-sample video delay is about
+40–70 ms with one-frame visual uncertainty. This does not replace full-length
+start/end physical sync or TestFlight qualification. See feasibility for the
+remaining evidence rather than treating every issue #5 acceptance box as passed.

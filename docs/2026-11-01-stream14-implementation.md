@@ -182,7 +182,7 @@ fails, document the failure and resolve it before depending on this approach els
 
 ## Task 5: Integrate the local-recording MVP
 
-**Status (2026-11-04): Implemented; owner review and qualification remain pending.**
+**Status (2026-11-04): Implemented and short owner flow reviewed; long-run qualification remains pending.**
 MediaSession, attached web-raster composition, the concrete final-status-aware
 writer, secure URL settings and native recording/playback/export are implemented.
 See the [focused plan](2026-11-04-local-recorder-implementation.md) and
