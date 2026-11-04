@@ -15,7 +15,8 @@ rear-camera/microphone capture, composition and native MP4 writing. Open the cam
 experiment explicitly, record a synthetic transparent counter over camera video,
 then play/export the original sample. Browser overlays and broadcasting remain
 unimplemented. See [feasibility evidence and limitations](docs/feasibility.md);
-this experiment does not qualify the full MVP or TestFlight delivery.
+a 53.53-second physical 13 mini sample and owner playback review demonstrate the
+local M1 path. This experiment does not qualify M2–M5 or TestFlight delivery.
 
 ## Current MVP
 

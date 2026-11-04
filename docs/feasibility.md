@@ -1,6 +1,7 @@
 # Local media feasibility
 
-2026-11-04 — issue #3. Device qualification pending; this is an experiment, not M1–M5 completion.
+2026-11-04 — issue #3. M1 local library-fit experiment demonstrated on the physical
+iPhone 13 mini. M2–M5 and production recording reliability remain unqualified.
 
 ## Dependency decision (before adoption)
 
@@ -78,8 +79,9 @@ unsigned generic-iOS Release build passed. Final native test run passed all eigh
 tests (six Swift Testing, two XCTest UI), including full accessibility audits in
 portrait and maximum Dynamic Type landscape. Signed Debug 0.1/build 1 passed,
 `codesign --verify --deep --strict` passed, and development install/devicectl launch
-succeeded on the physical iPhone 13 mini / iOS 27.2. Physical media sample inspection
-is pending. Exact commands and private evidence paths are in the
+succeeded on the physical iPhone 13 mini / iOS 27.2. The owner recorded and played
+the sample, confirming correct picture/sound and changing counter. Exact commands
+and private evidence paths are in the
 [development guide](ios-development-guide.md#stage-2-local-media-experiment-2026-11-04).
 
 Independent reviewer inspected the actual full implementation, project/dependency
@@ -87,7 +89,51 @@ path, tests and source claims. It found accumulated layers on reopen and an inco
 pixel-format description; both are fixed and re-reviewed, with a non-accumulation
 regression test. Final independent review inspected the full committed diff and canonical docs, confirmed
 the native test/build/install evidence and independently verified the signed app.
-No material findings remain; physical sample/M1 acceptance stays pending.
+No material findings remain. A focused independent closeout review checked the
+original sample, frames, sidecar and updated docs, and independently decoded both
+tracks successfully with nonzero audio. It confirmed the narrow M1 acceptance.
+
+### Physical sample: M1 result
+
+Installed source: `a034f49` (later commits update documentation only), Debug
+0.1/build 1, iPhone 13 mini / iOS 27.2, development install/devicectl launch without
+a debugger. No server, account, stream key, connection or publishing API was used.
+The owner confirmed that playback looks and sounds correct and the counter changes
+in response to the requested orientation/alpha/audio-alignment check. This is a
+subjective A/V playback check; a measured acoustic clap/lip-sync offset is not established.
+
+A private app-container copy of the original file was read with AVFoundation:
+
+| Observation | Result |
+| --- | --- |
+| Original container / size | MP4 / 94,453,437 bytes, no export conversion |
+| Duration | 53.529229 seconds |
+| Video | H.264 (`avc1`), 1920×1080, 1,594 compressed video samples |
+| Profile / reported nominal rate | Requested 30 fps; asset nominalFrameRate 29.716671 fps |
+| Presentation timestamps | Video 0.068333–53.505011 s; largest sorted video PTS gap 80 ms |
+| Audio | AAC, 44,100 Hz, two channels |
+| Audio packet-buffer timestamps | 0.092880–53.529229 s; 109 reader buffers (each may contain multiple AAC packets) |
+| Read result | AVAssetReader reached `.completed` for both tracks |
+| Image inspection | Frames extracted near 1, 5 and 10 s; camera visible through translucent panel, opaque/antialiased graphics, changing counter/color, upright landscape, no app UI |
+| Persistent sample marker | `needsInspection`; preserved with the original movie |
+
+The ~24.5 ms difference between the first audio/video buffer PTS is a file-timeline
+observation, not measured acoustic synchronization. The video gap was computed after
+sorting presentation timestamps; H.264 packet/decode order can differ. Do not interpret
+AAC reader-buffer spacing as audio gaps. No measured pipeline-drop percentage,
+bounded-queue, thermal/memory, 30-minute or M3 claim follows from this short sample;
+the asset nominal rate is recorded rather than rounded up to a proven 30 fps.
+
+Private evidence remains outside Git: original MP4/sidecar and extracted frames under
+`/tmp/stream14-issue3-private-samples/`, copy log `/tmp/stream14-issue3-copy-2.log`,
+AVFoundation inspection output `/tmp/stream14-issue3-sample-inspection.txt`,
+independent read-only decode report `/tmp/stream14-issue3-independent-inspection.txt`, and the
+temporary inspector `/tmp/stream14-issue3-inspect.swift`. These paths are local evidence,
+not public attachments or a permanent archive. Recordings were not deleted or altered.
+
+M1's local camera/audio/composition/encode/write path is demonstrated. Proceed to
+issue #4 only after this stage's PR review/merge. Full WebKit composition, reliable
+writer failure handling, long-run measurements and TestFlight remain later gates.
 
 For issue #4, run the commands above, explicitly open capture, and replace the
 synthetic generator through the retained ScreenActor image object. Supply one

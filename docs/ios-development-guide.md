@@ -348,7 +348,12 @@ Signed Debug build, signature verification, development installation and devicec
 launch succeeded on the connected iPhone 13 mini, iOS 27.2. The owner allowed the
 normal macOS Keychain prompt. Launch used devicectl without attaching a debugger;
 upstream documents a possible recorder freeze under an Xcode debugger. These are
-local development results, not TestFlight delivery. Keep personal team selection
+local development results, not TestFlight delivery. The owner then recorded a
+53.53-second sample and confirmed correct playback/sound and changing counter.
+Private file inspection confirms H.264 1920×1080, AAC stereo 44.1 kHz, actual
+alpha composition and layer replacement. M1 is demonstrated; no M2–M5 or measured
+acoustic-sync/performance claim follows. See the feasibility report for frame timing.
+Keep personal team selection
 local or use a `DEVELOPMENT_TEAM` command-line override for signing.
 
 Device procedure: open **Open camera experiment**, allow camera/microphone access,
@@ -363,7 +368,17 @@ stage-2 evidence, not the stage-5 full failure/performance matrix.
 Private logs/results: `/tmp/stream14-issue3-release-build-2.log`,
 `/tmp/stream14-issue3-tests-2.xcresult`, `/tmp/stream14-issue3-signed-build-2.log`,
 `/tmp/stream14-issue3-install.log`. Device/signing details and raw recordings stay
-outside Git and public PRs. See [feasibility.md](feasibility.md) for actual sample
+outside Git and public PRs. Copy sample evidence privately with the device
+identifier selected locally as in the physical setup section:
+
+```sh
+xcrun devicectl device copy from --device "$STREAM14_DEVICE_ID" \
+  --source 'Library/Application Support/MediaExperiments' \
+  --domain-type appDataContainer --domain-identifier com.smith3v.stream14 \
+  --destination /tmp/stream14-issue3-private-samples
+```
+
+See [feasibility.md](feasibility.md) for actual sample
 measurements, exact API boundary, remaining writer limitations and next-agent handoff.
 
 Use unit tests for state/API behavior, UI tests and manual inspection for screens,

@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Created: 2026-11-01. Updated: 2026-11-04. Status: local media experiment; qualification in progress.
+Created: 2026-11-01. Updated: 2026-11-04. Status: local media experiment; M1 demonstrated, M2–M5 pending.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -53,7 +53,8 @@ expose a post-finish writer-status check. Stage #5 must address that using a sma
 writer adapter on the existing MediaMixerOutput boundary or an upstream fix, and
 qualify backpressure/error handling. This does not justify replacing library capture
 or composition. WebKit, full failure handling, 30-minute performance and TestFlight
-remain later gates; M1 success requires the actual physical media evidence in the report.
+remain later gates. The physical 13 mini sample and owner playback confirmation
+now demonstrate M1; see the report for the measured file properties and limitations.
 
 ### MVP scope and interface
 
