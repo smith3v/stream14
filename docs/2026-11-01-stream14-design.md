@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Created: 2026-11-01. Updated: 2026-11-04. Status: native setup app; media not implemented.
+Created: 2026-11-01. Updated: 2026-11-04. Status: local media experiment; qualification in progress.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -35,6 +35,25 @@ for exact build/test and physical-device evidence. On 2026-11-04 the signed setu
 app launched on the physical iPhone 13 mini with iOS 27.2; the owner confirmed
 readability in portrait and both landscape orientations. No M1–M5 media gate or
 TestFlight delivery is established by this foundation.
+
+### Stage 2: HaishinKit local media experiment (issue #3)
+
+The app pins HaishinKit 2.3.0 core and links its Logboard runtime dependency. One
+single-session MediaMixer in offscreen mode feeds composed MTHKView preview and
+StreamRecorder directly, with no ingestion connection. A ScreenActor-owned
+ImageScreenObject accepts a full 1920×1080 synthetic transparent counter image
+replaced at about 1 Hz. AVAssetWriter encodes uncompressed composed NV12 video
+and mixed PCM audio once to H.264/AAC MP4. Original-file export does not transcode.
+See [the feasibility report](feasibility.md) for exact APIs, package footprint,
+checks, device evidence and current limits.
+
+The experiment retains pending/failed samples with status sidecars and never calls
+a returned native recorder URL a production-complete file: upstream 2.3.0 does not
+expose a post-finish writer-status check. Stage #5 must address that using a small
+writer adapter on the existing MediaMixerOutput boundary or an upstream fix, and
+qualify backpressure/error handling. This does not justify replacing library capture
+or composition. WebKit, full failure handling, 30-minute performance and TestFlight
+remain later gates; M1 success requires the actual physical media evidence in the report.
 
 ### MVP scope and interface
 
@@ -455,7 +474,8 @@ flowchart LR
     H --> F[Local video file]
 ```
 
-The diagram is the preferred MVP experiment, not a verified library integration.
+The diagram is implemented as the local synthetic-layer experiment; physical
+qualification is recorded separately in the feasibility report.
 Verify that dynamically updated alpha images appear in the preview and the local
 file, and that recording does not require a live transport connection. A small
 native recording adapter is acceptable if required by the public API; do not assume
