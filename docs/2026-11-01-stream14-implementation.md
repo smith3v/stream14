@@ -105,7 +105,7 @@ the intended files. No app implementation is claimed.
 minimal native screen, shared scheme, and native test targets are implemented.
 The signed app runs on the physical 13 mini; the owner confirmed readable setup
 content in portrait and both landscape orientations. [PR #7](https://github.com/smith3v/stream14/pull/7)
-awaits review/merge. See the [device verification record](ios-development-guide.md#physical-setup-verification-2026-11-04)
+merged on 2026-11-04. See the [device verification record](ios-development-guide.md#physical-setup-verification-2026-11-04)
 and [focused implementation plan](2026-11-02-native-app-implementation.md).
 Do not begin Task 3 until this stage's prerequisite PR merges unless the owner
 explicitly coordinates stacked work.
@@ -125,6 +125,15 @@ Review signing settings for accidental team secrets or user-local paths, then co
 the documented shared scheme. Camera/streaming capability is not yet claimed.
 
 ## Task 3: Verify the HaishinKit local media path
+
+**Status (2026-11-04): Implemented; M1 demonstrated on the testing phone.**
+HaishinKit 2.3.0 core-only experiment records a playable 53.53-second camera/audio
+sample with an updated synthetic alpha layer. The owner confirmed correct playback. See [feasibility.md](feasibility.md) for exact
+API/encoder path, package footprint and measured evidence; see the
+[focused plan](2026-11-04-haishinkit-implementation.md) for reproducible checks.
+Native recorder final-status observability and queue/drop instrumentation are
+explicit reliability handoffs for Task 5. [PR #8](https://github.com/smith3v/stream14/pull/8)
+awaits review/merge; Task 4 begins after it merges. No M2–M5 acceptance is claimed.
 
 **Prompt:**
 Inspect a current stable HaishinKit release's public APIs and examples for camera

@@ -1,6 +1,6 @@
 # stream14
 
-A native iPhone broadcasting app, currently at the native app setup stage.
+A native iPhone broadcasting app, currently testing a local HaishinKit media path.
 
 Repository: [smith3v/stream14](https://github.com/smith3v/stream14).
 
@@ -10,11 +10,13 @@ video backup. The overlay URL is configurable. The first release targets landsca
 1080p30 events lasting one to three hours and distribution through TestFlight.
 That is the full-product goal; the immediate MVP records locally without streaming.
 
-**The native app currently shows a setup screen only.** Stream14.xcodeproj contains
-the iPhone app, shared Stream14 scheme, Swift Testing configuration checks, and
-XCUITest launch/accessibility checks. Recording, browser overlays, and broadcasting
-are not implemented. The setup screen was verified on the physical iPhone 13 mini
-with iOS 27.2 on 2026-11-04; media feasibility remains unproven.
+**The app now contains a local media experiment.** HaishinKit 2.3.0 core owns
+rear-camera/microphone capture, composition and native MP4 writing. Open the camera
+experiment explicitly, record a synthetic transparent counter over camera video,
+then play/export the original sample. Browser overlays and broadcasting remain
+unimplemented. See [feasibility evidence and limitations](docs/feasibility.md);
+a 53.53-second physical 13 mini sample and owner playback review demonstrate the
+local M1 path. This experiment does not qualify M2–M5 or TestFlight delivery.
 
 ## Current MVP
 
@@ -60,23 +62,22 @@ See the
 | Hosting | Public GitHub repository: smith3v/stream14 |
 | License | BSD-3-Clause |
 
-No third-party packages have been added. HaishinKit's public APIs and device behavior
-must be verified during the MVP. Google Sign-In and RTMP products remain deferred.
+HaishinKit 2.3.0 and its runtime dependency Logboard 2.6.0 are linked. Package.resolved
+also records upstream package-level transport dependencies that are not linked to
+the app. Google Sign-In and transport products remain deferred.
 
 ## Next milestone
 
-The native foundation for [issue #2](https://github.com/smith3v/stream14/issues/2)
-is implemented and verified on the testing phone. [PR #7](https://github.com/smith3v/stream14/pull/7)
-is awaiting review/merge; see the [device evidence](docs/ios-development-guide.md#physical-setup-verification-2026-11-04).
-After that PR merges, evaluate HaishinKit's stable APIs and implement the local-recording
-MVP on the iPhone 13 mini. Verify the saved composition, audio, overlay updates, and
-a smooth 30-minute run using the TestFlight build, then review the evidence before adding broadcasting.
-The implementation plan ends at that review. Keep recording independent of any
-future transport lifecycle; no streaming code or speculative output framework is
-part of this milestone.
-See the [implementation plan](docs/2026-11-01-stream14-implementation.md).
+[Issue #2](https://github.com/smith3v/stream14/issues/2) / [PR #7](https://github.com/smith3v/stream14/pull/7)
+is merged. [Issue #3](https://github.com/smith3v/stream14/issues/3) verifies the local
+media path; its [report](docs/feasibility.md) records actual evidence and remaining
+gates. After its review/merge and acceptance, issue #4 validates public-API WebKit
+snapshots and outage handling. Issue #5 integrates reliable recording; issue #6
+qualifies and delivers the MVP through TestFlight. The implementation plan ends at
+that review. Keep recording independent of future transport; broadcasting follows
+MVP owner review.
 
 ## License
 
-[BSD 3-Clause](LICENSE), copyright 2026 Slava Kuznetsov. Dependency notices will be
-added when dependencies are selected.
+[BSD 3-Clause](LICENSE), copyright 2026 Slava Kuznetsov. Full dependency notices are bundled in
+[ThirdPartyNotices.txt](Stream14/ThirdPartyNotices.txt) and accessible in the app.

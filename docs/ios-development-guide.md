@@ -8,9 +8,9 @@ already been performed.
 ## Current stage: local MVP first
 
 The immediate milestone will record rear-camera video and microphone audio with a
-configurable transparent webpage overlay. The current app only displays its setup
-screen; recording and web overlays are not implemented. HaishinKit is the first capture/composition/encoding/
-recording experiment. The owner reviews the result before broadcasting is added.
+configurable transparent webpage overlay. The current app is a local camera/audio/
+synthetic-alpha recording experiment using HaishinKit 2.3.0 core. WebKit and reliable
+production recording are later stages; see [the feasibility report](feasibility.md). The owner reviews the result before broadcasting is added.
 Codex writes and integrates the app; the owner supplies account/device access and
 reviews behavior. Learning Swift or manually writing app code is not a prerequisite.
 
@@ -118,9 +118,10 @@ inspect the diff before committing. For terminal builds, pass DEVELOPMENT_TEAM a
 a local build-setting override instead of saving it in the shared project. The
 test targets also need your team if running tests on a physical phone.
 
-This stage requests no camera/microphone permissions. Camera access and honest
-purpose strings belong to the media stage. Simulator success does not qualify a
-real camera or sustained performance.
+The original stage-1 build requested no media permissions. The stage-2 experiment
+now requests camera and microphone when you explicitly open it, with local-recording
+purpose strings. It does not request Photos access. Simulator success does not
+qualify real camera capture or sustained performance.
 
 See [Apple's developer-account guidance](https://developer.apple.com/help/account/basics/about-your-developer-account)
 for personal-team restrictions and membership capabilities.
@@ -163,7 +164,8 @@ configuration for development-only values when needed.
 ## 4. How we will build and test
 
 The root-level Stream14.xcodeproj is an ordinary SwiftUI/Swift 6 project with no
-external packages or project generator. It contains:
+project generator. Stage 2 pins HaishinKit 2.3.0 core and its Logboard runtime
+dependency. Its original stage-1 foundation contains:
 
 - Stream14/App/Stream14App.swift: application entry point.
 - Stream14/App/SetupView.swift: native scrollable setup screen.
@@ -302,12 +304,82 @@ xcrun devicectl device process launch --device "$STREAM14_DEVICE_ID" \
   com.smith3v.stream14
 ```
 
-Task 2 / issue #2 acceptance is met; PR #7 is prepared for review. Review/merge is
-separate from implementation acceptance. After it merges, begin Task 3's HaishinKit
-feasibility work with the shared-scheme build/test commands above. Apple Developer
+Task 2 / issue #2 acceptance is met and PR #7 merged on 2026-11-04. Task 3's
+HaishinKit experiment and commands are described next. Apple Developer
 Program membership/agreements, App Store Connect setup, distribution signing,
 privacy/metadata review, media implementation, and M1–M5/TestFlight qualification
 remain later work. Development signing does not establish those prerequisites.
+
+### Stage 2: local media experiment, 2026-11-04
+
+Files: `Stream14/Media/MediaExperiment.swift` orchestrates explicit permissions,
+capture, recording and interruption finalization; `SyntheticOverlay.swift` owns
+one reusable ScreenActor image layer; `ExperimentSample.swift` persists sample
+status alongside original MP4 files in backup-excluded Application Support.
+`SetupView` offers composed preview, Record/Stop, native playback, original-file
+share and bundled third-party notices. It shows inspection status, not a claim
+that the native writer has completed production qualification.
+
+Verified commands (result bundle paths must be new on a repeat):
+
+```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+xcodebuild -resolvePackageDependencies -project Stream14.xcodeproj -scheme Stream14 \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -derivedDataPath /tmp/stream14-issue3-device CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -derivedDataPath /tmp/stream14-issue3-simulator \
+  -resultBundlePath /tmp/stream14-issue3-tests-2.xcresult test
+```
+
+On 2026-11-04 the unsigned Release build passed, followed by six hosted Swift
+Testing tests and two XCTest UI tests. The tests verify configuration, idle launch,
+retention of pending/failed sample manifests and media, non-accumulating image
+layers, full-canvas alpha and image changes, portrait/maximum-text landscape
+layout, and full accessibility audits. An initial portrait audit exposed a button
+contrast issue; adaptive primary tint fixed it. Inspected test screenshots.
+
+Signed Debug build, signature verification, development installation and devicectl
+launch succeeded on the connected iPhone 13 mini, iOS 27.2. The owner allowed the
+normal macOS Keychain prompt. Launch used devicectl without attaching a debugger;
+upstream documents a possible recorder freeze under an Xcode debugger. These are
+local development results, not TestFlight delivery. The owner then recorded a
+53.53-second sample and confirmed correct playback/sound and changing counter.
+Private file inspection confirms H.264 1920×1080, AAC stereo 44.1 kHz, actual
+alpha composition and layer replacement. M1 is demonstrated; no M2–M5 or measured
+acoustic-sync/performance claim follows. See the feasibility report for frame timing.
+Keep personal team selection
+local or use a `DEVELOPMENT_TEAM` command-line override for signing.
+
+Device procedure: open **Open camera experiment**, allow camera/microphone access,
+hold the rear camera upright in landscape, then **Record sample**. Capture a visible
+clap and about 15–20 seconds of a moving scene. Confirm the synthetic alpha panel
+and changing counter in preview. Stop and **Play sample**; check sound/clap alignment,
+orientation, visible alpha and counter changes with no app controls. **Export original
+sample** shares the MP4 without conversion. Close/reopen the camera and repeat;
+backgrounding/interruption must stop it without automatically resuming. This is
+stage-2 evidence, not the stage-5 full failure/performance matrix.
+
+Private logs/results: `/tmp/stream14-issue3-release-build-2.log`,
+`/tmp/stream14-issue3-tests-2.xcresult`, `/tmp/stream14-issue3-signed-build-2.log`,
+`/tmp/stream14-issue3-install.log`. Device/signing details and raw recordings stay
+outside Git and public PRs. Copy sample evidence privately with the device
+identifier selected locally as in the physical setup section:
+
+```sh
+xcrun devicectl device copy from --device "$STREAM14_DEVICE_ID" \
+  --source 'Library/Application Support/MediaExperiments' \
+  --domain-type appDataContainer --domain-identifier com.smith3v.stream14 \
+  --destination /tmp/stream14-issue3-private-samples
+```
+
+See [feasibility.md](feasibility.md) for actual sample
+measurements, exact API boundary, remaining writer limitations and next-agent handoff.
 
 Use unit tests for state/API behavior, UI tests and manual inspection for screens,
 and physical phones for real video/audio, transparent browser capture, network
