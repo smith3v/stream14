@@ -13,7 +13,9 @@ That is the full-product goal; the immediate MVP records locally without streami
 **The app now contains a local media experiment.** HaishinKit 2.3.0 core owns
 rear-camera/microphone capture, composition and native MP4 writing. Open the camera
 experiment explicitly, record a synthetic transparent counter over camera video,
-then play/export the original sample. Browser overlays and broadcasting remain
+then play/export the original sample. The **Overlay** toolbar button opens a
+separate transparent WebKit renderer test with source/render freshness and manual
+hiding. Browser-to-camera recording integration and broadcasting remain
 unimplemented. See [feasibility evidence and limitations](docs/feasibility.md);
 a 53.53-second physical 13 mini sample and owner playback review demonstrate the
 local M1 path. This experiment does not qualify M2–M5 or TestFlight delivery.
@@ -69,10 +71,10 @@ the app. Google Sign-In and transport products remain deferred.
 ## Next milestone
 
 [Issue #2](https://github.com/smith3v/stream14/issues/2) / [PR #7](https://github.com/smith3v/stream14/pull/7)
-is merged. [Issue #3](https://github.com/smith3v/stream14/issues/3) verifies the local
-media path; its [report](docs/feasibility.md) records actual evidence and remaining
-gates. After its review/merge and acceptance, issue #4 validates public-API WebKit
-snapshots and outage handling. Issue #5 integrates reliable recording; issue #6
+is merged. [Issue #3](https://github.com/smith3v/stream14/issues/3) / PR #8 is also
+merged; its [report](docs/feasibility.md) records local-media evidence. Issue #4
+implements the separately tested public-API WebKit snapshots and outage handling.
+Issue #5 integrates reliable web-overlay recording; issue #6
 qualifies and delivers the MVP through TestFlight. The implementation plan ends at
 that review. Keep recording independent of future transport; broadcasting follows
 MVP owner review.

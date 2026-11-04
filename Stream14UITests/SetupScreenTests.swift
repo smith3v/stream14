@@ -18,11 +18,43 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertEqual(app.staticTexts["setupStatus"].label, "Local media experiment")
         XCTAssertEqual(
             app.staticTexts["setupExplanation"].label,
-            "Tests camera, microphone and a synthetic transparent layer. Web overlays are not available yet. Keep the phone in landscape with the rear camera upright."
+            "Tests camera, microphone and a synthetic transparent layer. Web overlays have a separate renderer test. Keep the phone in landscape with the rear camera upright."
         )
         XCTAssertFalse(app.buttons["recordSample"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "Setup portrait"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        try app.performAccessibilityAudit()
+    }
+
+    func testOverlaySettingsAreAccessibleWithoutStartingCapture() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launch()
+        let button = app.buttons["testWebOverlay"]
+        for _ in 0..<8 {
+            if button.isHittable { break }
+            app.swipeUp()
+        }
+        let before = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        before.name = "Before opening overlay test"
+        before.lifetime = .keepAlways
+        add(before)
+        XCTAssertTrue(button.isHittable)
+        button.tap()
+        XCTAssertTrue(app.navigationBars["Overlay"].waitForExistence(timeout: 5))
+        let field = app.textFields["overlayURL"]
+        for _ in 0..<5 {
+            if field.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(field.isHittable)
+        XCTAssertTrue(app.buttons["Load overlay"].exists)
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenshot.name = "Overlay settings landscape accessibility XXXL"
         screenshot.lifetime = .keepAlways
         add(screenshot)
         try app.performAccessibilityAudit()

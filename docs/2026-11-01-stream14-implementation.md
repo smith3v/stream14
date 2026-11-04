@@ -133,7 +133,7 @@ API/encoder path, package footprint and measured evidence; see the
 [focused plan](2026-11-04-haishinkit-implementation.md) for reproducible checks.
 Native recorder final-status observability and queue/drop instrumentation are
 explicit reliability handoffs for Task 5. [PR #8](https://github.com/smith3v/stream14/pull/8)
-awaits review/merge; Task 4 begins after it merges. No M2–M5 acceptance is claimed.
+merged on 2026-11-04; Task 4 builds on that merged prerequisite. No M2–M5 acceptance is claimed.
 
 **Prompt:**
 Inspect a current stable HaishinKit release's public APIs and examples for camera
@@ -151,6 +151,16 @@ present the concrete limitation before adopting a custom pipeline. Review and co
 or an upstream example alone does not prove local composition/recording suitability.
 
 ## Task 4: Prove transparent WebKit capture before broad UI work
+
+**Status (2026-11-04): Renderer implemented; physical WebKit evidence recorded.**
+The fixture/reference have a 1920×1080 CSS viewport and alpha raster, with
+source/render freshness, retained output through reloads and manual-hide precedence.
+See the [focused plan](2026-11-04-web-overlay-implementation.md) and
+[feasibility record](feasibility.md#stage-3-webkit-renderer-issue-4-2026-11-04).
+Independent review found no remaining material issues; native build/tests and
+physical fixture/reference checks passed (see the development guide). Memory/thermal behavior
+under camera load is not established; Task 5/#6 must qualify combined media and
+M3–M5. WebKit output is not yet integrated into saved camera recordings.
 
 **Prompt:**
 Add Stream14/Media/WebOverlayRenderer.swift with the smallest public-API WKWebView
