@@ -101,6 +101,15 @@ the intended files. No app implementation is claimed.
 
 ## Task 2: Create and run the smallest native app
 
+**Status (2026-11-04): Implemented and device-verified in issue #2.** The project,
+minimal native screen, shared scheme, and native test targets are implemented.
+The signed app runs on the physical 13 mini; the owner confirmed readable setup
+content in portrait and both landscape orientations. [PR #7](https://github.com/smith3v/stream14/pull/7)
+awaits review/merge. See the [device verification record](ios-development-guide.md#physical-setup-verification-2026-11-04)
+and [focused implementation plan](2026-11-02-native-app-implementation.md).
+Do not begin Task 3 until this stage's prerequisite PR merges unless the owner
+explicitly coordinates stacked work.
+
 **Prompt:**
 Guide the owner through installing full Xcode and configuring a development team
 without requesting secrets. Confirm the bundle identifier before registration.
