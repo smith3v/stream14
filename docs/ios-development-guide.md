@@ -9,8 +9,8 @@ already been performed.
 
 The immediate milestone will record rear-camera video and microphone audio with a
 configurable transparent webpage overlay. The current app is a local camera/audio/
-synthetic-alpha recording experiment using HaishinKit 2.3.0 core. WebKit and reliable
-production recording are later stages; see [the feasibility report](feasibility.md). The owner reviews the result before broadcasting is added.
+synthetic-alpha recording experiment using HaishinKit 2.3.0 core. A separate WebKit renderer test is now available; reliable
+production recording and web-to-recording integration remain later stages; see [the feasibility report](feasibility.md). The owner reviews the result before broadcasting is added.
 Codex writes and integrates the app; the owner supplies account/device access and
 reviews behavior. Learning Swift or manually writing app code is not a prerequisite.
 
@@ -501,3 +501,105 @@ result rather than leaving an intended action described as completed.
 - Full Xcode was not installed and app compilation/device tests were not run.
   Apple team enrollment, bundle registration, Google OAuth setup, media feasibility,
   and TestFlight distribution remain future work.
+
+### Stage 3 WebKit renderer verification: 2026-11-04
+
+Open the app's **Overlay** toolbar button. Enter an HTTPS URL (or choose **Use
+reference URL**, then **Load overlay**). Nothing is fetched merely by opening the
+sheet. The attached browser is the source surface; the separate retained raster
+below is the renderer output and obeys automatic/manual hiding. This screen does
+not start camera/microphone capture. URL values remain in memory and are not
+included in diagnostics. Existing camera recordings still use the synthetic layer.
+
+`WebOverlayRenderer.image`, `.visible`, `.healthy` and `.health` on MainActor are
+the next-stage handoff. Copy an immutable CGImage to the retained ScreenActor image
+object and honor visibility for the common camera preview/writer composition.
+Keep the source WKWebView attached/rendered; never replace it with a hidden or
+detached view based only on Simulator evidence. See [feasibility](feasibility.md#stage-3-webkit-renderer-issue-4-2026-11-04)
+for source freshness versus in-place backend health, readiness, retry and ownership.
+
+From the repository root, using installed Xcode 27.2 / SDK 27.2:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath /tmp/stream14-issue4-device \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /tmp/stream14-issue4-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution \
+  -resultBundlePath /tmp/stream14-issue4-simulator-new.xcresult test
+```
+
+The live reference test is disabled by default to keep normal tests deterministic.
+To run it and the fixture/health tests on the physical phone, first list devices
+with `xcrun devicectl list devices`, unlock the testing 13 mini, then use local
+shell variables DEVICE_ID and APPLE_TEAM with your own device/team values. They
+are not repository configuration and must not contain passwords or signing keys:
+
+```sh
+TEST_RUNNER_STREAM14_REFERENCE_TEST=1 xcodebuild \
+  -project Stream14.xcodeproj -scheme Stream14 \
+  -destination "platform=iOS,id=$DEVICE_ID" \
+  -derivedDataPath /tmp/stream14-issue4-physical \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -allowProvisioningUpdates \
+  -resultBundlePath /tmp/stream14-issue4-device-new.xcresult \
+  -only-testing:Stream14Tests DEVELOPMENT_TEAM="$APPLE_TEAM" test
+```
+
+The environment prefix is Xcode's mechanism for passing a variable into its test
+runner. The external test must appear as **passed**, not skipped, for reference
+page evidence. Automatic provisioning may register development test-target profiles
+using your configured Xcode account. A locked phone causes Xcode to wait for unlock.
+On another Mac, resolve the committed package pins first or omit the local package
+cache option; do not replace the pins with a moving branch.
+
+Physical renderer tests passed on iPhone 13 mini / iOS 27.2, signed Debug 0.1/build 1:
+12 hosted Swift Testing tests including the opt-in reference test. Final fixture capture
+elapsed latency was 445.5ms (an earlier passing run measured 43.7ms); sampled
+reference latency was 22.6–44.4ms. These variable startup/elapsed costs are not CPU
+time or evidence that camera performance remains unaffected. The reference
+remained visible through eight source confirmations over a 15-second observation.
+Both PNGs were copied from **only** the test-generated temporary files and visually
+inspected: 1920×1080, desktop layout, alpha, logo/text edges and opposite-corner
+placement. Final device logs/result bundle: `/tmp/stream14-issue4-physical-complete.log`
+and `/tmp/stream14-issue4-physical-complete.xcresult`. PNG evidence:
+`/tmp/stream14-issue4-evidence/final-fixture.png` and `final-reference.png`. These are generated
+renderer fixtures, not camera recordings. Keep raw device/signing logs private.
+
+Earlier validation exposed an initial watchdog race (fixed before the passing
+physical run) and an unsupported WKNavigation constructor in a regression test
+(replaced by a real, superseded public load handle). Those failed result bundles
+are retained locally and are not counted as passing evidence. The first physical
+attempt also required enabling normal automatic development provisioning for the
+test targets; no signing setting/profile is committed.
+
+The independent review found superseded navigation failures invalidating the new
+load, missing initial-failure status, and missing explicit download rejection.
+All were corrected and independently re-reviewed. A further review caught the
+risk of WebKit detachment inside reusable Form rows; the source now lives in a
+stable visible sibling above the Form. Final focused review found no remaining
+material issues.
+
+Final unsigned iOS Release build passed (`/tmp/stream14-issue4-release-verified.log`).
+Final Simulator suite passed 14 tests with one intentional opt-in reference skip:
+11 deterministic hosted tests plus three UI tests, all UI accessibility audits
+passed (portrait and maximum Dynamic Type landscape, including overlay settings).
+Results: `/tmp/stream14-issue4-complete.log` and
+`/tmp/stream14-issue4-complete.xcresult`; inspected exported screenshots under
+`/tmp/stream14-issue4-complete-attachments/`. Earlier UI tests exposed an unreachable
+entry/field, a textual toolbar Dynamic Type issue, and controls overlapping a
+translucent inset. Standard toolbar entry, source-first Form, labeled 44pt close
+icon, and stable opaque sibling hosting resolve them. One later device rerun
+stalled awaiting WebKit snapshots; the final clean run passes with the test harness
+disabling/restoring automatic display sleep. This does not prove why that earlier
+run stalled. The production sheet stops when backgrounded and requires explicit Load.
+Markdown local links/fences and `git diff --check` passed. No personal signing
+settings, raw device diagnostics or camera recordings are committed. M2 saved
+web-overlay composition, camera performance under WebKit load, two-minute combined
+media outage, M3–M5 and TestFlight remain stage #5/#6 work. A short renderer test
+does not qualify a long recording or broadcasting.

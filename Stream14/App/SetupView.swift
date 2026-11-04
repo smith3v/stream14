@@ -6,6 +6,7 @@ struct SetupView: View {
     @State private var experiment = MediaExperiment()
     @State private var showingPlayback = false
     @State private var showingNotices = false
+    @State private var showingOverlayTest = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -15,7 +16,7 @@ struct SetupView: View {
                     Text("Local media experiment")
                         .font(.headline)
                         .accessibilityIdentifier("setupStatus")
-                    Text("Tests camera, microphone and a synthetic transparent layer. Web overlays are not available yet. Keep the phone in landscape with the rear camera upright.")
+                    Text("Tests camera, microphone and a synthetic transparent layer. Web overlays have a separate renderer test. Keep the phone in landscape with the rear camera upright.")
                         .accessibilityIdentifier("setupExplanation")
                     if experiment.phase != .idle {
                         ExperimentPreview(view: experiment.preview)
@@ -67,9 +68,15 @@ struct SetupView: View {
                 .controlSize(.large)
             }
             .navigationTitle("stream14")
+            .toolbar {
+                Button("Overlay", systemImage: "globe") { showingOverlayTest = true }
+                    .accessibilityLabel("Test web overlay")
+                    .accessibilityIdentifier("testWebOverlay")
+            }
             .sheet(isPresented: $showingPlayback) {
                 if let url = experiment.sampleURL { SamplePlayback(url: url) }
             }
+            .sheet(isPresented: $showingOverlayTest) { OverlayTestView() }
             .sheet(isPresented: $showingNotices) {
                 NavigationStack {
                     ScrollView { Text(notices).font(.footnote).padding() }

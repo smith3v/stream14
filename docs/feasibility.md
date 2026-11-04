@@ -146,3 +146,89 @@ and measured bounded backpressure before claiming M3/M4. Retain existing sample 
 and pending markers; this experiment does not add automatic deletion/recovery UI. WebKit,
 outage behavior, production recording UI/recovery, 30-minute qualification and
 TestFlight are later issues. No gate is passed merely from upstream source inspection.
+
+## Stage 3: WebKit renderer (issue #4, 2026-11-04)
+
+`WebOverlayRenderer` owns a nonpersistent, noninteractive WKWebView. The separate
+“Overlay” sheet attaches it to `OverlayViewport`, an ordinary visible
+UIView in the active window. A stable sibling above the Form keeps it
+attached while reusable settings/output rows scroll. Its bounds remain 1920×1080 points, pageZoom 1; a
+presentation transform fits the source into the phone's available width without
+changing layout. The fixture and reference meta viewport consequently report
+1920×1080 CSS pixels, avoiding the reference's <=720px mobile breakpoint. The
+source view is neither hidden nor alpha-zero/detached. This arrangement is a
+renderer test, not a camera-preview overlay. Future integration must retain a
+supported attachment and remeasure its resource cost with capture running.
+
+Use public `takeSnapshot(configuration:)` with the full canvas rect, requesting
+1920/displayScale snapshot points (1920 raster pixels). A defensive CoreGraphics
+normalization runs in a detached utility task and produces an immutable RGBA
+1920×1080 CGImage. Clear, nonopaque WKWebView/scroll backing preserves the page's
+alpha; native code does not rewrite arbitrary page backgrounds. No native message
+handlers, TLS exceptions, persistent browsing store, credentials, URL logs, Photos
+access or new dependencies are added. Main-frame navigation requires HTTPS;
+popups, downloads/attachment responses, camera/microphone, geolocation, motion
+and JavaScript dialogs are denied/dismissed. Browser media requires interaction,
+which the test source view does not permit.
+
+A single serialized task captures at about 1 Hz; a busy guard also spans cancelled
+sessions so a pending callback cannot overlap a new snapshot. Navigation identity
+and generation checks reject superseded load/failure/snapshot callbacks. The
+main actor owns WebKit/UI only; raster normalization runs off it. A separate
+100ms monotonic ticker enforces visibility even if a WebKit request stalls. Do not
+interpret the 100ms polling granularity as sub-frame deadline accuracy.
+
+### Source freshness, resource readiness and recovery
+
+Confirmed successful HTML response + document commit updates source time; capture
+only updates render time. Main-frame requests use reloadIgnoringLocalCacheData
+and no-cache/no-store headers. The inspected reference reloads every two seconds,
+so its normal reloads provide source confirmations. There is no additional periodic
+reload on top of those. Only if a page has not refreshed for eight seconds does
+the renderer request a document refresh itself, before the ten-second grace ends.
+Failed loads/timeouts retry after two seconds; each navigation has a six-second
+watchdog. This is actual document access, not a separate network-reachability probe.
+It does **not** establish that a page's independent in-place scoring API is healthy:
+that requires a verified source-specific heartbeat in the overlay project. No
+service-side modification or deployment was made. A service returning stale HTML
+successfully is likewise outside what transport access can detect.
+
+After commit, a laid-out DOM is required; fonts/images get a bounded 750ms wait,
+then capture may proceed with missing resources. Navigation invalidates in-flight
+capture results and preserves the last good image. Native code does not promote
+the blank provisional loading surface. Ten seconds without either source access
+or usable rendering makes output invisible. Expiry clears recovery eligibility;
+source access plus a fresh usable raster is required to recover. Cached snapshots
+never renew source time. Manual hiding takes precedence through failures/recovery.
+Stopping/backgrounding hides output and requires explicit Load to resume.
+
+### Renderer handoff and evidence
+
+On MainActor read `image: CGImage?`, `visible: Bool`, `healthy: Bool`, `status`, and
+`health` (separate monotonic source/render times). `image` remains immutable and
+retained through failures; consumers **must** apply visibility, including automatic
+expiry and manual hiding. Stage #5 should transfer the CGImage to the existing
+ScreenActor ImageScreenObject and clear/hide its ciImage when invisible. Keep that
+same composed mixer output for preview/recording. The existing synthetic recorder
+is intentionally unchanged in this stage. This is no claim of M2 or M3–M5 success.
+
+Physical iPhone 13 mini / iOS 27.2, Xcode 27.2, signed Debug 0.1/build 1 via hosted
+native tests: the fixture has the full CSS viewport and normalized canvas, zero
+alpha at the untouched corner, half alpha in the panel, opaque graphics, and the
+red anchor at the bottom-right video corner. Its score changes while capturing.
+The reference raster shows desktop layout, both logos, text and translucent panels.
+A 15-second reference observation sampled output every 500ms through eight source
+commits/reloads without lost output or white/transparent replacements. This is a
+short renderer check, not a long-run camera/drop/backpressure qualification.
+Exact final test results, measured costs and local evidence paths are recorded in
+the development guide below. Capture costs include JavaScript, snapshot, scheduling
+and normalization; they are elapsed latency, not a main-thread CPU-time measurement.
+
+Tests use supplied times to cover before/at/after ten seconds, independent rendering
+expiry, brief failure, unchanged healthy content, cached snapshots, recovery and
+manual-hide precedence. Attached renderer tests exercise viewport, raster alpha,
+corner placement, score updates, superseded navigation failure and stop visibility.
+The live reference test is opt-in; normal deterministic tests do not depend on it.
+
+Memory/thermal behavior under concurrent camera capture is not measured here;
+qualify it during stage #5/#6 rather than inferring it from raster latency.

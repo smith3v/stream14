@@ -56,6 +56,23 @@ or composition. WebKit, full failure handling, 30-minute performance and TestFli
 remain later gates. The physical 13 mini sample and owner playback confirmation
 now demonstrate M1; see the report for the measured file properties and limitations.
 
+### Stage 3: attached WebKit renderer (issue #4)
+
+A separate native overlay test sheet now accepts an in-memory HTTPS URL and
+renders an attached, noninteractive WKWebView at 1920×1080 CSS pixels. Public
+snapshots at about 1 Hz become immutable 1920×1080 alpha images; independent
+monotonic source/render freshness drives the ten-second hide/recovery rule and
+manual-hide precedence. Reference-page reloads establish source access; pages
+without their own reload get a document refresh after eight seconds. Document
+access does not prove health of an independent in-place scoring backend; a
+source-specific verified heartbeat is required for that claim. See the
+[renderer decision and device evidence](feasibility.md#stage-3-webkit-renderer-issue-4-2026-11-04).
+No service deployment, capture pipeline, encoding or dependency change is needed.
+Stage #5 must apply the image **and visibility** on the existing ScreenActor image
+layer; the current camera experiment still records the synthetic counter. M2–M5
+remain pending. The test sheet uses a visible scaled source view; supported WebKit
+attachment and cost must be retained/requalified during media integration.
+
 ### MVP scope and interface
 
 - Rear wide-angle camera, microphone, landscape 1920×1080 at 30 fps on iPhone 13 mini
