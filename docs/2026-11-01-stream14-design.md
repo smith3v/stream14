@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Created: 2026-11-01. Updated: 2026-11-02. Status: native setup app; media not implemented.
+Created: 2026-11-01. Updated: 2026-11-04. Status: native setup app; media not implemented.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -30,9 +30,11 @@ or extra architecture are introduced. The UI uses main-actor isolation; there is
 no capture or processing work yet.
 
 Xcode 27.2 and the iOS 27.2 SDK are installed. See the
-[development guide](ios-development-guide.md#stage-1-verification-record-2026-11-02)
-for exact build/test evidence and pending physical-device setup. No M1–M5 media
-gate or TestFlight delivery is established by this foundation.
+[development guide](ios-development-guide.md#physical-setup-verification-2026-11-04)
+for exact build/test and physical-device evidence. On 2026-11-04 the signed setup
+app launched on the physical iPhone 13 mini with iOS 27.2; the owner confirmed
+readability in portrait and both landscape orientations. No M1–M5 media gate or
+TestFlight delivery is established by this foundation.
 
 ### MVP scope and interface
 

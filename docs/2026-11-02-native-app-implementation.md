@@ -12,6 +12,11 @@ iOS 27.0 deployment target.
 
 ---
 
+**Result (2026-11-04):** App setup implemented; signed installation/launch on the
+physical 13 mini and readable portrait/both-landscape layouts confirmed. Build/test
+results and evidence are recorded in the [development guide](ios-development-guide.md#physical-setup-verification-2026-11-04).
+PR #7 is prepared for review; merging and later media work are separate.
+
 ### Task 1: Establish the project
 
 **Prompt:**

@@ -1,6 +1,6 @@
 # iOS development and TestFlight: a first-project guide
 
-Checked: 2026-11-02. Read the [application specification](2026-11-01-stream14-design.md)
+Checked: 2026-11-04. Read the [application specification](2026-11-01-stream14-design.md)
 for product behavior and the [implementation plan](2026-11-01-stream14-implementation.md)
 for development order. This guide explains setup; it does not mean those steps have
 already been performed.
@@ -92,8 +92,9 @@ Use Xcode's normal signing diagnostics rather than downloading random provisioni
 profiles or disabling security settings.
 
 The owner confirmed `com.smith3v.stream14` on 2026-11-02; it is now the app target's
-bundle identifier. Confirmation does not establish Apple registration or signing.
-Keep the identifier identical in Xcode, Apple identifiers,
+bundle identifier. Automatic development signing and a physical install were
+verified on 2026-11-04; TestFlight provisioning remains separate. Keep the identifier
+identical in Xcode, Apple identifiers,
 App Store Connect, and Google's iOS OAuth client. Avoid renaming it casually after
 distribution begins.
 
@@ -104,6 +105,13 @@ connected 13 mini in the toolbar and press Run (▶ or ⌘R). Success is the str
 screen with “App setup ready” and an explanation that recording is not available.
 Check it in portrait and both landscape orientations. If signing fails, use the
 displayed Xcode diagnostic; share only error text, never credentials or keys.
+
+macOS may ask for your Mac login password to let codesign use the Apple Development
+key. Handle that prompt in the system dialog. On the testing phone, the first
+installation also required Settings → General → VPN & Device Management → Developer
+App → the owner's development account → Trust. This was verified on 2026-11-04;
+trust only the expected developer entry for your own build. Keep the phone connected
+and unlocked through installation and launch.
 
 Selecting a team may edit project.pbxproj. Keep personal signing changes local;
 inspect the diff before committing. For terminal builds, pass DEVELOPMENT_TEAM as
@@ -226,10 +234,9 @@ bundles are local artifacts, not repository content.
 - Physical iPhone 13 mini: connected by USB, iOS 27.2, Developer Mode enabled.
   Automatic signing registered the device and generated a development profile.
   The owner ended the session and disconnected the phone before signing completed;
-  the waiting build/codesign operation was canceled. Installation/launch remains
-  pending. Next session, reconnect/unlock the phone, run Stream14 from Xcode, and
-  handle normal Keychain signing prompts in macOS. Do not count this stage's
-  physical-device acceptance as complete. Local signed-build log:
+  the waiting build/codesign operation was canceled. Installation/launch was
+  pending at the end of that session. It was completed on 2026-11-04 in the physical
+  setup verification below. Local canceled-build log:
   /tmp/stream14-issue2-signed-device-build.log (contains private signing/device
   details; never attach it publicly). No media gate or TestFlight upload passed.
 - No packages, camera/microphone permission strings, networking, entitlements,
@@ -239,12 +246,68 @@ bundles are local artifacts, not repository content.
   scheme, app, tests, docs, and ignore rules; no material code/project/privacy
   findings. Focused review caught the unresolved contrast audit; explicit
   Color.primary fixed it and all four native tests then passed. Physical launch
-  remains the open acceptance item, not an agreed waiver.
+  was still pending at that review and was completed in the resumed check below.
 - Next stage, after this stage's PR merges and device acceptance: Task 3,
   HaishinKit feasibility. Re-run the scheme/destination and build/test commands above
   before selecting a stable package; do not implement recording APIs from guesses.
   TestFlight still needs owner membership/agreements, app registration, signing,
   metadata/privacy review, and the later local-media implementation and M1–M5 checks.
+
+### Physical setup verification: 2026-11-04
+
+- Same application source as commit `436c041` (subsequent commits only update docs).
+  Xcode 27.2 (27B52), iOS SDK 27.2, Swift 6 language mode. Signed Debug app
+  com.smith3v.stream14, version 0.1, build 1; deployment target iOS 27.0.
+- Physical iPhone 13 mini, iOS 27.2 (24B119), connected by USB with Developer Mode
+  enabled. Signed build passed after the owner allowed the normal macOS Keychain
+  prompt. `codesign --verify --deep --strict` passed. The embedded profile is
+  unexpired, includes this phone, and matches the signed app's application identifier.
+- `devicectl device install app` succeeded. The first launch was refused until the
+  owner trusted their development certificate on the phone. The owner then saw
+  “App setup ready”; a repeated `devicectl device process launch` returned success
+  and a running process identifier. The owner confirmed readable setup content in
+  portrait, landscape left, and landscape right, with scrolling available if needed.
+- No application code changed during the resumed check. The four Simulator tests
+  and unsigned Release results above remain evidence for this same code; native
+  tests were not rerun on the physical phone. The device run establishes native
+  setup only: no camera, microphone, overlay, recording, performance, or TestFlight
+  capability has been tested or added.
+- Private local evidence: /tmp/stream14-issue2-20261104-signed-build.log,
+  /tmp/stream14-issue2-20261104-install.json, and
+  /tmp/stream14-issue2-20261104-launch-trusted.json. These include signing/device
+  details and remain outside Git and public PR attachments. The owner's local
+  DEVELOPMENT_TEAM selections are preserved only in the working project.
+- Independent closeout review inspected the full branch diff, actual files, and
+  private build/install/launch evidence, and independently checked the signature
+  and profile. No material findings. No new app tests were needed for this
+  documentation-only closeout.
+
+The verified physical commands below use the connected phone's identifier, selected
+privately from `xcrun devicectl list devices`; set STREAM14_DEVICE_ID locally to that
+value. No real device identifier or team value belongs in this guide. The build
+uses the owner's local Xcode signing selection described above.
+
+```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+xcrun devicectl list devices
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Debug \
+  -destination "id=$STREAM14_DEVICE_ID" \
+  -derivedDataPath /tmp/stream14-issue2-signed \
+  -allowProvisioningUpdates -allowProvisioningDeviceRegistration build
+codesign --verify --deep --strict \
+  /tmp/stream14-issue2-signed/Build/Products/Debug-iphoneos/Stream14.app
+xcrun devicectl device install app --device "$STREAM14_DEVICE_ID" \
+  /tmp/stream14-issue2-signed/Build/Products/Debug-iphoneos/Stream14.app
+xcrun devicectl device process launch --device "$STREAM14_DEVICE_ID" \
+  com.smith3v.stream14
+```
+
+Task 2 / issue #2 acceptance is met; PR #7 is prepared for review. Review/merge is
+separate from implementation acceptance. After it merges, begin Task 3's HaishinKit
+feasibility work with the shared-scheme build/test commands above. Apple Developer
+Program membership/agreements, App Store Connect setup, distribution signing,
+privacy/metadata review, media implementation, and M1–M5/TestFlight qualification
+remain later work. Development signing does not establish those prerequisites.
 
 Use unit tests for state/API behavior, UI tests and manual inspection for screens,
 and physical phones for real video/audio, transparent browser capture, network

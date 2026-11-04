@@ -13,7 +13,8 @@ That is the full-product goal; the immediate MVP records locally without streami
 **The native app currently shows a setup screen only.** Stream14.xcodeproj contains
 the iPhone app, shared Stream14 scheme, Swift Testing configuration checks, and
 XCUITest launch/accessibility checks. Recording, browser overlays, and broadcasting
-are not implemented. Device acceptance and media feasibility remain separate checks.
+are not implemented. The setup screen was verified on the physical iPhone 13 mini
+with iOS 27.2 on 2026-11-04; media feasibility remains unproven.
 
 ## Current MVP
 
@@ -64,8 +65,9 @@ must be verified during the MVP. Google Sign-In and RTMP products remain deferre
 
 ## Next milestone
 
-Finish [issue #2's](https://github.com/smith3v/stream14/issues/2) physical iPhone setup
-check using the [development guide](docs/ios-development-guide.md#4-how-we-will-build-and-test).
+The native foundation for [issue #2](https://github.com/smith3v/stream14/issues/2)
+is implemented and verified on the testing phone. [PR #7](https://github.com/smith3v/stream14/pull/7)
+is awaiting review/merge; see the [device evidence](docs/ios-development-guide.md#physical-setup-verification-2026-11-04).
 After that PR merges, evaluate HaishinKit's stable APIs and implement the local-recording
 MVP on the iPhone 13 mini. Verify the saved composition, audio, overlay updates, and
 a smooth 30-minute run using the TestFlight build, then review the evidence before adding broadcasting.
