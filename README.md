@@ -10,15 +10,15 @@ video backup. The overlay URL is configurable. The first release targets landsca
 1080p30 events lasting one to three hours and distribution through TestFlight.
 That is the full-product goal; the immediate MVP records locally without streaming.
 
-**The app now contains a local media experiment.** HaishinKit 2.3.0 core owns
-rear-camera/microphone capture, composition and native MP4 writing. Open the camera
-experiment explicitly, record a synthetic transparent counter over camera video,
-then play/export the original sample. The **Overlay** toolbar button opens a
-separate transparent WebKit renderer test with source/render freshness and manual
-hiding. Browser-to-camera recording integration and broadcasting remain
-unimplemented. See [feasibility evidence and limitations](docs/feasibility.md);
-a 53.53-second physical 13 mini sample and owner playback review demonstrate the
-local M1 path. This experiment does not qualify M2–M5 or TestFlight delivery.
+**The app now integrates local web-overlay recording.** HaishinKit 2.3.0 core owns
+one rear-camera/microphone session and the common preview/file composition.
+Open **Overlay** to save/load an HTTPS URL securely on this device, then **Open
+camera** and **Record**. Record/Stop, elapsed time, manual overlay hiding, playback
+and original-file export use native controls outside the video. A small writer
+adapter confirms AVAssetWriter completion and retains failed/pending files.
+No media upload/ingestion connection or export transcode is used. See the
+[feasibility evidence and outstanding qualification](docs/feasibility.md).
+The integrated development build does not establish M3–M5 or TestFlight delivery.
 
 ## Current MVP
 
@@ -72,9 +72,8 @@ the app. Google Sign-In and transport products remain deferred.
 
 [Issue #2](https://github.com/smith3v/stream14/issues/2) / [PR #7](https://github.com/smith3v/stream14/pull/7)
 is merged. [Issue #3](https://github.com/smith3v/stream14/issues/3) / PR #8 is also
-merged; its [report](docs/feasibility.md) records local-media evidence. Issue #4
-implements the separately tested public-API WebKit snapshots and outage handling.
-Issue #5 integrates reliable web-overlay recording; issue #6
+merged; its [report](docs/feasibility.md) records local-media evidence. Issue #4 / [PR #9](https://github.com/smith3v/stream14/pull/9) is merged.
+Issue #5 integrates web-overlay recording with explicit writer failure handling; issue #6
 qualifies and delivers the MVP through TestFlight. The implementation plan ends at
 that review. Keep recording independent of future transport; broadcasting follows
 MVP owner review.

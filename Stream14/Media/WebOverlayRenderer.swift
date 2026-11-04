@@ -12,10 +12,11 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
     private(set) var image: CGImage?
     private(set) var visible = false
     private(set) var healthy = false
-    private(set) var status = "Enter an HTTPS overlay URL. URLs are kept only for this test session."
+    private(set) var status = "Overlay disabled · load an HTTPS URL to enable it."
     private(set) var captureMilliseconds: Double = 0
     private(set) var viewport = "No render yet"
     private(set) var health = OverlayHealth()
+    var captureInterval: TimeInterval = 1
     private var loop: Task<Void, Never>?
     private var healthLoop: Task<Void, Never>?
     private var generation = 0
@@ -48,6 +49,9 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = false
+        // The source uses video pixels, never the hosting phone's safe-area insets.
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.insetsLayoutMarginsFromSafeArea = false
         webView.isUserInteractionEnabled = false
         webView.isAccessibilityElement = false
         webView.accessibilityElementsHidden = true
@@ -146,7 +150,7 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
                 guard let self, self.active else { return }
                 let start = self.now
                 await self.capture()
-                let delay = max(0.05, 1 - (self.now - start))
+                let delay = max(0.05, self.captureInterval - (self.now - start))
                 do { try await Task.sleep(for: .seconds(delay)) } catch { return }
             }
         }

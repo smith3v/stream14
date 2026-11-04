@@ -182,6 +182,14 @@ fails, document the failure and resolve it before depending on this approach els
 
 ## Task 5: Integrate the local-recording MVP
 
+**Status (2026-11-04): Implementation and device qualification in progress.**
+MediaSession, attached web-raster composition, the concrete final-status-aware
+writer, secure URL settings and native recording/playback/export are implemented.
+See the [focused plan](2026-11-04-local-recorder-implementation.md) and
+[stage 4 evidence](feasibility.md#stage-4-integrated-local-recording-issue-5).
+Do not treat implementation or a short development sample as completed M2/M4,
+preliminary M3 or TestFlight qualification.
+
 **Prompt:**
 Implement a small HaishinKit integration in Stream14/Media/MediaSession.swift,
 using the actual API path established in Task 3. Supply WebOverlayRenderer's latest

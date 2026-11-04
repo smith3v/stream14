@@ -5,21 +5,27 @@ import UIKit
 
 @MainActor
 @Observable
-final class MediaExperiment {
+final class MediaSession {
     enum Phase { case idle, preparing, preview, starting, recording, stopping }
     private(set) var phase: Phase = .idle
-    private(set) var message = "Camera and microphone start only when you open the experiment."
+    private(set) var message = "Open the camera to prepare a local recording."
     private(set) var sampleURL: URL?
-    private(set) var layerCounter = 0
     private(set) var startedAt: Date?
     let mixer = MediaMixer(captureSessionMode: .single)
     let preview = MTHKView(frame: .zero)
 
-    private var recorder: StreamRecorder?
-    private var overlay: SyntheticOverlay?
+    let renderer = WebOverlayRenderer()
+    private(set) var savedSamples: [ExperimentSample] = []
+    private(set) var urlMessage = ""
+    var overlayURL = ""
+    private var recorder: LocalRecorder?
+    private var overlay: WebOverlayLayer?
     private var overlayTask: Task<Void, Never>?
     private var errorTask: Task<Void, Never>?
     private var interruptionTask: Task<Void, Never>?
+    private(set) var thermalWarning = ""
+    private var thermalTask: Task<Void, Never>?
+    private var runtimeErrorTask: Task<Void, Never>?
     private var audioInterruptionTask: Task<Void, Never>?
     private var sample: ExperimentSample?
     private var directory: URL?
@@ -27,11 +33,37 @@ final class MediaExperiment {
     private var stopRequested = false
     private var failure = false
     private var interrupted = false
-    private var previousIdleTimerDisabled = false
+    private var previousIdleTimerDisabled: Bool?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     var canRecord: Bool { phase == .preview && !busy }
+    var recordingMetrics: LocalRecorder.Metrics? { recorder?.metrics }
     var isRecording: Bool { phase == .recording }
+
+    init() {
+        do { overlayURL = try OverlayURLStore.read() }
+        catch { urlMessage = "Could not read the saved URL. Enter it again while the device is unlocked." }
+        refreshSamples()
+    }
+
+    func refreshSamples() {
+        do { savedSamples = try ExperimentSample.loadAll() }
+        catch { message = "Saved recordings could not be listed. Files are retained." }
+    }
+
+    func loadOverlay() {
+        guard phase == .idle || phase == .preview else { return }
+        let value = overlayURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard value.isEmpty || WebOverlayRenderer.validatedURL(value) != nil else {
+            urlMessage = "Enter an HTTPS URL without username or password."; return
+        }
+        do {
+            try OverlayURLStore.save(value)
+            overlayURL = value
+            urlMessage = value.isEmpty ? "Overlay disabled" : "URL saved securely on this device"
+            if value.isEmpty { renderer.stop() } else { renderer.load(value) }
+        } catch { urlMessage = "Could not save the overlay URL. Try again while the device is unlocked." }
+    }
 
     func openPreview() async {
         guard phase == .idle, !busy else { return }
@@ -49,7 +81,7 @@ final class MediaExperiment {
             guard !stopRequested else { phase = .idle; return }
             let audioSession = AVAudioSession.sharedInstance()
             try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker])
-            try audioSession.setActive(true)
+            guard try await audioSession.activate(options: []) else { throw ExperimentError.devices }
             await mixer.setSessionPreset(.hd1920x1080)
             await mixer.setVideoOrientation(.landscapeRight)
             await mixer.setVideoMixerSettings(VideoMixerSettings(mode: .offscreen))
@@ -59,11 +91,10 @@ final class MediaExperiment {
             try await mixer.attachVideo(camera) { unit in try unit.setFrameRate(30) }
             try await mixer.attachAudio(microphone)
             try await mixer.setFrameRate(30)
-            let overlay: SyntheticOverlay
+            let overlay: WebOverlayLayer
             if let existing = self.overlay { overlay = existing }
-            else { overlay = await SyntheticOverlay(); self.overlay = overlay }
+            else { overlay = await WebOverlayLayer(); self.overlay = overlay }
             try await overlay.install(on: mixer)
-            layerCounter = 0
             preview.videoGravity = .resizeAspect
             await mixer.addOutput(preview)
             // Register interruption streams before capture begins.
@@ -80,19 +111,31 @@ final class MediaExperiment {
                     self?.requestStop(interruption: true)
                 }
             }
+            runtimeErrorTask = Task { [weak self] in
+                for await _ in NotificationCenter.default.notifications(named: AVCaptureSession.runtimeErrorNotification) {
+                    guard !Task.isCancelled else { return }
+                    self?.failure = true
+                    self?.message = "Camera capture failed. The recording is retained; reopen the camera to retry."
+                    self?.requestStop()
+                }
+            }
+            updateThermalState()
+            thermalTask = Task { [weak self] in
+                for await _ in NotificationCenter.default.notifications(named: ProcessInfo.thermalStateDidChangeNotification) {
+                    guard !Task.isCancelled else { return }
+                    self?.updateThermalState()
+                }
+            }
             await mixer.startRunning()
             overlayTask = Task { [weak self] in
-                var counter = 0
                 while !Task.isCancelled {
-                    do { try await Task.sleep(for: .seconds(1)) } catch { return }
-                    guard !Task.isCancelled else { return }
-                    counter += 1
-                    await overlay.update(counter: counter)
-                    self?.layerCounter = counter
+                    guard let self else { return }
+                    await overlay.update(image: self.renderer.image, visible: self.renderer.visible)
+                    do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
                 }
             }
             phase = .preview
-            message = "Preview ready · fixed landscape canvas. Record a clap and watch the alpha counter change."
+            message = "Preview ready · landscape 1080p30. Check the picture and overlay before recording."
         } catch {
             failure = true
             message = (error as? ExperimentError)?.description ?? "Camera/audio setup failed. Close and reopen the experiment to retry."
@@ -100,7 +143,21 @@ final class MediaExperiment {
         }
     }
 
-    func record() async {
+    private func updateThermalState() {
+        switch ProcessInfo.processInfo.thermalState {
+        case .serious:
+            thermalWarning = "Device is hot. Overlay captures are reduced to protect camera recording."
+            renderer.captureInterval = 3
+        case .critical:
+            thermalWarning = "Device is too hot. Recording is stopping; let it cool before restarting."
+            requestStop(interruption: true)
+        default:
+            thermalWarning = ""
+            renderer.captureInterval = 1
+        }
+    }
+
+    func record(injection: LocalRecorder.Injection = .none) async {
         guard canRecord else { return }
         busy = true
         phase = .starting
@@ -113,33 +170,23 @@ final class MediaExperiment {
             let sample = ExperimentSample()
             self.sample = sample
             try sample.save(in: directory)
-            let recorder = StreamRecorder()
+            let recorder = LocalRecorder()
             self.recorder = recorder
-            let errors = await recorder.error
             errorTask = Task { [weak self] in
-                for await _ in errors {
+                for await _ in recorder.failures {
                     guard !Task.isCancelled else { return }
                     self?.failure = true
-                    self?.message = "Recording failed. The sample is retained as incomplete."
+                    self?.message = "Recording failed. The file is retained as incomplete."
                     self?.requestStop()
                 }
             }
-            try await recorder.startRecording(directory.appendingPathComponent(sample.fileName), settings: [
-                .video: [AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 1920,
-                    AVVideoHeightKey: 1080, AVVideoCompressionPropertiesKey: [
-                        AVVideoAverageBitRateKey: 14_000_000,
-                        AVVideoMaxKeyFrameIntervalDurationKey: 2,
-                        AVVideoExpectedSourceFrameRateKey: 30
-                    ]],
-                .audio: [AVFormatIDKey: Int(kAudioFormatMPEG4AAC), AVSampleRateKey: 44_100,
-                    AVNumberOfChannelsKey: 2, AVEncoderBitRateKey: 128_000]
-            ])
+            try recorder.start(directory.appendingPathComponent(sample.fileName), injection: injection)
             await mixer.addOutput(recorder)
             previousIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
             UIApplication.shared.isIdleTimerDisabled = true
             startedAt = Date()
             phase = .recording
-            message = "Recording locally · synthetic alpha layer only."
+            message = "Recording locally · camera, microphone and composed overlay."
         } catch {
             failure = true
             message = "Recording could not start. Any partial sample is retained."
@@ -149,6 +196,7 @@ final class MediaExperiment {
 
     /// Background/interruption wins over in-flight setup/start without racing writer state.
     func requestStop(interruption: Bool = false) {
+        if interruption { renderer.stop() }
         guard phase != .idle || busy else { return }
         interrupted = interrupted || interruption
         if UIApplication.shared.applicationState == .background && backgroundTask == .invalid {
@@ -184,8 +232,11 @@ final class MediaExperiment {
         guard let recorder else { return }
         await mixer.removeOutput(recorder)
         do {
-            let url = try await recorder.stopRecording()
-            // Structural validation is useful evidence, not proof of successful writer completion.
+            let metrics = try await recorder.finish()
+            sample?.metrics = metrics
+            guard let sample, let directory else { throw ExperimentError.emptySample }
+            let url = directory.appendingPathComponent(sample.fileName)
+            // Final writer success plus structural validation is required for completion.
             let asset = AVURLAsset(url: url)
             let videos = try await asset.loadTracks(withMediaType: .video)
             let audios = try await asset.loadTracks(withMediaType: .audio)
@@ -195,14 +246,15 @@ final class MediaExperiment {
             }
             sampleURL = url
             if !failure {
-                message = interrupted ? "Interrupted sample retained. Inspect playback before using it." :
-                    "Sample retained for inspection. Check camera, audio, alpha and counter updates."
+                message = interrupted ? "Interrupted recording finalized. Inspect playback before using it." :
+                    "Recording saved. Play or export the original file."
             }
         } catch {
             failure = true
             message = "Sample did not finish or has missing audio/video. Partial files are retained."
         }
-        sample?.status = failure ? .failed : (interrupted ? .interrupted : .needsInspection)
+        sample?.metrics = recorder.metrics
+        sample?.status = failure ? .failed : (interrupted ? .interrupted : .completed)
         if let sample, let directory {
             do { try sample.save(in: directory) } catch {
                 failure = true
@@ -212,8 +264,10 @@ final class MediaExperiment {
         errorTask?.cancel()
         errorTask = nil
         self.recorder = nil
+        refreshSamples()
         startedAt = nil
-        UIApplication.shared.isIdleTimerDisabled = previousIdleTimerDisabled
+        if let previousIdleTimerDisabled { UIApplication.shared.isIdleTimerDisabled = previousIdleTimerDisabled }
+        previousIdleTimerDisabled = nil
     }
 
     private func close() async {
@@ -226,19 +280,24 @@ final class MediaExperiment {
         overlayTask = nil
         interruptionTask?.cancel()
         interruptionTask = nil
+        thermalTask?.cancel()
+        thermalTask = nil
+        runtimeErrorTask?.cancel()
+        runtimeErrorTask = nil
         audioInterruptionTask?.cancel()
         audioInterruptionTask = nil
+        renderer.stop()
         await mixer.stopRunning()
         await mixer.removeOutput(preview)
         try? await mixer.attachVideo(nil)
         try? await mixer.attachAudio(nil)
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        _ = try? await AVAudioSession.sharedInstance().deactivate(options: [.notifyOthersOnDeactivation])
         if backgroundTask != .invalid {
             UIApplication.shared.endBackgroundTask(backgroundTask)
             backgroundTask = .invalid
         }
         phase = .idle
-        if interrupted && !failure { message = "Capture stopped after an interruption. Open the experiment explicitly to resume." }
+        if interrupted && !failure { message = "Capture stopped after an interruption. Open the camera explicitly to resume." }
         finishOperation()
     }
 

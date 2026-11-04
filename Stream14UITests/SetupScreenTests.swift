@@ -15,10 +15,10 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["stream14"].waitForExistence(timeout: 5))
         XCTAssertLessThan(app.frame.width, app.frame.height)
         XCTAssertTrue(app.staticTexts["setupStatus"].exists)
-        XCTAssertEqual(app.staticTexts["setupStatus"].label, "Local media experiment")
+        XCTAssertEqual(app.staticTexts["setupStatus"].label, "Local recording")
         XCTAssertEqual(
             app.staticTexts["setupExplanation"].label,
-            "Tests camera, microphone and a synthetic transparent layer. Web overlays have a separate renderer test. Keep the phone in landscape with the rear camera upright."
+            "Record camera, microphone and a transparent web overlay. Keep the phone in landscape with the rear camera upright."
         )
         XCTAssertFalse(app.buttons["recordSample"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

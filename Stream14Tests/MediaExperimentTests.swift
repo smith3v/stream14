@@ -26,7 +26,7 @@ struct MediaExperimentTests {
     }
 
     @Test @MainActor func launchDoesNotCaptureOrRecord() {
-        let experiment = MediaExperiment()
+        let experiment = MediaSession()
         #expect(experiment.phase == .idle)
         #expect(!experiment.canRecord)
         #expect(experiment.sampleURL == nil)

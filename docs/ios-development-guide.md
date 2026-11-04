@@ -603,3 +603,105 @@ settings, raw device diagnostics or camera recordings are committed. M2 saved
 web-overlay composition, camera performance under WebKit load, two-minute combined
 media outage, M3–M5 and TestFlight remain stage #5/#6 work. A short renderer test
 does not qualify a long recording or broadcasting.
+
+### Stage 4 integrated recording checks
+
+Use **Overlay**, enter an HTTPS URL (or **Use reference URL**), then **Load overlay**
+and close the settings sheet. Loading stores the complete URL in device-only
+Keychain and begins network access. An empty URL explicitly disables it. Opening
+the app does not fetch a saved URL. **Open camera** requests camera/microphone
+permission and starts the composed preview. Keep the phone landscape with the rear
+camera upright, then **Record** / **Stop recording**. The timer/status are native
+UI, excluded from output. Manual hiding changes both preview and file composition.
+A small source-browser strip remains visibly attached; it is not the camera preview.
+
+Finished/retained samples are listed with actual status. Play them using the system
+player, or **Export original file** through Files/share. No conversion or Photos
+access is involved. Files stay in backup-excluded Application Support; deleting the
+app removes them. Export important footage first. Pending/failed files may not be
+playable; they are retained and never automatically marked complete. Backgrounding,
+camera/audio interruption and critical heat stop capture and require an explicit
+restart. Serious heat shows a warning and reduces overlay snapshots to three seconds.
+
+The following use the installed Xcode 27.2 and shared Stream14 scheme. Keep package
+pins unchanged. Commands use the existing local cache; another Mac should resolve
+the committed packages first. Use a new result-bundle path on every rerun.
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath /tmp/stream14-issue5-device \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /tmp/stream14-issue5-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution \
+  -resultBundlePath /tmp/stream14-issue5-tests-new.xcresult test
+```
+
+Hosted generated-media tests write real H.264/AAC files from synthetic raw buffers,
+repeat start/stop and check actual audio/video tracks. They inject initialization,
+append and finalization failures; a missing directory additionally exercises a
+real writer-start filesystem error. Empty sessions never complete. Temporary test
+fixtures are removed; user recordings are never deleted. Default tests skip live
+service and camera recording checks.
+
+For the authorized physical recording check, use the local `DEVICE_ID` and
+`APPLE_TEAM` values as in stage 3. Leave the phone unlocked, landscape and aimed
+at a scene suitable for a private recording. The opt-in test records camera/mic;
+do not enable it on an unprepared device. Select only this suite, so another
+renderer test cannot replace its key UIWindow. During runs of at least 180 seconds, the test blocks WebKit document requests
+using a public WKContentRuleList from second 30 through 150, then removes the rule
+and reloads. This injects a two-minute source-request failure without changing
+radios or certificate validation. It checks hidden output before recovery and
+restored output afterwards. This is distinct from a real device-network outage.
+After the long reference sample, it records a changing HTML fixture, repeats recording and injects a capture-runtime
+error to check failed status/explicit restart. This is an automated development
+harness; also exercise the actual app's controls and real interruptions manually.
+
+```sh
+TEST_RUNNER_STREAM14_DEVICE_RECORDING=1 \
+TEST_RUNNER_STREAM14_RECORDING_SECONDS=1800 xcodebuild \
+  -project Stream14.xcodeproj -scheme Stream14 \
+  -destination "platform=iOS,id=$DEVICE_ID" \
+  -derivedDataPath /tmp/stream14-issue5-physical \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -allowProvisioningUpdates \
+  -only-testing:Stream14Tests/MediaDeviceTests \
+  -resultBundlePath /tmp/stream14-issue5-physical-new.xcresult \
+  DEVELOPMENT_TEAM="$APPLE_TEAM" test
+```
+
+`TEST_RUNNER_` passes values into the test runner. Seconds defaults to 30 if omitted.
+The test writes UUID MP4/JSON plus observations every ten seconds under the app's
+`Library/Application Support/MediaExperiments`. Observations contain writer metrics,
+resident-memory bytes, thermal enum, visibility and elapsed snapshot time, never
+URLs. Record a clap with hands visible at start/end to measure actual A/V alignment.
+Do not substitute track timestamp endpoints for physical sync. During a real outage
+check, disable both phone Wi-Fi and cellular for two minutes without backgrounding
+capture, then restore them. Check last-good grace, automatic hide/recovery and local
+A/V continuity in the original saved file. Also exercise brief outage, healthy
+unchanged score and manual hiding through recovery. Avoid filling the phone to
+check write failure; use the explicit injected fault tests.
+
+Copy only finalized test files with `xcrun devicectl device copy from`,
+`--domain-type appDataContainer --domain-identifier com.smith3v.stream14`, and source
+`Library/Application Support/MediaExperiments/<UUID>.mp4` (and its JSON/observations).
+Use a private directory outside Git. Do not copy a whole directory while a large
+recording is being written: its changing content can break the transfer. Leave
+files on the phone; no removal flag is needed. Inspect original codec/dimensions,
+sorted frame timestamps, marker sync, alpha/edges, changing fixture, outage and
+absence of app controls with native AVFoundation tools/player.
+
+Current private short-sample evidence: `/tmp/stream14-issue5-short-original.mp4`,
+`/tmp/stream14-issue5-short-inspection.txt` and sibling extracted PNGs. Passing
+isolated device result: `/tmp/stream14-issue5-physical-insets.xcresult` / `.log`.
+Passing final hosted result: `/tmp/stream14-issue5-hosted-final.xcresult` / `.log`.
+Passing default Simulator result: `/tmp/stream14-issue5-tests4.xcresult` / `.log`.
+Earlier failures are retained locally and not counted as passing: initial test
+fixture redeclaration, lazy writer-start expectation, textual close-button Dynamic
+Type audit, missing test-team configuration and landscape safe-area viewport.
+See [feasibility](feasibility.md#stage-4-integrated-local-recording-issue-5) for
+remaining acceptance and measurement limits. TestFlight remains issue #6.
