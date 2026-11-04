@@ -85,7 +85,9 @@ is pending. Exact commands and private evidence paths are in the
 Independent reviewer inspected the actual full implementation, project/dependency
 path, tests and source claims. It found accumulated layers on reopen and an incorrect
 pixel-format description; both are fixed and re-reviewed, with a non-accumulation
-regression test. Final evidence/documentation review follows before PR handoff.
+regression test. Final independent review inspected the full committed diff and canonical docs, confirmed
+the native test/build/install evidence and independently verified the signed app.
+No material findings remain; physical sample/M1 acceptance stays pending.
 
 For issue #4, run the commands above, explicitly open capture, and replace the
 synthetic generator through the retained ScreenActor image object. Supply one
