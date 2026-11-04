@@ -78,7 +78,9 @@ attachment and cost must be retained/requalified during media integration.
 MediaSession now owns the single HaishinKit capture/composition session and a
 concrete LocalRecorder output. The attached WebOverlayRenderer remains on
 MainActor; immutable full-canvas images and visibility transfer to one
-ScreenActor-owned WebOverlayLayer. Automatic safe-area content adjustment is
+ScreenActor-owned WebOverlayLayer. The layer sets HaishinKit `isVisible` explicitly:
+clearing its source image alone leaves the library's last cached raster drawn.
+A regression observes actual composed NV12 output through hide/recovery. Automatic safe-area content adjustment is
 disabled in the browser: a physical landscape test otherwise exposed a 1870-pixel
 CSS viewport inside its 1920-pixel view. The common composed output feeds MTHKView
 and the local writer, so native controls and the browser source surface are not

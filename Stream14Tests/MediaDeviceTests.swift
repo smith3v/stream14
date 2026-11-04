@@ -12,10 +12,54 @@ struct MediaDeviceTests {
     struct Observation: Codable {
         let elapsed: Int
         let residentBytes: UInt64
+        let physicalFootprintBytes: UInt64
         let thermal: Int
         let metrics: LocalRecorder.Metrics?
         let overlayVisible: Bool
         let overlayCaptureMilliseconds: Double
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["STREAM14_DEVICE_FAILURES"] == "1"))
+    @MainActor func deviceWriterFailuresAndInterruption() async throws {
+        let session = MediaSession()
+        let previousIdle = UIApplication.shared.isIdleTimerDisabled
+        defer { session.requestStop() }
+        for injection in [LocalRecorder.Injection.initialization, .append, .finalization] {
+            await session.openPreview()
+            try #require(session.canRecord)
+            await session.record(injection: injection)
+            if injection == .finalization {
+                try await Task.sleep(for: .seconds(2))
+                await session.stopRecording()
+                session.requestStop()
+            }
+            for _ in 0..<150 {
+                if session.phase == .idle { break }
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            #expect(session.phase == .idle)
+            #expect(session.savedSamples.first?.status == .failed)
+            #expect(UIApplication.shared.isIdleTimerDisabled == previousIdle)
+            #expect(!session.canRecord)
+        }
+        // Interrupt an established new recording; do not infer ordering from Task.yield.
+        let previousIDs = Set(session.savedSamples.map(\.id))
+        await session.openPreview()
+        try #require(session.canRecord)
+        await session.record()
+        try #require(session.isRecording)
+        try await Task.sleep(for: .seconds(2))
+        session.requestStop(interruption: true)
+        for _ in 0..<150 {
+            if session.phase == .idle { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        #expect(session.phase == .idle)
+        #expect(!session.isRecording)
+        let interrupted = try #require(session.savedSamples.first)
+        #expect(!previousIDs.contains(interrupted.id))
+        #expect(interrupted.status == .interrupted)
+        #expect(UIApplication.shared.isIdleTimerDisabled == previousIdle)
     }
 
     @Test(.enabled(if: ProcessInfo.processInfo.environment["STREAM14_DEVICE_RECORDING"] == "1"))
@@ -79,7 +123,15 @@ struct MediaDeviceTests {
                         task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
                     }
                 }
+                var vm = task_vm_info_data_t()
+                var vmCount = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+                let vmResult = withUnsafeMutablePointer(to: &vm) { pointer in
+                    pointer.withMemoryRebound(to: integer_t.self, capacity: Int(vmCount)) {
+                        task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &vmCount)
+                    }
+                }
                 observations.append(Observation(elapsed: second, residentBytes: result == KERN_SUCCESS ? info.resident_size : 0,
+                    physicalFootprintBytes: vmResult == KERN_SUCCESS ? vm.phys_footprint : 0,
                     thermal: ProcessInfo.processInfo.thermalState.rawValue, metrics: session.recordingMetrics,
                     overlayVisible: session.renderer.visible,
                     overlayCaptureMilliseconds: session.renderer.captureMilliseconds))

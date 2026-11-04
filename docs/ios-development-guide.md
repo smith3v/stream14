@@ -705,3 +705,95 @@ fixture redeclaration, lazy writer-start expectation, textual close-button Dynam
 Type audit, missing test-team configuration and landscape safe-area viewport.
 See [feasibility](feasibility.md#stage-4-integrated-local-recording-issue-5) for
 remaining acceptance and measurement limits. TestFlight remains issue #6.
+
+Additional opt-in failure checks (use fresh result paths and the same local signing
+variables; these create private short camera/microphone files):
+
+```sh
+TEST_RUNNER_STREAM14_DEVICE_FAILURES=1 xcodebuild \
+  -project Stream14.xcodeproj -scheme Stream14 \
+  -destination "platform=iOS,id=$DEVICE_ID" \
+  -derivedDataPath /tmp/stream14-issue5-physical \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -allowProvisioningUpdates \
+  -only-testing:Stream14Tests/MediaDeviceTests \
+  -resultBundlePath /tmp/stream14-issue5-failures-new.xcresult \
+  DEVELOPMENT_TEAM="$APPLE_TEAM" test
+```
+
+This uses the concrete recorder's internal fault injection, never actual device
+exhaustion. It checks failed durable state, explicit camera restart, restored screen
+sleep, and finalization of an established new recording after an explicit interruption. It does not simulate a
+real incoming phone call or change permissions on the physical phone.
+
+The denied-camera UI check uses only the booted test Simulator. Set `SIMULATOR_ID`
+from `xcrun simctl list devices booted`; revoke/reset is test setup, not an app API.
+Always run the reset even if the test fails:
+
+```sh
+xcrun simctl privacy "$SIMULATOR_ID" revoke camera com.smith3v.stream14
+TEST_RUNNER_STREAM14_DENIED_PERMISSION_TEST=1 xcodebuild \
+  -project Stream14.xcodeproj -scheme Stream14 \
+  -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+  -derivedDataPath /tmp/stream14-issue5-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14UITests/SetupScreenTests/testDeniedCameraShowsSettingsGuidance \
+  -resultBundlePath /tmp/stream14-issue5-denied-new.xcresult test
+xcrun simctl privacy "$SIMULATOR_ID" reset camera com.smith3v.stream14
+```
+
+Denied-permission check passed at `/tmp/stream14-issue5-denied-permission.xcresult`
+/ `.log`. Final default suite passed at `/tmp/stream14-issue5-suite-final.xcresult`
+/ `.log`: 14 active hosted tests, three active UI tests and four intentional opt-in
+skips (live reference, device recording, device fault check, denied-permission UI).
+Passing screenshots from the earlier complete suite were exported under
+`/tmp/stream14-issue5-final-ui-attachments/` and inspected for portrait, maximum
+Dynamic Type landscape and URL settings. A subsequent footer copy change clarifies
+“no media upload”; it does not claim the HTTPS overlay operates without a server.
+
+Corrected visibility and final device evidence:
+
+- `/tmp/stream14-issue5-physical-corrected.xcresult` / `.log`: all three selected
+  physical tests passed, including five-minute request outage with saved-frame
+  inspection, writer-failure/interruption handling and actual NV12 hide/restore.
+- `/tmp/stream14-issue5-fixed-suite.xcresult` / `.log`: 15 active hosted tests and
+  three UI/accessibility tests passed, with opt-in checks skipped.
+- `/tmp/stream14-issue5-fixed-release.log`: unsigned iOS Release passed after the
+  visibility correction. The playback state correction is additionally checked in
+  `/tmp/stream14-issue5-final-playback-release.log`.
+- `/tmp/stream14-issue5-device-ui-fixed.xcresult` / `.log`: actual physical
+  background/return and playback presentation passed. An earlier empty first
+  playback sheet was fixed using item-backed presentation. The test checks the
+  original export control, not a completed Files save or subjective sync.
+
+To reproduce both writer-failure and five-minute corrected media checks, set both
+`TEST_RUNNER_STREAM14_DEVICE_FAILURES=1` and
+`TEST_RUNNER_STREAM14_DEVICE_RECORDING=1`, with
+`TEST_RUNNER_STREAM14_RECORDING_SECONDS=300`, using the physical command above.
+Add `-only-testing:Stream14Tests/WebOverlayCompositionTests` to include the public
+mixer's actual rendered-pixel regression. The observation JSON now records resident
+bytes **and** charged physical footprint. Do not infer a leak solely from resident
+memory; the full report distinguishes reclamation cycles and measurement limits.
+
+The actual-app Home/playback UI test records a short private clip. Run only after
+other capture tests finish, with the phone unlocked:
+
+```sh
+TEST_RUNNER_STREAM14_DEVICE_UI=1 xcodebuild \
+  -project Stream14.xcodeproj -scheme Stream14 \
+  -destination "platform=iOS,id=$DEVICE_ID" \
+  -derivedDataPath /tmp/stream14-issue5-device-ui \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -allowProvisioningUpdates \
+  -only-testing:Stream14UITests/SetupScreenTests/testDeviceBackgroundFinalizesAndPlaybackOpens \
+  -resultBundlePath /tmp/stream14-issue5-device-ui-new.xcresult \
+  DEVELOPMENT_TEAM="$APPLE_TEAM" test
+```
+
+For owner review, load the reference or own HTTPS overlay explicitly, record a
+short clip, and make a sharp clap with both hands fully inside the center of the
+rear-camera image (not cropped at an edge). Stop, play and export the original to
+Files. Record the actual review outcome separately; neither a test runner's pass
+nor opening a player proves perceived sync or a successful Files export. Full M3
+qualification still needs the TestFlight build and fresh start/end sync markers.

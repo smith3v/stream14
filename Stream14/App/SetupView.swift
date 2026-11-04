@@ -4,8 +4,7 @@ import SwiftUI
 
 struct SetupView: View {
     @State private var experiment = MediaSession()
-    @State private var playbackURL: URL?
-    @State private var showingPlayback = false
+    @State private var playback: PlaybackSelection?
     @State private var showingNotices = false
     @State private var showingOverlayTest = false
     @Environment(\.scenePhase) private var scenePhase
@@ -65,7 +64,7 @@ struct SetupView: View {
                     if let url = experiment.sampleURL {
                         Text("Latest recording")
                             .font(.callout)
-                        Button("Play sample", systemImage: "play.circle") { playbackURL = url; showingPlayback = true }
+                        Button("Play sample", systemImage: "play.circle") { playback = PlaybackSelection(url: url) }
                         ShareLink(item: url) { Label("Export original sample", systemImage: "square.and.arrow.up") }
                         Text("Export to keep a copy outside the app. Deleting the app removes its local samples.")
                             .font(.footnote)
@@ -77,13 +76,13 @@ struct SetupView: View {
                             if let directory = try? ExperimentSample.directory() {
                                 let url = directory.appendingPathComponent(sample.fileName)
                                 if FileManager.default.fileExists(atPath: url.path) {
-                                    Button("Play saved file") { playbackURL = url; showingPlayback = true }
+                                    Button("Play saved file") { playback = PlaybackSelection(url: url) }
                                     ShareLink("Export original file", item: url)
                                 }
                             }
                         }
                     }
-                    Text("1080p30 · H.264/AAC · local MP4 · no server")
+                    Text("1080p30 · H.264/AAC · local MP4 · no media upload")
                         .font(.footnote)
                     Button("Third-party notices") { showingNotices = true }
                 }
@@ -100,8 +99,8 @@ struct SetupView: View {
                     .accessibilityIdentifier("testWebOverlay")
                     .disabled(experiment.phase != .idle && experiment.phase != .preview)
             }
-            .sheet(isPresented: $showingPlayback) {
-                if let url = playbackURL { SamplePlayback(url: url) }
+            .sheet(item: $playback) { selection in
+                SamplePlayback(url: selection.url)
             }
             .sheet(isPresented: $showingOverlayTest) {
                 NavigationStack {
@@ -148,6 +147,11 @@ private struct ExperimentPreview: UIViewRepresentable {
     let view: MTHKView
     func makeUIView(context: Context) -> MTHKView { view }
     func updateUIView(_ uiView: MTHKView, context: Context) {}
+}
+
+private struct PlaybackSelection: Identifiable {
+    let url: URL
+    var id: URL { url }
 }
 
 private struct SamplePlayback: View {
