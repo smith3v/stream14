@@ -71,8 +71,9 @@ because SPM resolved them; inspect the actual archive before making export claim
 
 Use [privacy policy](privacy.md) and [support](support.md) as public source pages
 after their branch is published; use stable main URLs once merged. The app links
-to the main-branch privacy page near the top of setup, before
-permissions or recording. **Pre-upload blocker:** merge the reviewed privacy-page
+to the main-branch privacy page in setup's footer beside Third-party notices,
+available before permissions or recording (issue #30 on integration).
+**Pre-upload blocker:** merge the reviewed privacy-page
 change with owner authorization and verify that exact in-app main URL and support
 page open signed out before uploading. Branch publication alone does not make
 the main URL live. Verify the link on the delivered build as well. Do not use
