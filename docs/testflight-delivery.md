@@ -1,20 +1,20 @@
 # TestFlight delivery record — issue #6
 
-Updated: 2026-11-05. **Release resources prepared; nothing uploaded or installed from
-TestFlight yet.** Prerequisite PRs #10 and #11 merged; issue #5 closed with explicit
+Updated: 2026-11-05. **Version 0.1 (1) uploaded; Apple processing and TestFlight installation
+are being checked.** Prerequisite PRs #10 and #11 merged; issue #5 closed with explicit
 start/end sync and TestFlight qualification carryover.
 
 ## Current state and attention boundaries
 
 | Item | Status |
 | --- | --- |
-| Source baseline | main 122c69c; focused branch codex/issue-6-testflight |
-| App identity | com.smith3v.stream14; planned first candidate 0.1 (1), subject to unused-build check |
-| Apple membership | Enrollment submitted; owner is waiting for Apple confirmation |
-| App record / distribution team | Pending active membership and App Store Connect access |
-| Release packaging | Unsigned Release archive and bundle inspection passed; not upload validation |
-| Upload / processing / review / invitations | Pending; private contacts not collected in Git |
-| TestFlight installation / expiry date | Pending; record actual upload date and Apple expiry after upload |
+| Source baseline | main 4f831e1 (merged PR #12); delivery branch codex/issue-6-testflight-delivery |
+| App identity | com.smith3v.stream14; uploaded candidate 0.1 (1) |
+| Apple membership | Active membership and Xcode paid team verified |
+| App record / distribution team | Stream14 app record created; same bundle ID and existing team |
+| Release packaging | Signed Release archive, strict signature check and Organizer validation passed |
+| Upload / processing / review / invitations | Organizer upload succeeded; processing pending; private contacts saved only in App Store Connect |
+| TestFlight installation / expiry date | Upload 2026-11-05; installation/Apple expiry evidence pending |
 | Delivered-build M1–M5 / owner review | Pending; historical development evidence is not delivered-build acceptance |
 
 The owner does not monitor this chat continuously. Requests remain pending until
@@ -72,12 +72,10 @@ because SPM resolved them; inspect the actual archive before making export claim
 Use [privacy policy](privacy.md) and [support](support.md) as public source pages
 after their branch is published; use stable main URLs once merged. The app links
 to the main-branch privacy page near the top of setup, before
-permissions or recording. **Pre-upload blocker:** merge the reviewed privacy-page
-change with owner authorization and verify that exact in-app main URL and support
-page open signed out before uploading. Branch publication alone does not make
-the main URL live. Verify the link on the delivered build as well. Do not use
-a local path
-or claim unpublished documents are already hosted. No custom legal terms have been
+permissions or recording. PR #12 was owner-merged; the exact main-branch privacy
+and support URLs both returned HTTP 200 without authentication before upload.
+Verify the in-app link on the delivered build as well. A compiled URL alone does
+not prove the remote page is readable. No custom legal terms have been
 adopted. Fill current age-rating questions accurately for configurable web content,
 and review App Privacy against actual overlay-service data flows before submitting.
 The app-level empty collected-data manifest is not a claim that overlay websites

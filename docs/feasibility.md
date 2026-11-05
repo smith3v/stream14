@@ -708,3 +708,53 @@ Use a fresh result path on repeat runs and choose the corresponding Simulator
 identifier on another Mac. The app privacy URL also appears in the final archived
 binary. Its remote main-branch publication is still a pre-upload check, not
 established by a compiled URL or a visible Link.
+
+## Signed upload progress (issue #6, 2026-11-05)
+
+The owner confirmed completed enrollment. The Apple Developer portal shows active
+Program membership, and Xcode's account exposes the paid developer team.
+App Store Connect initially contained no apps or builds. Created the Stream14
+iOS record with the existing com.smith3v.stream14 identifier, English (U.S.) and
+SKU stream14-ios. The owner had selected the display-name casing and language
+during setup; the stable bundle ID is unchanged. No public App Store release was
+submitted.
+
+The exact public main-branch privacy and support URLs returned HTTP 200 without
+authentication after the owner's merge of PR #12. Media source and package pins
+are unchanged from main 4f831e1.
+
+Signed Release archive command (local team remains uncommitted):
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /tmp/stream14-issue6-signed-release \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -allowProvisioningUpdates \
+  -archivePath /tmp/stream14-issue6-signed.xcarchive archive
+```
+
+Archive succeeded. Strict deep codesign verification passed; identity is
+com.smith3v.stream14, version 0.1, build 1, and the privacy resource matches the
+reviewed manifest. Local log: /tmp/stream14-issue6-signed-archive.log.
+Private signing material and raw account/tester information are not committed.
+
+Organizer initially rejected validation because its cached account still labeled
+the team Personal Team. The local archive's development provisioning profile was
+the older seven-day profile, not evidence of paid distribution. Downloaded profiles
+and restarted Xcode to refresh membership; Organizer then recognized the paid team.
+The unmodified archive passed all App Store Connect validation checks and Organizer
+reported successful upload of Stream14 0.1 (1). There was no signing bypass or
+manual archive mutation.
+
+Beta description, public privacy URL and no-login local-recording review notes
+were saved in TestFlight Test Information. The owner explicitly authorized use of
+existing Apple profile contact details; those remain only in Apple's designated
+fields. Created the internal Owner MVP group with automatic distribution disabled
+and added only the existing owner account. No third-party testers or public links
+were added.
+
+Apple processing, export-compliance status, build assignment, installation,
+expiry and delivered-build acceptance are being checked separately. Owner reports
+the TestFlight app is installed and ready. No new phone recording or cleanup has
+run, and no M3/M5 completion is claimed.
