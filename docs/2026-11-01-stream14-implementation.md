@@ -229,12 +229,14 @@ qualification; M3/M5 are not complete.
 
 ## Task 6: Deliver the MVP through TestFlight and review it
 
-**Status (2026-11-05): Release preparation in progress; Apple activation, upload,
-TestFlight installation and delivered-build acceptance pending.** Prerequisite
+**Status (2026-11-05): Active membership verified; signed 0.1 (1) archive passed
+Organizer validation, uploaded and finished processing. Export compliance is
+resolved and the internal owner group is Testing. Owner confirms TestFlight
+recording/export and correct picture/sound/overlay on an approximately 35-minute
+recording. Formal sync/memory/queue qualification remains unverified; see the
+recorded evidence and limits rather than treating this as an unconditional M3/M5 pass.** Prerequisite
 PRs #10/#11 are merged. See the [focused plan](2026-11-05-testflight-implementation.md)
-and [delivery record](testflight-delivery.md). The owner submitted enrollment and is waiting for Apple confirmation;
-active membership remains unverified. No longer recording is authorized
-without a separate agreed slot.
+and [delivery record](testflight-delivery.md). Apple activation and App Store Connect access are now verified. Any additional long recording needs a separate agreed slot.
 
 
 **Prompt:**
