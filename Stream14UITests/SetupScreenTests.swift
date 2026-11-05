@@ -66,7 +66,7 @@ final class SetupScreenTests: XCTestCase {
         app.activate()
         XCTAssertTrue(app.buttons["openExperiment"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["recordSample"].exists)
-        let play = app.buttons["Play sample"]
+        let play = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "playRecording-")).firstMatch
         for _ in 0..<12 {
             if play.isHittable { break }
             app.swipeUp()
@@ -76,7 +76,122 @@ final class SetupScreenTests: XCTestCase {
         let done = app.buttons["Done"]
         XCTAssertTrue(done.waitForExistence(timeout: 5))
         done.tap()
-        XCTAssertTrue(app.buttons["Export original sample"].exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "exportRecording-")).firstMatch.exists)
+    }
+
+    func testRecordingActionsAndMetadataLayouts() throws {
+        let environment = ProcessInfo.processInfo.environment
+        try XCTSkipUnless(environment["STREAM14_RECORDING_UI_FIXTURE_ID"] != nil,
+                          "Seed an isolated Simulator recording fixture first.")
+        let id = try XCTUnwrap(environment["STREAM14_RECORDING_UI_FIXTURE_ID"],
+                               "Seed an isolated Simulator recording fixture first.")
+        let missingID = try XCTUnwrap(environment["STREAM14_RECORDING_UI_MISSING_ID"])
+        let app = XCUIApplication()
+        defer { XCUIDevice.shared.orientation = .portrait }
+        for largeText in [false, true] {
+            for orientation in [UIDeviceOrientation.portrait, .landscapeLeft, .landscapeRight] {
+                app.terminate()
+                app.launchArguments = largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : []
+                XCUIDevice.shared.orientation = orientation
+                app.launch()
+                let play = app.buttons["playRecording-" + id]
+                scrollTo(play, in: app)
+                let export = app.buttons["exportRecording-" + id]
+                let delete = app.buttons["deleteRecording-" + id]
+                let metadata = app.staticTexts["recordingMetadata-" + id]
+                XCTAssertTrue(metadata.label.contains("·"))
+                XCTAssertFalse(metadata.label.contains("unavailable"))
+                for (button, verb) in [(play, "Play recording from"), (export, "Export original recording from"), (delete, "Delete recording from")] {
+                    XCTAssertTrue(button.isEnabled)
+                    XCTAssertTrue(button.isHittable)
+                    XCTAssertTrue(button.label.hasPrefix(verb))
+                    XCTAssertGreaterThanOrEqual(button.frame.width, 44)
+                    XCTAssertGreaterThanOrEqual(button.frame.height, 44)
+                }
+                // A fresh launch may still be settling the navigation title height.
+                let aligned = NSPredicate { _, _ in
+                    let frames = [play, export, delete].map(\.frame)
+                    return frames.allSatisfy { abs($0.midY - frames[0].midY) <= 1 }
+                }
+                expectation(for: aligned, evaluatedWith: app)
+                waitForExpectations(timeout: 5)
+                let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                screenshot.name = "Recordings \(orientation.rawValue) large text \(largeText)"
+                screenshot.lifetime = .keepAlways
+                add(screenshot)
+                try auditVisibleRecordingContent(in: app)
+                let missingPlay = app.buttons["playRecording-" + missingID]
+                scrollTo(missingPlay, in: app)
+                XCTAssertFalse(missingPlay.isEnabled)
+                XCTAssertFalse(app.buttons["exportRecording-" + missingID].isEnabled)
+                XCTAssertTrue(app.buttons["deleteRecording-" + missingID].isEnabled)
+                XCTAssertTrue(app.staticTexts["recordingMetadata-" + missingID].label.contains("File size unavailable"))
+                let privacy = app.descendants(matching: .any).matching(identifier: "privacyPolicy").firstMatch
+                scrollTo(privacy, in: app)
+                XCTAssertGreaterThan(privacy.frame.minY, missingPlay.frame.maxY)
+                let notices = app.buttons["thirdPartyNotices"]
+                scrollTo(notices, in: app)
+                let footer = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                footer.name = "Footer \(orientation.rawValue) large text \(largeText)"
+                footer.lifetime = .keepAlways
+                add(footer)
+                try auditVisibleRecordingContent(in: app)
+            }
+        }
+    }
+
+    func testRecordingIconPlaybackAndExport() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["STREAM14_RECORDING_UI_FIXTURE_ID"] != nil,
+                          "Seed an isolated Simulator recording fixture first.")
+        let id = try XCTUnwrap(ProcessInfo.processInfo.environment["STREAM14_RECORDING_UI_FIXTURE_ID"])
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launch()
+        let play = app.buttons["playRecording-" + id]
+        scrollTo(play, in: app)
+        play.tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        let export = app.buttons["exportRecording-" + id]
+        scrollTo(export, in: app)
+        export.tap()
+        XCTAssertTrue(app.cells["Save to Files"].waitForExistence(timeout: 5))
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenshot.name = "Original recording export"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
+    private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
+        XCTAssertTrue(element.waitForExistence(timeout: 5))
+        for _ in 0..<24 {
+            if element.isHittable { break }
+            let viewport = app.scrollViews.firstMatch.frame.intersection(app.frame)
+            let distance = max(-viewport.height / 2,
+                               min(viewport.height / 2, viewport.midY - element.frame.midY))
+            let start = app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: viewport.midX, dy: viewport.midY))
+            start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: distance)))
+        }
+        XCTAssertTrue(element.isHittable)
+    }
+
+    private func auditVisibleRecordingContent(in app: XCUIApplication) throws {
+        let viewport = app.scrollViews.firstMatch.frame
+        // The audit can adjust scrolling before invoking its issue handler. Keep
+        // the geometry of the screenshot it is about to inspect, not that later UI.
+        let textFrames = app.staticTexts.allElementsBoundByIndex.map { (label: $0.label, frame: $0.frame) }
+        try app.performAccessibilityAudit { issue in
+            // Scrolling normally clips a line at the viewport edge. The contrast
+            // audit can sample that covered text against the fixed WebKit surface.
+            // Exempt only that case; fully visible text and every control still audit.
+            guard issue.auditType == .contrast, let element = issue.element,
+                  element.elementType == .staticText else { return false }
+            let matches = textFrames.filter { $0.label == element.label }
+            guard matches.count == 1, let frame = matches.first?.frame else { return false }
+            return frame.intersects(viewport) && !viewport.contains(frame)
+                && frame.minX >= viewport.minX && frame.maxX <= viewport.maxX
+        }
     }
 
     func testDeniedCameraShowsSettingsGuidance() throws {
