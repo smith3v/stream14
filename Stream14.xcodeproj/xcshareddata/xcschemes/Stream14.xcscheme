@@ -6,6 +6,15 @@
             <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A10000000000000000000011" BuildableName="Stream14.app" BlueprintName="Stream14" ReferencedContainer="container:Stream14.xcodeproj"/>
          </BuildActionEntry>
       </BuildActionEntries>
+      <PostActions>
+         <ExecutionAction ActionType="Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent title="Brand separate UI-test app" scriptText="&quot;${PROJECT_DIR}/Tools/brand-test-runner.sh&quot;">
+               <EnvironmentBuildable>
+                  <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A10000000000000000000011" BuildableName="Stream14.app" BlueprintName="Stream14" ReferencedContainer="container:Stream14.xcodeproj"/>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PostActions>
    </BuildAction>
    <TestAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv="YES">
       <Testables>

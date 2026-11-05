@@ -327,6 +327,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_KEY_CFBundleDisplayName = stream14;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photo-video";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Show the rear camera and save it in a local test recording.";
@@ -359,6 +360,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_KEY_CFBundleDisplayName = stream14;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photo-video";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Show the rear camera and save it in a local test recording.";

@@ -232,3 +232,265 @@ The live reference test is opt-in; normal deterministic tests do not depend on i
 
 Memory/thermal behavior under concurrent camera capture is not measured here;
 qualify it during stage #5/#6 rather than inferring it from raster latency.
+
+## Stage 4: integrated local recording (issue #5)
+
+Implementation decision, 2026-11-04: retain HaishinKit 2.3.0 capture, mixed PCM
+and ScreenActor offscreen composition. MediaSession owns preview/capture;
+LocalRecorder owns only local writing. The exact shared boundary is
+`MediaMixer.addOutput(_:)` / `removeOutput(_:)`, receiving composed
+`CMSampleBuffer` video and `AVAudioPCMBuffer` with `AVAudioTime`. Track IDs `.max`
+select mixed/composed output. WebOverlayLayer applies both immutable CGImage and
+visibility, retaining no second preview composition. A 100 ms serialized handoff
+checks visibility; the layer explicitly sets HaishinKit `isVisible` because nil
+image sources do not clear its renderer cache; image identity prevents re-installing an unchanged raster.
+The WebKit source stays visibly attached outside reusable/lazy UI rows.
+
+The upstream StreamRecorder does not inspect status after `finishWriting()` and
+submits an unbounded Task for each incoming callback. The small concrete
+LocalRecorder adapter uses the same public raw-output route and AVAssetWriter
+settings, with mutex-owned synchronous writer/input access and no app sample queue.
+It checks writer creation/start, canAdd, append and final status/error. Input
+backpressure drops rather than retaining samples; counters include video/audio
+drops, delivery gaps and estimated missing 30 Hz output intervals. Failures trigger
+visible stop/finalization; partial files and pending/failed sidecars survive. Native
+writer/input objects never cross the lock during append; finish detaches them
+before awaiting finalization, so late callbacks cannot append. No unchecked
+Sendable conformance or second capture session is introduced.
+
+Video: composed uncompressed NV12 → AVAssetWriter H.264, 1920×1080, 30 fps hint,
+14 Mbps target, two-second keyframes. Audio: mixed PCM → public CoreMedia buffer
+copy → AVAssetWriter AAC, stereo 44.1 kHz/128 kbps. Host timestamps share the
+mixer's media clock; video establishes the session origin and earlier audio is
+rejected. MP4 is written directly, one necessary encode per track, with no
+post-save/export conversion. This version uses public synchronous AVAssetWriter
+input APIs matching the verified 2.3.0 route. Xcode 27 marks those APIs deprecated
+in favor of input receivers; they remain available and build. No replacement
+capture/compositor/codec pipeline or added package is needed. A future streaming
+output must own its own lifecycle on the mixer boundary. This does not prove
+sharing already encoded local samples with a transport encoder.
+
+Files remain in `Application Support/MediaExperiments` for compatibility with
+stage 2; the directory is excluded from backup. UUID MP4 + atomic JSON sidecar
+states are pending, completed, interrupted, failed and legacy needsInspection.
+Only a checked final writer + audio/video tracks + duration can complete a new
+file; pending/legacy states stay unqualified on relaunch. Files are never deleted
+automatically. A failed sidecar save leaves the prior pending marker and visible
+warning. Playback of retained incomplete files is offered for inspection and may
+fail if they are not playable. There is no crash-fragment repair guarantee.
+
+Complete URLs use Security generic-password Keychain records, with
+`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`; empty configuration deletes only
+the URL record. Values stay out of logs and diagnostics. Browser storage remains
+nonpersistent and HTTPS certificate validation is unchanged. No Photos permission,
+telemetry, transport product or capacity estimator is added.
+
+Physical landscape qualification found WebKit applying host safe-area adjustment:
+the reference loaded successfully but reported 1870×1080 CSS pixels. The renderer
+correctly refused this wrong-size output. Setting
+`scrollView.contentInsetAdjustmentBehavior = .never` and disabling safe-area layout
+margins restored 1920×1080 on the 13 mini. Do not remove the explicit viewport
+validation or qualify only portrait source hosting.
+
+Early evidence (signed Debug 0.1/build 1, physical iPhone 13 mini/iOS 27.2,
+Xcode 27.2): isolated integrated test passed after the inset fix. Original
+30.098-second H.264/AAC sample was copied privately and inspected with AVFoundation:
+1920×1080, nominal 29.669 fps, transparent/translucent reference overlay over
+actual rear camera, no controls in extracted frames. Writer counters reported
+893 video deliveries/writes, zero admission/audio drops, zero gaps ≥500 ms and
+maximum gap 340 ms. AVAssetReader confirms 893 nonempty video buffers; empty timing-marker buffers
+are excluded from cadence measurements. Video starts at PTS 88.3 ms and AAC at
+zero. Track endpoints are **not** measured lip/clap sync. Encoded AAC reader buffers group packets, so
+their ~0.5-second timestamp gaps are not evidence of audio stalls. Raw files,
+frames and raw diagnostics stay outside Git.
+
+These writer counters do not measure sensor drops or detect a compositor repeating
+stale camera frames. Estimated missing-output intervals and saved-file timestamps
+provide additional output cadence evidence; real scene motion and A/V markers are
+still needed for camera freshness/sync. Capture runtime errors conservatively stop
+and fail the recording, rather than accepting a frozen-camera output as healthy.
+Serious thermal state reduces snapshots to one every three seconds with a native
+warning; critical state stops/finalizes and requires explicit restart. Thermal
+policy does not establish sustained performance at high temperature.
+
+Current default checks: unsigned Release build passed; the complete Simulator
+suite passed (13 deterministic hosted tests and three UI tests, two opt-in skips).
+All three UI accessibility audits passed, including largest Dynamic Type landscape
+and overlay settings. A final hosted rerun adds the cadence/legacy-metadata test
+and passes 14 deterministic hosted tests, with the two opt-in skips. Generated
+media tests cover repeated real writing and injected initialization/append/final
+failures, plus a real writer-start filesystem error and empty-session rejection.
+Independent agent review inspected actual files/diff and checks: runtime-error
+handling, thermal policy, URL retention copy and a fixture compile error were fixed;
+focused re-review found no remaining material implementation issue. The final complete Simulator suite then passed 14 active hosted tests and three
+UI/accessibility tests, with four opt-in skips. Denied-camera UI was separately
+enabled after Simulator permission revocation and passed; permission was reset
+afterwards. Layout screenshots were inspected privately. Native device fault checks and the long report are detailed below, with remaining qualification limits.
+
+The first long device run ended after about 130 seconds with a remote-process
+communication failure while the owner disabled networking. The owner observed
+that the app closed/relaunched. Logs show camera/writer delivery continuing while
+source requests returned offline errors and visibility was false. The retained
+240 MB partial MP4 remains pending, not completed. No matching Stream14 crash
+report was listed on the phone; this does not establish why it terminated.
+The run does not count as successful outage recovery or 30-minute qualification.
+The restarted run uses a two-minute public WebKit document-request block, distinct
+from disabling the phone's actual networking, and leaves the debugging link alone.
+
+Validation evidence and remaining qualification are recorded below. A development run never completes M3/M5; final qualification must
+use the TestFlight-installed build. Two-minute real outage, live fixture replacement,
+manual hide/recovery, actual interruptions, playback/export owner review, permission
+denial and physical A/V offset measurements must not be inferred from a build or
+writer-only generated-media tests.
+
+
+### First 30-minute development run and corrections
+
+The signed Debug 0.1/build 1 run at commit `c72c261` completed a 1,807.308-second
+original MP4 (3,186,184,593 bytes). The test runner passed its assertions, but
+saved-frame inspection and memory review exposed qualification gaps, so this is
+**not** a complete preliminary M3/M4 pass. Private evidence is under
+`/tmp/stream14-issue5-soak-evidence/`; result bundle/log are
+`/tmp/stream14-issue5-physical-soak-injected.xcresult` / `.log`.
+
+AVAssetReader independently confirms 54,114 nonempty H.264 video buffers,
+276 estimated missing 30 Hz output intervals (0.507%), maximum sorted PTS gap
+376.7 ms, zero gaps ≥500 ms, and complete video/audio reader status. Writer
+counters agree: zero admission/video/audio drops and maximum callback gap 378.1 ms.
+The WebKit request block ran from seconds 30–150; renderer visibility was false
+by the 40-second observation and true again by 160 seconds. However, the original
+frame at 60 seconds still contains the overlay: HaishinKit
+`ScreenRendererByGPU.layout` returns on a nil image without clearing its cached
+image. Clearing `ImageScreenObject.ciImage` therefore cannot implement hiding.
+WebOverlayLayer now explicitly gates drawing with `isVisible`; a new regression
+observes actual NV12 compositor output through show → hide → restore, not merely
+model flags. This fixes automatic expiry and manual hiding at the shared preview/
+writer boundary. Corrected device output was rechecked separately below.
+
+Host resident memory sampled every ten seconds ranged 45.8–521.7 MiB, ending
+442.5 MiB. First/last five-minute means were 82.5/358.3 MiB, with a full-run linear
+trend +10.54 MiB/min. Large drops (including ~396 MiB around minute 24) mean these
+values do not prove a strictly monotonic object leak. They also do not establish
+stable qualified memory behavior. Only the host process was measured, not all
+WebKit processes or GPU allocations. Thermal states nominal/fair/serious occurred;
+the serious-state policy reduced snapshot cadence. Observed elapsed snapshot time
+was 18.2–128.9 ms (median 37.5 ms), including scheduling.
+
+The app holds bounded image references and has no application writer sample queue.
+HaishinKit's composition CIContext uses default intermediate caching and its preview
+submits per-frame MainActor tasks; those and autoreleased/Metal caches need
+profiling before assigning a cause. No mutable dependency checkout patch or custom
+capture/compositor has been adopted. Follow-up diagnostics add `TASK_VM_INFO`'s
+physical-footprint value alongside resident bytes to distinguish charged footprint
+from resident mappings. The recording qualification remains pending until memory
+and physical A/V markers are evaluated; track timestamp endpoints alone do not
+satisfy the ≤100 ms sync gate. Final M3/M5 still require TestFlight.
+
+### Corrected composition and failure/device checks
+
+After the explicit visibility correction, the physical iPhone 13 mini suite passed
+three tests: injected writer initialization/append/finalization failures plus
+established-recording interruption, the corrected five-minute integrated run, and
+the actual NV12 composition show/hide/restore regression. Failed recordings stayed
+failed, screen sleep was restored and camera restart required explicit action.
+The interruption assertion identifies a newly created sample; it does not claim
+that `Task.yield()` proves an in-flight initialization checkpoint. Results:
+`/tmp/stream14-issue5-physical-corrected.xcresult` / `.log`.
+
+The corrected original is 301.121 seconds with 9,012 video frames and 54 estimated
+missing 30 Hz intervals (0.596%), zero writer/audio admission drops, maximum sorted
+PTS gap 286.7 ms and no gaps ≥500 ms. Both native video/audio decodes completed.
+Saved frames before outage, during outage (60 s) and after recovery (170 s) were
+inspected privately: the overlay is **absent during the outage** and restored
+later, with camera frames still present and no app controls. Files/analysis are
+under `/tmp/stream14-issue5-corrected-evidence/`. This shorter run rechecks the
+changed visibility behavior; it does not replace the required thirty-minute run.
+
+The five-minute diagnostic captures `TASK_VM_INFO.phys_footprint`: 121.7–130.2 MiB,
+ending 130.0 MiB (one-minute means 124.6, 121.8, 123.2, 127.3, 127.4 MiB), all
+thermal nominal. Resident bytes rose 116.4→361.1 MiB with a 418.4 MiB peak while
+charged footprint stayed in that narrow range. This distinguishes resident
+mappings/caches from charged physical memory and is reassuring; it is not proof
+of a thirty-minute footprint plateau or of all WebKit/GPU memory. No speculative
+package patch or pipeline replacement was made. Repeat full-length footprint
+profiling in the actual TestFlight build before claiming M3.
+
+A physical XCTest UI check exercises the actual app: Record, Home/background,
+return without automatic capture restart, Play, close player and original-export
+control presence. Its first run exposed an empty first playback sheet caused by
+separate Boolean presentation and optional URL state. Playback now uses a single
+item-backed sheet with its URL. The corrected check passes at
+`/tmp/stream14-issue5-device-ui-fixed.xcresult` / `.log`. This verifies native player
+presentation and export-control availability, not a completed Files save or
+subjective audio/video playback review. Owner review/export and precise physical
+sync remain distinct evidence. The early long-run clap is near a frame edge and
+does not support a confident ≤100 ms measurement; endpoint timestamps must not be
+substituted for it.
+
+Independent review inspected each material correction and regression, including
+actual dependency cache behavior, failure/interruption tests and playback state.
+No remaining material implementation finding was identified after the fixes.
+Release and Simulator/device results are listed in the development guide. Issue #5
+stays open while the PR is prepared for review; long-run qualification remains deferred, and M3/M5 and broadcasting are not claimed complete.
+
+
+### Owner short-flow review
+
+On 2026-11-04 the owner confirmed playback and saving the original to Files worked,
+and the camera/overlay/sound looked right. The newly reviewed 5.825-second MP4 and
+completed sidecar were copied privately to `/tmp/stream14-issue5-owner-review/`;
+no media or private face/scene images are published. Native video/audio decode
+completes. The clap's 10 ms audio RMS peak bin starts at 2.64 s; timestamped
+adjacent frames place visible hand contact around 2.68–2.71 s. This suggests video
+roughly 40–70 ms later, with about one 30 fps frame of visual/contact uncertainty.
+It is useful short-sample physical sync evidence, not a precision instrument or a
+measurement of drift at both ends of the thirty-minute run. Keep full-length
+start/end sync and charged-footprint qualification pending for the next validation
+pass; do not promote M3/M5 from this short owner review.
+
+### Owner cleanup/experiment update (2026-11-05)
+
+The owner requested a way to remove old recordings because phone storage is low,
+fifteen-minute development experiments for now, and recognizable main/test icons.
+These are implemented; see the [focused plan/results](2026-11-05-recording-cleanup-implementation.md)
+and [icon assets/prompts](app-icons.md).
+
+Deletion is explicit and scoped to one selected UUID's MP4 and sidecars, with
+Cancel/Delete confirmation. Metadata is removed last for retry after partial
+failure; unexpected directories are refused. Removal is disabled during lifecycle
+operations, and an affected latest-playback URL is cleared. No automatic deletion,
+available-space polling, storage estimates or recursive directory cleanup was
+added. Exported Files copies are outside the removal scope.
+
+Development requests now cap at 900 seconds with monotonic absolute sleep deadlines,
+while short smoke checks remain. Atomic minute-by-minute diagnostic checkpoints
+reduce evidence loss after unexpected exit. The app's ordinary Record/Stop operation
+has no artificial fifteen-minute limit. Longer integrated-app qualification is
+deferred under the owner's instruction; no new long experiment should be launched
+until it is agreed. The latest previous thirty-minute attempt had already exited
+unexpectedly at about 25 minutes; it is failed evidence, with cause unconfirmed.
+This does not alter or erase the earlier completed runs and their stated limits.
+
+Deletion's three focused tests and isolated synthetic-recording UI Cancel/Delete
+check pass; the regular Simulator suite, signed build-for-testing and unsigned
+Release pass. Independent review found no remaining material issues after a test
+branding-signature syntax correction. Both updated app products were installed
+in place on the physical 13 mini; before/after recording artifact filenames and
+sizes match. No owner recording was automatically deleted and no new recording
+experiment was launched during this update. Owner can now deliberately reclaim
+space through the installed UI. TestFlight and longer whole-app qualification
+remain later work; shorter experiments are not promoted to those gates.
+
+
+### Owner acceptance and PR handoff (2026-11-05)
+
+The owner deleted old recordings in the installed app and confirmed that device
+storage was reclaimed. The owner also confirmed that the main and separate test-app
+icons are in place. This completes the manual cleanup/icon acceptance in addition
+to the earlier playback and original Files-export review.
+
+At the owner's request, PR #10 is finalized for review rather than merged.
+Development experiments remain capped at fifteen minutes; longer integrated
+whole-app qualification is deferred. The existing failed/limited long-run evidence
+is retained honestly and does not become a passed M3/M5 gate through this handoff.
+No new recording experiment or automatic deletion was performed for closeout.

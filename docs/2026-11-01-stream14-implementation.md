@@ -24,7 +24,9 @@ Milestone 1 is a usable local-recording app on the iPhone 13 mini: configurable
 overlay URL, composed preview, Record/Stop, and a playable/exportable video file
 containing camera, audio, and overlay. Qualify landscape 1080p30, approximately
 1 Hz overlay updates, the 10-second overlay outage hide/restore behavior, and a
-smooth 30-minute recording using specification gates M1–M5.
+smooth recording using specification gates M1–M5. Current development experiments
+are capped at fifteen minutes; the longer integrated qualification is deferred
+until the whole app is ready.
 The delivered app must be installed and exercised through TestFlight on the testing
 iPhone; a development build run from Xcode is not the finished milestone.
 
@@ -182,6 +184,14 @@ fails, document the failure and resolve it before depending on this approach els
 
 ## Task 5: Integrate the local-recording MVP
 
+**Status (2026-11-05): Implemented; owner playback/export, storage reclamation and icons reviewed. PR #10 is ready for review; longer whole-app qualification is deferred.**
+MediaSession, attached web-raster composition, the concrete final-status-aware
+writer, secure URL settings and native recording/playback/export are implemented.
+See the [focused plan](2026-11-04-local-recorder-implementation.md) and
+[stage 4 evidence](feasibility.md#stage-4-integrated-local-recording-issue-5).
+Do not treat implementation or a short development sample as completed M2/M4,
+preliminary M3 or TestFlight qualification.
+
 **Prompt:**
 Implement a small HaishinKit integration in Stream14/Media/MediaSession.swift,
 using the actual API path established in Task 3. Supply WebOverlayRenderer's latest
@@ -203,11 +213,11 @@ snapshots, and manual hiding), permission denial, interrupted capture,
 and injected disk-full/write errors, including initialization and finalization failure.
 Preserve usable/incomplete files and do not mark failures complete; no remaining-space
 or time estimator, capacity polling, or reserve-threshold logic is required.
-Save device samples and perform a preliminary 30-minute run. Record APIs, evidence,
+Save device samples and perform development runs capped at 15 minutes under the owner’s 2026-11-05 update. Longer whole-app qualification is deferred. Record APIs, evidence,
 and limitations in docs/feasibility.md. Final M3 qualification is on the delivered
 TestFlight build in Task 6. Review and commit.
 
-**Acceptance:** M2/M4 and preliminary M3 checks pass on the 13 mini. Files contain synchronized audio, video,
+**Acceptance:** M2/M4 and fifteen-minute development checks pass on the 13 mini, with longer integrated qualification explicitly deferred. Files contain synchronized audio, video,
 and the actual overlay, with no app UI; overlay-network failure does not stop recording.
 
 ## Task 6: Deliver the MVP through TestFlight and review it

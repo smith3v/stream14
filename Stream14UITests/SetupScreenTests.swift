@@ -6,6 +6,99 @@ final class SetupScreenTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testConfirmedDeletionRemovesOnlyItsFixture() throws {
+        let fixtureID = ProcessInfo.processInfo.environment["STREAM14_DELETE_FIXTURE_ID"]
+        try XCTSkipUnless(fixtureID != nil, "Seed an isolated Simulator recording fixture first.")
+        let app = XCUIApplication()
+        app.launch()
+        let identifier = "deleteRecording-" + fixtureID!
+        let target = app.buttons[identifier]
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        let allDeletes = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "deleteRecording-"))
+        let originalCount = allDeletes.count
+        for _ in 0..<16 {
+            if target.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(target.isHittable)
+        target.tap()
+        let cancel = app.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 3))
+        cancel.tap()
+        XCTAssertTrue(target.exists)
+        target.tap()
+        let confirm = app.buttons["Delete recording"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 3))
+        confirm.tap()
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: target)
+        waitForExpectations(timeout: 5)
+        XCTAssertEqual(allDeletes.count, originalCount - 1)
+    }
+
+    func testDeviceBackgroundFinalizesAndPlaybackOpens() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["STREAM14_DEVICE_UI"] == "1",
+                          "Opt-in private device camera recording check.")
+        let app = XCUIApplication()
+        app.launch()
+        let open = app.buttons["openExperiment"]
+        for _ in 0..<8 {
+            if open.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(open.isHittable)
+        open.tap()
+        let record = app.buttons["recordSample"]
+        XCTAssertTrue(record.waitForExistence(timeout: 10))
+        let ready = NSPredicate(format: "enabled == true")
+        expectation(for: ready, evaluatedWith: record)
+        waitForExpectations(timeout: 10)
+        for _ in 0..<8 {
+            if record.isHittable { break }
+            app.swipeUp()
+        }
+        record.tap()
+        expectation(for: NSPredicate(format: "label CONTAINS %@", "Stop recording"), evaluatedWith: record)
+        waitForExpectations(timeout: 5)
+        // Allow actual camera and audio samples before an actual Home transition.
+        sleep(3)
+        XCUIDevice.shared.press(.home)
+        sleep(3)
+        app.activate()
+        XCTAssertTrue(app.buttons["openExperiment"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["recordSample"].exists)
+        let play = app.buttons["Play sample"]
+        for _ in 0..<12 {
+            if play.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(play.isHittable)
+        play.tap()
+        let done = app.buttons["Done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        done.tap()
+        XCTAssertTrue(app.buttons["Export original sample"].exists)
+    }
+
+    func testDeniedCameraShowsSettingsGuidance() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["STREAM14_DENIED_PERMISSION_TEST"] == "1",
+                          "Run after explicitly revoking Simulator camera permission.")
+        let app = XCUIApplication()
+        app.launch()
+        let open = app.buttons["openExperiment"]
+        for _ in 0..<8 {
+            if open.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(open.isHittable)
+        open.tap()
+        let status = app.staticTexts["mediaStatus"]
+        let denied = NSPredicate(format: "label CONTAINS %@", "Enable them in Settings")
+        expectation(for: denied, evaluatedWith: status)
+        waitForExpectations(timeout: 10)
+        XCTAssertFalse(app.buttons["recordSample"].exists)
+        XCTAssertTrue(app.buttons["openExperiment"].exists)
+    }
+
     func testLaunchShowsHonestSetupStatus() throws {
         XCUIDevice.shared.orientation = .portrait
         defer { XCUIDevice.shared.orientation = .portrait }
@@ -15,10 +108,10 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["stream14"].waitForExistence(timeout: 5))
         XCTAssertLessThan(app.frame.width, app.frame.height)
         XCTAssertTrue(app.staticTexts["setupStatus"].exists)
-        XCTAssertEqual(app.staticTexts["setupStatus"].label, "Local media experiment")
+        XCTAssertEqual(app.staticTexts["setupStatus"].label, "Local recording")
         XCTAssertEqual(
             app.staticTexts["setupExplanation"].label,
-            "Tests camera, microphone and a synthetic transparent layer. Web overlays have a separate renderer test. Keep the phone in landscape with the rear camera upright."
+            "Record camera, microphone and a transparent web overlay. Keep the phone in landscape with the rear camera upright."
         )
         XCTAssertFalse(app.buttons["recordSample"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

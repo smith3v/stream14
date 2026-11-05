@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Created: 2026-11-01. Updated: 2026-11-04. Status: local media experiment; M1 demonstrated, M2–M5 pending.
+Created: 2026-11-01. Updated: 2026-11-04. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -72,6 +72,59 @@ Stage #5 must apply the image **and visibility** on the existing ScreenActor ima
 layer; the current camera experiment still records the synthetic counter. M2–M5
 remain pending. The test sheet uses a visible scaled source view; supported WebKit
 attachment and cost must be retained/requalified during media integration.
+
+### Stage 4: integrated local recording (issue #5)
+
+MediaSession now owns the single HaishinKit capture/composition session and a
+concrete LocalRecorder output. The attached WebOverlayRenderer remains on
+MainActor; immutable full-canvas images and visibility transfer to one
+ScreenActor-owned WebOverlayLayer. The layer sets HaishinKit `isVisible` explicitly:
+clearing its source image alone leaves the library's last cached raster drawn.
+A regression observes actual composed NV12 output through hide/recovery. Automatic safe-area content adjustment is
+disabled in the browser: a physical landscape test otherwise exposed a 1870-pixel
+CSS viewport inside its 1920-pixel view. The common composed output feeds MTHKView
+and the local writer, so native controls and the browser source surface are not
+part of the recorded picture.
+
+The native 2.3.0 recorder's missing final status and per-sample Task submission
+justify the small AVAssetWriter adapter on the verified MediaMixerOutput boundary.
+Mutex-owned synchronous admission has no application sample queue; real-time
+input readiness drops are counted, append failures stop recording, and completion
+requires successful final writer status plus audio/video structural validation.
+H.264/AAC encoding happens once here, after HaishinKit composition, directly to
+MP4. This adds no capture/compositor/transport abstraction or dependency. A future
+transport must independently consume the mixer output; shared encoded fan-out is
+not established by this local uncompressed-output path.
+
+UUID files/status sidecars remain under backup-excluded Application Support.
+Pending/legacy/failed files are never promoted on relaunch, and export shares the
+original file. Complete overlay URLs use device-only, when-unlocked Keychain
+storage, with explicit Load and no automatic network/camera/recording resume.
+Background/audio/capture interruptions finalize and require explicit restart;
+capture runtime errors fail visibly. Serious thermal state reduces raster cadence
+to three seconds with a warning; critical state finalizes/stops capture. Writer
+failure, missing tracks or metadata-save failure cannot claim a completed file.
+See the [stage 4 evidence](feasibility.md#stage-4-integrated-local-recording-issue-5)
+and [reproduction guide](ios-development-guide.md#stage-4-integrated-recording-checks).
+Qualification remains separate from implementation; M3/M5 require TestFlight.
+
+### Owner update: cleanup and development experiments (2026-11-05)
+
+The saved-recordings list offers a confirmed Delete action for one UUID's original
+video and metadata, including pending/failed recordings. Status metadata is removed
+last so incomplete deletion remains retryable; exported copies are kept. Deletion
+is disabled during recording/setup/finalization. There is no automatic cleanup or
+available-space estimation/polling. This supersedes the earlier experiment's
+always-retain policy only after explicit owner confirmation for a selected record.
+
+Current development experiments are capped at 15 minutes; longer integrated
+whole-app qualification is deferred until an agreed later run. Fifteen minutes
+must not be labeled a completed long-run M3/M5 gate. The app's normal Record/Stop
+operation is not given an artificial fifteen-minute recording limit.
+
+The teal camera/14 icon identifies stream14. Separately installed test apps need
+distinct icons; the UI-test runner has a purple flask/UI icon and separate name.
+Hosted unit tests run inside stream14 and do not install another application.
 
 ### MVP scope and interface
 
