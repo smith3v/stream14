@@ -37,6 +37,8 @@ final class MediaSession {
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     var canRecord: Bool { phase == .preview && !busy }
+    var canDeleteSamples: Bool { !busy && (phase == .idle || phase == .preview) }
+    var recordingID: UUID? { recorder == nil ? nil : sample?.id }
     var recordingMetrics: LocalRecorder.Metrics? { recorder?.metrics }
     var isRecording: Bool { phase == .recording }
 
@@ -49,6 +51,21 @@ final class MediaSession {
     func refreshSamples() {
         do { savedSamples = try ExperimentSample.loadAll() }
         catch { message = "Saved recordings could not be listed. Files are retained." }
+    }
+
+    func deleteSample(_ sample: ExperimentSample) {
+        guard canDeleteSamples else { return }
+        do {
+            let directory = try ExperimentSample.directory()
+            try sample.delete(in: directory)
+            if sampleURL?.lastPathComponent == sample.fileName { sampleURL = nil }
+            refreshSamples()
+            message = "Recording deleted from this iPhone. Exported copies are unchanged."
+        } catch {
+            if let sampleURL, !FileManager.default.fileExists(atPath: sampleURL.path) { self.sampleURL = nil }
+            refreshSamples()
+            message = "Could not delete all recording files. Remaining files are kept; you can retry."
+        }
     }
 
     func loadOverlay() {

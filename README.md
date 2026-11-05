@@ -14,7 +14,8 @@ That is the full-product goal; the immediate MVP records locally without streami
 one rear-camera/microphone session and the common preview/file composition.
 Open **Overlay** to save/load an HTTPS URL securely on this device, then **Open
 camera** and **Record**. Record/Stop, elapsed time, manual overlay hiding, playback
-and original-file export use native controls outside the video. A small writer
+and original-file export use native controls outside the video. Saved recordings
+can be permanently deleted individually after confirmation; exported copies are kept. A small writer
 adapter confirms AVAssetWriter completion and retains failed/pending files.
 No media upload/ingestion connection or export transcode is used. See the
 [feasibility evidence and outstanding qualification](docs/feasibility.md).
@@ -82,3 +83,7 @@ MVP owner review.
 
 [BSD 3-Clause](LICENSE), copyright 2026 Slava Kuznetsov. Full dependency notices are bundled in
 [ThirdPartyNotices.txt](Stream14/ThirdPartyNotices.txt) and accessible in the app.
+
+Development experiments are currently limited to 15 minutes. Longer whole-app
+qualification is deferred. The main app has a teal camera/14 icon; separate UI tests
+use a purple flask/UI icon. See [icons and build integration](docs/app-icons.md).

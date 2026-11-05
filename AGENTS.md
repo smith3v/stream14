@@ -58,6 +58,20 @@ the outgoing video, and keeping a local copy of that composition.
   Document codec/container and encoding ownership before claiming encode-once or
   shared encoded output. Do not force a custom pipeline solely to change containers.
 
+## Current owner development preferences (2026-11-05)
+
+- Limit development recording experiments to 15 minutes for now. Keep longer
+  integrated whole-app qualification for a later agreed run; do not repeatedly
+  launch 30-minute experiments or treat 15 minutes as proof of the deferred gate.
+- Provide deliberate per-recording deletion with confirmation so the owner can
+  reclaim space. Never automatically delete recordings, including failed/pending
+  files, as routine experiment cleanup.
+- The main app must have a recognizable icon. Every separately installed test app
+  must have its own distinct generated icon and clear display name. Hosted unit
+  tests use the main app; the separate UI-test runner uses the purple UI icon.
+  Use the shared scheme's branding action before installation; if using an already
+  built xctestrun product, verify it was branded and normally signed first.
+
 ## Keep the implementation small
 
 - Use Swift 6 and SwiftUI. Bridge to UIKit only where an Apple API requires it.

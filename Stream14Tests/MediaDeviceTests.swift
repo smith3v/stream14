@@ -60,6 +60,24 @@ struct MediaDeviceTests {
         #expect(!previousIDs.contains(interrupted.id))
         #expect(interrupted.status == .interrupted)
         #expect(UIApplication.shared.isIdleTimerDisabled == previousIdle)
+        // Exercise the iOS 27 system audio-inactive notification path separately.
+        let beforeAudio = Set(session.savedSamples.map(\.id))
+        await session.openPreview()
+        try #require(session.canRecord)
+        await session.record()
+        try #require(session.isRecording)
+        try await Task.sleep(for: .seconds(2))
+        NotificationCenter.default.post(name: AVAudioSession.didBecomeInactiveNotification,
+                                        object: AVAudioSession.sharedInstance())
+        for _ in 0..<150 {
+            if session.phase == .idle { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        #expect(session.phase == .idle)
+        let audioInterrupted = try #require(session.savedSamples.first)
+        #expect(!beforeAudio.contains(audioInterrupted.id))
+        #expect(audioInterrupted.status == .interrupted)
+        #expect(UIApplication.shared.isIdleTimerDisabled == previousIdle)
     }
 
     @Test(.enabled(if: ProcessInfo.processInfo.environment["STREAM14_DEVICE_RECORDING"] == "1"))
@@ -93,13 +111,20 @@ struct MediaDeviceTests {
         #expect(session.canRecord)
         await session.record()
         #expect(session.isRecording)
-        let seconds = Int(ProcessInfo.processInfo.environment["STREAM14_RECORDING_SECONDS"] ?? "30") ?? 30
+        let requestedSeconds = Int(ProcessInfo.processInfo.environment["STREAM14_RECORDING_SECONDS"] ?? "30") ?? 30
+        // Owner policy: development experiments stop at fifteen minutes for now.
+        let seconds = min(max(requestedSeconds, 1), 900)
+        print("Experiment duration: \(seconds)s (development cap: 900s)")
+        let recordingID = try #require(session.recordingID)
+        let observationsURL = try ExperimentSample.directory().appendingPathComponent(recordingID.uuidString + ".observations.json")
         let outageRules = try await WKContentRuleListStore.default().compileContentRuleList(
             forIdentifier: "stream14-device-outage", encodedContentRuleList:
                 #"[{"trigger":{"url-filter":".*","resource-type":["document"]},"action":{"type":"block"}}]"#)
         var observations: [Observation] = []
-        for second in 1...max(seconds, 1) {
-            try await Task.sleep(for: .seconds(1))
+        let experimentClock = ContinuousClock()
+        let experimentStart = experimentClock.now
+        for second in 1...seconds {
+            try await experimentClock.sleep(until: experimentStart.advanced(by: .seconds(second)))
             try #require(session.isRecording)
             // Reject actual WebKit document requests for two minutes, without
             // changing phone radios, certificates or the renderer's last image.
@@ -108,13 +133,22 @@ struct MediaDeviceTests {
                 session.renderer.reload()
                 print("Injected WebKit request outage started")
             }
+            if seconds >= 600, second == 140 {
+                session.renderer.setManuallyHidden(true)
+                print("Manual hide retained through source recovery")
+            }
             if seconds >= 180, second == 150 {
                 session.renderer.webView.configuration.userContentController.removeAllContentRuleLists()
                 session.renderer.reload()
                 print("Injected WebKit request outage ended")
             }
             if seconds >= 180, second == 145 { #expect(!session.renderer.visible) }
-            if seconds >= 180, second == 175 { #expect(session.renderer.visible) }
+            if seconds >= 180, second == 175 {
+                #expect(session.renderer.healthy)
+                #expect(session.renderer.visible == (seconds < 600))
+            }
+            if seconds >= 600, second == 200 { session.renderer.setManuallyHidden(false) }
+            if seconds >= 600, second == 210 { #expect(session.renderer.visible) }
             if second.isMultiple(of: 10) || second == seconds {
                 var info = mach_task_basic_info()
                 var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / MemoryLayout<integer_t>.size)
@@ -136,6 +170,9 @@ struct MediaDeviceTests {
                     overlayVisible: session.renderer.visible,
                     overlayCaptureMilliseconds: session.renderer.captureMilliseconds))
                 print("Device recording elapsed \(second)s, frames \(session.recordingMetrics?.videoWritten ?? 0), overlay \(session.renderer.visible)")
+                if second.isMultiple(of: 60) {
+                    try JSONEncoder().encode(observations).write(to: observationsURL, options: .atomic)
+                }
             }
         }
         await session.stopRecording()

@@ -108,6 +108,24 @@ See the [stage 4 evidence](feasibility.md#stage-4-integrated-local-recording-iss
 and [reproduction guide](ios-development-guide.md#stage-4-integrated-recording-checks).
 Qualification remains separate from implementation; M3/M5 require TestFlight.
 
+### Owner update: cleanup and development experiments (2026-11-05)
+
+The saved-recordings list offers a confirmed Delete action for one UUID's original
+video and metadata, including pending/failed recordings. Status metadata is removed
+last so incomplete deletion remains retryable; exported copies are kept. Deletion
+is disabled during recording/setup/finalization. There is no automatic cleanup or
+available-space estimation/polling. This supersedes the earlier experiment's
+always-retain policy only after explicit owner confirmation for a selected record.
+
+Current development experiments are capped at 15 minutes; longer integrated
+whole-app qualification is deferred until an agreed later run. Fifteen minutes
+must not be labeled a completed long-run M3/M5 gate. The app's normal Record/Stop
+operation is not given an artificial fifteen-minute recording limit.
+
+The teal camera/14 icon identifies stream14. Separately installed test apps need
+distinct icons; the UI-test runner has a purple flask/UI icon and separate name.
+Hosted unit tests run inside stream14 and do not install another application.
+
 ### MVP scope and interface
 
 - Rear wide-angle camera, microphone, landscape 1920×1080 at 30 fps on iPhone 13 mini

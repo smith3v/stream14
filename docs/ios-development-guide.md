@@ -1,16 +1,18 @@
 # iOS development and TestFlight: a first-project guide
 
-Checked: 2026-11-04. Read the [application specification](2026-11-01-stream14-design.md)
+Checked: 2026-11-05. Read the [application specification](2026-11-01-stream14-design.md)
 for product behavior and the [implementation plan](2026-11-01-stream14-implementation.md)
 for development order. This guide explains setup; it does not mean those steps have
 already been performed.
 
 ## Current stage: local MVP first
 
-The immediate milestone will record rear-camera video and microphone audio with a
-configurable transparent webpage overlay. The current app is a local camera/audio/
-synthetic-alpha recording experiment using HaishinKit 2.3.0 core. A separate WebKit renderer test is now available; reliable
-production recording and web-to-recording integration remain later stages; see [the feasibility report](feasibility.md). The owner reviews the result before broadcasting is added.
+The current native app records rear-camera video and microphone audio with an
+attached transparent webpage overlay through HaishinKit 2.3.0 core and a checked
+local MP4 writer. It provides secure URL settings, composed preview, Record/Stop,
+playback/original export and confirmed per-recording deletion. See the
+[feasibility report](feasibility.md) for actual evidence and remaining qualification.
+The owner reviews the result before broadcasting is added.
 Codex writes and integrates the app; the owner supplies account/device access and
 reviews behavior. Learning Swift or manually writing app code is not a prerequisite.
 
@@ -24,8 +26,10 @@ still need internet access. Do not grant extra accounts/permissions or configure
 ingestion key merely to make the library recorder work.
 
 The MVP needs only URL settings, composed preview, Record/Stop, status/duration,
-and basic playback/export. After a smooth 30-minute device test and failure checks,
-review M1–M5 after TestFlight delivery before expanding UI or streaming. A three-hour broadcasting
+basic playback/export and deliberate deletion. Development experiments are capped
+at 15 minutes under the owner’s 2026-11-05 instruction. Longer integrated whole-app
+qualification is deferred until the app is ready; review M1–M5 after TestFlight
+delivery before expanding into streaming. A three-hour broadcasting
 qualification remains a later milestone.
 
 ## The essential terms
@@ -663,7 +667,7 @@ harness; also exercise the actual app's controls and real interruptions manually
 
 ```sh
 TEST_RUNNER_STREAM14_DEVICE_RECORDING=1 \
-TEST_RUNNER_STREAM14_RECORDING_SECONDS=1800 xcodebuild \
+TEST_RUNNER_STREAM14_RECORDING_SECONDS=900 xcodebuild \
   -project Stream14.xcodeproj -scheme Stream14 \
   -destination "platform=iOS,id=$DEVICE_ID" \
   -derivedDataPath /tmp/stream14-issue5-physical \
@@ -806,3 +810,31 @@ reviewed clip/sidecar and timestamped clap analysis are under
 40–70 ms with one-frame visual uncertainty. This does not replace full-length
 start/end physical sync or TestFlight qualification. See feasibility for the
 remaining evidence rather than treating every issue #5 acceptance box as passed.
+
+
+### Owner update: deletion, shorter experiments and icons (2026-11-05)
+
+On the saved recording's row, choose **Delete recording**, check its date in the
+confirmation, then choose **Delete recording** or **Cancel**. Confirmed deletion
+removes only that UUID's original video, status and test-observation sidecars from
+the app. Exported copies stay in Files. The action is unavailable while recording,
+preparing or finalizing. Pending/failed files can also be deleted deliberately.
+If removal fails partway, remaining metadata stays listed so the action can be
+retried; no directory is recursively removed. No automatic cleanup has run on the
+owner's phone.
+
+Development recording experiments now hard-cap requested durations at 900 seconds.
+Thirty-second smoke checks remain available. Actual recording through the app's
+Record/Stop button has no artificial fifteen-minute limit. Longer integrated-app
+qualification is deliberately deferred, not passed by a shorter run. The latest
+old 30-minute attempt had already ended unexpectedly at about 25 minutes before
+the new instruction; it is not passing evidence and its cause is unconfirmed.
+No further long experiment should be started now. Test observations are checkpointed
+atomically every minute so an unexpected exit loses less diagnostic evidence.
+
+stream14 uses the teal camera/14 home-screen icon. The separate UI-test app is
+named **s14 UI Tests** and uses a purple flask/UI icon; hosted unit tests use the
+main app. The shared scheme's build post-action brands and normally signs the
+built test wrapper before installation. Do not edit Xcode's template app or bypass
+signing. When reusing an xctestrun product, verify it was already branded/signed.
+Assets and exact built-in generation prompts are in [app-icons.md](app-icons.md).

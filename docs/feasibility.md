@@ -447,3 +447,36 @@ It is useful short-sample physical sync evidence, not a precision instrument or 
 measurement of drift at both ends of the thirty-minute run. Keep full-length
 start/end sync and charged-footprint qualification pending for the next validation
 pass; do not promote M3/M5 from this short owner review.
+
+### Owner cleanup/experiment update (2026-11-05)
+
+The owner requested a way to remove old recordings because phone storage is low,
+fifteen-minute development experiments for now, and recognizable main/test icons.
+These are implemented; see the [focused plan/results](2026-11-05-recording-cleanup-implementation.md)
+and [icon assets/prompts](app-icons.md).
+
+Deletion is explicit and scoped to one selected UUID's MP4 and sidecars, with
+Cancel/Delete confirmation. Metadata is removed last for retry after partial
+failure; unexpected directories are refused. Removal is disabled during lifecycle
+operations, and an affected latest-playback URL is cleared. No automatic deletion,
+available-space polling, storage estimates or recursive directory cleanup was
+added. Exported Files copies are outside the removal scope.
+
+Development requests now cap at 900 seconds with monotonic absolute sleep deadlines,
+while short smoke checks remain. Atomic minute-by-minute diagnostic checkpoints
+reduce evidence loss after unexpected exit. The app's ordinary Record/Stop operation
+has no artificial fifteen-minute limit. Longer integrated-app qualification is
+deferred under the owner's instruction; no new long experiment should be launched
+until it is agreed. The latest previous thirty-minute attempt had already exited
+unexpectedly at about 25 minutes; it is failed evidence, with cause unconfirmed.
+This does not alter or erase the earlier completed runs and their stated limits.
+
+Deletion's three focused tests and isolated synthetic-recording UI Cancel/Delete
+check pass; the regular Simulator suite, signed build-for-testing and unsigned
+Release pass. Independent review found no remaining material issues after a test
+branding-signature syntax correction. Both updated app products were installed
+in place on the physical 13 mini; before/after recording artifact filenames and
+sizes match. No owner recording was automatically deleted and no new recording
+experiment was launched during this update. Owner can now deliberately reclaim
+space through the installed UI. TestFlight and longer whole-app qualification
+remain later work; shorter experiments are not promoted to those gates.

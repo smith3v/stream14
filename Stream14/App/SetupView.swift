@@ -4,6 +4,7 @@ import SwiftUI
 
 struct SetupView: View {
     @State private var experiment = MediaSession()
+    @State private var pendingDeletion: ExperimentSample?
     @State private var playback: PlaybackSelection?
     @State private var showingNotices = false
     @State private var showingOverlayTest = false
@@ -80,6 +81,12 @@ struct SetupView: View {
                                     ShareLink("Export original file", item: url)
                                 }
                             }
+                            Button("Delete recording", systemImage: "trash", role: .destructive) {
+                                pendingDeletion = sample
+                            }
+                            .disabled(!experiment.canDeleteSamples)
+                            .accessibilityLabel("Delete recording from " + sample.created.formatted(date: .abbreviated, time: .standard))
+                            .accessibilityIdentifier("deleteRecording-" + sample.id.uuidString)
                         }
                     }
                     Text("1080p30 · H.264/AAC · local MP4 · no media upload")
@@ -99,6 +106,18 @@ struct SetupView: View {
                     .accessibilityIdentifier("testWebOverlay")
                     .disabled(experiment.phase != .idle && experiment.phase != .preview)
             }
+            .alert("Delete this recording?", isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }),
+                presenting: pendingDeletion) { sample in
+                    Button("Delete recording", role: .destructive) {
+                        experiment.deleteSample(sample)
+                        pendingDeletion = nil
+                    }
+                    Button("Cancel", role: .cancel) { pendingDeletion = nil }
+                } message: { sample in
+                    Text("Permanently remove the recording from \(sample.created.formatted(date: .abbreviated, time: .standard)) and its metadata from this iPhone? This cannot be undone. Copies already exported to Files are kept.")
+                }
             .sheet(item: $playback) { selection in
                 SamplePlayback(url: selection.url)
             }

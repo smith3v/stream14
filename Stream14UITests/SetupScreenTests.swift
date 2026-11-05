@@ -6,6 +6,35 @@ final class SetupScreenTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testConfirmedDeletionRemovesOnlyItsFixture() throws {
+        let fixtureID = ProcessInfo.processInfo.environment["STREAM14_DELETE_FIXTURE_ID"]
+        try XCTSkipUnless(fixtureID != nil, "Seed an isolated Simulator recording fixture first.")
+        let app = XCUIApplication()
+        app.launch()
+        let identifier = "deleteRecording-" + fixtureID!
+        let target = app.buttons[identifier]
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        let allDeletes = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "deleteRecording-"))
+        let originalCount = allDeletes.count
+        for _ in 0..<16 {
+            if target.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(target.isHittable)
+        target.tap()
+        let cancel = app.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 3))
+        cancel.tap()
+        XCTAssertTrue(target.exists)
+        target.tap()
+        let confirm = app.buttons["Delete recording"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 3))
+        confirm.tap()
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: target)
+        waitForExpectations(timeout: 5)
+        XCTAssertEqual(allDeletes.count, originalCount - 1)
+    }
+
     func testDeviceBackgroundFinalizesAndPlaybackOpens() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["STREAM14_DEVICE_UI"] == "1",
                           "Opt-in private device camera recording check.")
