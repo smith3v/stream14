@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Created: 2026-11-01. Updated: 2026-11-04. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
+Created: 2026-11-01. Updated: 2026-11-05. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -125,6 +125,27 @@ operation is not given an artificial fifteen-minute recording limit.
 The teal camera/14 icon identifies stream14. Separately installed test apps need
 distinct icons; the UI-test runner has a purple flask/UI icon and separate name.
 Hosted unit tests run inside stream14 and do not install another application.
+
+### Stage 5: TestFlight release preparation (issue #6)
+
+The delivery stage retains the existing media behavior and package pins. An
+app-level PrivacyInfo.xcprivacy declares elapsed-time calculations for overlay
+freshness (35F9.1) and app-container file metadata access for safe deliberate
+deletion (C617.1). It declares no developer collection/tracking. The configurable
+WebKit overlay still contacts its website and subresources; this is explicitly
+covered in the [privacy policy](privacy.md) and must be considered in submission
+disclosures. A standard Privacy policy link is visible near the top of setup before camera
+permissions. Its main-branch policy URL must be published and verified before
+upload. No transport or account feature is added.
+
+The [delivery record](testflight-delivery.md) separates packaging from signed
+upload, processing, TestFlight installation and M1–M5 evidence. Paid membership,
+private contact fields and owner acceptance remain pending. Archive/upload do
+not require a phone; device work waits for owner availability and tolerates
+disconnection without deleting originals or automatically retrying capture.
+The later 30-minute qualification requires a separately agreed run, start/end
+sync markers and a defined delivered-build memory measurement route. The current
+hosted development harness is not that TestFlight measurement route.
 
 ### MVP scope and interface
 

@@ -25,6 +25,9 @@ struct SetupView: View {
                         .accessibilityIdentifier("setupStatus")
                     Text("Record camera, microphone and a transparent web overlay. Keep the phone in landscape with the rear camera upright.")
                         .accessibilityIdentifier("setupExplanation")
+                    if let privacyURL = URL(string: "https://github.com/smith3v/stream14/blob/main/docs/privacy.md") {
+                        Link("Privacy policy", destination: privacyURL)
+                    }
                     if experiment.phase != .idle {
                         ExperimentPreview(view: experiment.preview)
                             .aspectRatio(16 / 9, contentMode: .fit)
