@@ -1,7 +1,8 @@
 # TestFlight delivery record — issue #6
 
-Updated: 2026-11-05. **Version 0.1 (1) is available to the internal owner group in TestFlight;
-phone installation and delivered-build acceptance are being checked.** Prerequisite PRs #10 and #11 merged; issue #5 closed with explicit
+Updated: 2026-11-05. **Version 0.1 (1) was installed and used through TestFlight. The owner
+exported and reviewed an approximately 35-minute recording; objective file
+verification and qualification limits are recorded in feasibility.** Prerequisite PRs #10 and #11 merged; issue #5 closed with explicit
 start/end sync and TestFlight qualification carryover.
 
 ## Current state and attention boundaries
@@ -14,8 +15,8 @@ start/end sync and TestFlight qualification carryover.
 | App record / distribution team | Stream14 app record created; same bundle ID and existing team |
 | Release packaging | Signed Release archive, strict signature check and Organizer validation passed |
 | Upload / processing / review / invitations | Upload/processing completed; export declaration saved; internal Owner MVP group is Testing |
-| TestFlight installation / expiry date | Upload 2026-11-05; Apple displays Expires in 90 days; phone installation pending |
-| Delivered-build M1–M5 / owner review | Pending; historical development evidence is not delivered-build acceptance |
+| TestFlight installation / expiry date | Upload 2026-11-05; owner confirms TestFlight use/export; Apple displays Expires in 90 days |
+| Delivered-build M1–M5 / owner review | Owner confirms picture/sound/overlay and requests closeout; formal measurement limits remain explicit |
 
 The owner does not monitor this chat continuously. Requests remain pending until
 answered; silence never authorizes a run. Archive and upload require no connected
@@ -25,9 +26,16 @@ failure. Do not automatically reinstall, erase data or start another recording.
 Copy only stopped/finalized files and verify copies before drawing conclusions.
 No recordings are deleted as cleanup.
 
+The owner subsequently installed through the invitation, recorded 35 min 26.410 s
+using the TestFlight app, exported the original MP4 to the laptop,
+and confirmed picture, sound and overlay look correct. There were no start/end
+sync markers. This establishes actual beta use and owner playback/export review;
+it does not quantify ≤100 ms sync or prove memory/queue stability. See the
+[original-file measurements and remaining limits](feasibility.md#owner-testflight-recording-and-review-2026-11-05).
+
 Build 0.1 (1) was assigned to Owner MVP after processing and export compliance.
-The group has one existing internal owner tester, with invitation status Invited
-and build status Testing. Automatic build distribution is disabled; replacements
+At assignment, the group had one existing internal owner tester, with invitation
+status Invited and build status Testing; the owner subsequently reports installation. Automatic build distribution is disabled; replacements
 must be assigned deliberately. No external beta review or external testers were
 needed for this internal route. Apple displays Expires in 90 days as observed on
 2026-11-05; check the current expiry in TestFlight before planning later use.

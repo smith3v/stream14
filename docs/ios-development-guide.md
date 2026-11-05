@@ -394,8 +394,12 @@ clearly as tests. Do not experiment on a real scheduled public event.
 
 Issue #6 now has a [concrete delivery record](testflight-delivery.md) with owner
 setup, prepared beta text, privacy/support sources, packaging checks and pending
-acceptance. Paid membership activation remains unverified. Archive/upload require
-no connected phone; installation and qualification wait for owner availability.
+acceptance. Paid membership, signed upload, internal TestFlight availability and
+owner recording/export review are now verified. The 35 min 26.410 s original-file
+checks and unmeasured formal sync/memory/queue criteria are recorded in
+[feasibility](feasibility.md#owner-testflight-recording-and-review-2026-11-05).
+Archive/upload need no connected phone; additional device work waits for owner
+availability and a separate agreed run.
 The [focused plan](2026-11-05-testflight-implementation.md) separates these stages.
 
 
