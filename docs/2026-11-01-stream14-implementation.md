@@ -1,5 +1,13 @@
 # stream14 Local-Recording MVP Implementation Plan
 
+> Owner sequencing update (2026-11-05): issue #6 and all MVP acceptance remain
+> pending while Apple enrollment completes. Full-app development is now authorized
+> separately on `codex/full-app`; all new PRs target integration while MVP testing
+> is pending. See the [full-app plan](2026-11-05-full-app-implementation.md).
+> Older instructions here deferring all broadcasting work apply to the local-only
+> candidate, not the newly authorized integration work. This MVP plan is retained.
+
+
 Scope clarified: 2026-11-02. This plan covers the first milestone only.
 
 **Goal:** Deliver an iPhone app that captures camera video and microphone audio,

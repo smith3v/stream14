@@ -18,6 +18,32 @@ the outgoing video, and keeping a local copy of that composition.
 - The repository initially contains documentation only. Do not claim there is a
   working app, a build pipeline, or a passed device test until it exists.
 
+## Owner scope update: parallel full-app development (2026-11-05)
+
+Apple enrollment currently blocks local-only MVP TestFlight delivery. The owner
+explicitly authorizes full-app development on `codex/full-app` while issue #6 and
+M1–M5 testing/owner review remain pending. This branch starts from main at `4f831e1`
+(merged PR #12). The [full-app implementation plan](docs/2026-11-05-full-app-implementation.md)
+defines staged work and its GitHub issue handoffs.
+
+- On this branch, this instruction supersedes the older rules below that defer
+  YouTube/OAuth, RTMPS, 720p and full-product implementation until MVP review.
+  Retain all reliability, privacy, minimal-dependency and evidence requirements.
+- All new PRs target `codex/full-app` while MVP testing is pending. Use focused
+  branches from current integration. Main remains the local-only MVP candidate;
+  coordinate any needed MVP backport explicitly. Do not replace its acceptance
+  build with the broadcaster or claim M1–M5 are passed by continued development.
+- PR destination does not authorize automatic merging. Independent review examines
+  the actual full diff against main plus the incremental integration-base diff.
+  Full-branch promotion to main requires completed MVP testing/owner review and an
+  explicitly approved promotion PR, with full-product acceptance recorded honestly.
+- The 15-minute development-experiment cap remains. Longer 30-minute/three-hour
+  qualification runs require a later explicit owner agreement. Do not start them
+  as routine implementation checks.
+
+The local-MVP rules below still govern the local-only candidate; they do not block
+implementation of the explicitly planned full-product features on integration.
+
 ## Current milestone: local-recording MVP
 
 - Build only rear camera + microphone → HaishinKit capture/composition/encoding →

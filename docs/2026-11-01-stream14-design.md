@@ -8,6 +8,24 @@ the agreed behavior. "Starting default" is an explicit engineering choice that c
 be revised using measured results. "Feasibility gate" means the approach is not yet
 proven and must not be presented as a working capability.
 
+## Owner sequencing update — 2026-11-05
+
+Apple Developer Program enrollment is pending. The owner explicitly authorizes
+full-product implementation in parallel with outstanding MVP delivery/testing on
+`codex/full-app`, based on main `4f831e1` after PR #12. All new PRs target that
+integration branch while issue #6 is pending; main remains the local-only candidate.
+The [separate full-app plan](2026-11-05-full-app-implementation.md) supplies staged
+issue prompts, dependencies and A1–A9 delivery work.
+
+This overrides the earlier “implement broadcasting only after MVP review” sequencing
+in this document on the integration branch. It changes development order, not the
+required behavior or acceptance gates. M1–M5/TestFlight/owner review stay pending;
+full-app development is not MVP acceptance. A later full-app TestFlight candidate
+must preserve/complete the local-only review first. Promotion into main remains a
+separate reviewed, explicitly approved PR. Development experiments remain capped at
+15 minutes; longer qualification requires a later agreed run. All older stage notes
+below are historical evidence for their stated build, not claims of current delivery.
+
 ## Current milestone: local-recording MVP
 
 The owner's 2026-11-01 architecture handoff and subsequent instruction select a
@@ -702,7 +720,7 @@ evaluation, then the local-recording MVP, TestFlight delivery, and M1–M5 revie
 only after that review, then independent-output failure handling, long-event
 qualification, and updated TestFlight builds for the small beta group. Detailed work prompts for the first
 milestone only are in [the MVP implementation plan](2026-11-01-stream14-implementation.md).
-Prepare later implementation plans separately after the MVP review.
+The owner sequencing update above authorizes the separate full-app plan now on integration; MVP review remains a delivery/promotion prerequisite.
 
 Before MVP TestFlight distribution, configure Apple team membership, the final
 bundle identifier/app record, signing, tester access, and privacy/support information
