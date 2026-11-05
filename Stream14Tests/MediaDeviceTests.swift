@@ -9,6 +9,8 @@ import WebKit
 /// Explicit opt-in: captures private camera/microphone media on the connected phone.
 @Suite(.serialized)
 struct MediaDeviceTests {
+    // Keep session/renderer objects outside assertion macros: failure reflection can
+    // expose Keychain-loaded overlay URLs. Assert only safe snapshots below.
     struct Observation: Codable {
         let elapsed: Int
         let residentBytes: UInt64
@@ -26,7 +28,8 @@ struct MediaDeviceTests {
         defer { session.requestStop() }
         for injection in [LocalRecorder.Injection.initialization, .append, .finalization] {
             await session.openPreview()
-            try #require(session.canRecord)
+            let canRecordBeforeFailure = session.canRecord
+            try #require(canRecordBeforeFailure)
             await session.record(injection: injection)
             if injection == .finalization {
                 try await Task.sleep(for: .seconds(2))
@@ -37,35 +40,45 @@ struct MediaDeviceTests {
                 if session.phase == .idle { break }
                 try await Task.sleep(for: .milliseconds(100))
             }
-            #expect(session.phase == .idle)
-            #expect(session.savedSamples.first?.status == .failed)
+            let phaseAfterFailure = session.phase == .idle
+            #expect(phaseAfterFailure)
+            let statusAfterFailure = session.savedSamples.first?.status == .failed
+            #expect(statusAfterFailure)
             #expect(UIApplication.shared.isIdleTimerDisabled == previousIdle)
-            #expect(!session.canRecord)
+            let canRecordAfterFailure = !session.canRecord
+            #expect(canRecordAfterFailure)
         }
         // Interrupt an established new recording; do not infer ordering from Task.yield.
         let previousIDs = Set(session.savedSamples.map(\.id))
         await session.openPreview()
-        try #require(session.canRecord)
+        let canRecordBeforeInterruption = session.canRecord
+        try #require(canRecordBeforeInterruption)
         await session.record()
-        try #require(session.isRecording)
+        let recordingBeforeInterruption = session.isRecording
+        try #require(recordingBeforeInterruption)
         try await Task.sleep(for: .seconds(2))
         session.requestStop(interruption: true)
         for _ in 0..<150 {
             if session.phase == .idle { break }
             try await Task.sleep(for: .milliseconds(100))
         }
-        #expect(session.phase == .idle)
-        #expect(!session.isRecording)
-        let interrupted = try #require(session.savedSamples.first)
+        let phaseAfterInterruption = session.phase == .idle
+        #expect(phaseAfterInterruption)
+        let recordingAfterInterruption = !session.isRecording
+        #expect(recordingAfterInterruption)
+        let interruptedCandidate = session.savedSamples.first
+        let interrupted = try #require(interruptedCandidate)
         #expect(!previousIDs.contains(interrupted.id))
         #expect(interrupted.status == .interrupted)
         #expect(UIApplication.shared.isIdleTimerDisabled == previousIdle)
         // Exercise the iOS 27 system audio-inactive notification path separately.
         let beforeAudio = Set(session.savedSamples.map(\.id))
         await session.openPreview()
-        try #require(session.canRecord)
+        let canRecordBeforeAudioInterruption = session.canRecord
+        try #require(canRecordBeforeAudioInterruption)
         await session.record()
-        try #require(session.isRecording)
+        let recordingBeforeAudioInterruption = session.isRecording
+        try #require(recordingBeforeAudioInterruption)
         try await Task.sleep(for: .seconds(2))
         NotificationCenter.default.post(name: AVAudioSession.didBecomeInactiveNotification,
                                         object: AVAudioSession.sharedInstance())
@@ -73,8 +86,10 @@ struct MediaDeviceTests {
             if session.phase == .idle { break }
             try await Task.sleep(for: .milliseconds(100))
         }
-        #expect(session.phase == .idle)
-        let audioInterrupted = try #require(session.savedSamples.first)
+        let phaseAfterAudioInterruption = session.phase == .idle
+        #expect(phaseAfterAudioInterruption)
+        let audioInterruptedCandidate = session.savedSamples.first
+        let audioInterrupted = try #require(audioInterruptedCandidate)
         #expect(!beforeAudio.contains(audioInterrupted.id))
         #expect(audioInterrupted.status == .interrupted)
         #expect(UIApplication.shared.isIdleTimerDisabled == previousIdle)
@@ -106,16 +121,20 @@ struct MediaDeviceTests {
         }
         print("Device browser viewport: \(String(describing: try? await session.renderer.webView.evaluateJavaScript("({w:innerWidth,h:innerHeight,ready:document.readyState,children:document.body?.children.length,resources:[...document.images].every(i=>i.complete),fonts:document.fonts.status})")))")
         print("Device overlay readiness: \(session.renderer.status); \(session.renderer.viewport)")
-        try #require(session.renderer.visible)
+        let initialOverlayVisible = session.renderer.visible
+        try #require(initialOverlayVisible)
         await session.openPreview()
-        #expect(session.canRecord)
+        let canRecordInitially = session.canRecord
+        #expect(canRecordInitially)
         await session.record()
-        #expect(session.isRecording)
+        let recordingInitially = session.isRecording
+        #expect(recordingInitially)
         let requestedSeconds = Int(ProcessInfo.processInfo.environment["STREAM14_RECORDING_SECONDS"] ?? "30") ?? 30
         // Owner policy: development experiments stop at fifteen minutes for now.
         let seconds = min(max(requestedSeconds, 1), 900)
         print("Experiment duration: \(seconds)s (development cap: 900s)")
-        let recordingID = try #require(session.recordingID)
+        let activeRecordingID = session.recordingID
+        let recordingID = try #require(activeRecordingID)
         let observationsURL = try ExperimentSample.directory().appendingPathComponent(recordingID.uuidString + ".observations.json")
         let outageRules = try await WKContentRuleListStore.default().compileContentRuleList(
             forIdentifier: "stream14-device-outage", encodedContentRuleList:
@@ -125,7 +144,8 @@ struct MediaDeviceTests {
         let experimentStart = experimentClock.now
         for second in 1...seconds {
             try await experimentClock.sleep(until: experimentStart.advanced(by: .seconds(second)))
-            try #require(session.isRecording)
+            let recordingAtCheckpoint = session.isRecording
+            try #require(recordingAtCheckpoint)
             // Reject actual WebKit document requests for two minutes, without
             // changing phone radios, certificates or the renderer's last image.
             if seconds >= 180, second == 30, let outageRules {
@@ -142,13 +162,21 @@ struct MediaDeviceTests {
                 session.renderer.reload()
                 print("Injected WebKit request outage ended")
             }
-            if seconds >= 180, second == 145 { #expect(!session.renderer.visible) }
+            if seconds >= 180, second == 145 {
+                let overlayVisibleDuringOutage = !session.renderer.visible
+                #expect(overlayVisibleDuringOutage)
+            }
             if seconds >= 180, second == 175 {
-                #expect(session.renderer.healthy)
-                #expect(session.renderer.visible == (seconds < 600))
+                let sourceHealthyAfterRecovery = session.renderer.healthy
+                #expect(sourceHealthyAfterRecovery)
+                let overlayVisibleAfterRecovery = session.renderer.visible == (seconds < 600)
+                #expect(overlayVisibleAfterRecovery)
             }
             if seconds >= 600, second == 200 { session.renderer.setManuallyHidden(false) }
-            if seconds >= 600, second == 210 { #expect(session.renderer.visible) }
+            if seconds >= 600, second == 210 {
+                let overlayVisibleAfterUnhide = session.renderer.visible
+                #expect(overlayVisibleAfterUnhide)
+            }
             if second.isMultiple(of: 10) || second == seconds {
                 var info = mach_task_basic_info()
                 var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / MemoryLayout<integer_t>.size)
@@ -176,8 +204,10 @@ struct MediaDeviceTests {
             }
         }
         await session.stopRecording()
-        let url = try #require(session.sampleURL)
-        let sample = try #require(session.savedSamples.first { $0.fileName == url.lastPathComponent })
+        let completedURL = session.sampleURL
+        let url = try #require(completedURL)
+        let completedCandidate = session.savedSamples.first { $0.fileName == url.lastPathComponent }
+        let sample = try #require(completedCandidate)
         #expect(sample.status == .completed)
         let directory = try ExperimentSample.directory()
         try JSONEncoder().encode(observations).write(to: directory.appendingPathComponent(sample.id.uuidString + ".observations.json"))
@@ -190,12 +220,14 @@ struct MediaDeviceTests {
             if session.renderer.visible { break }
             try await Task.sleep(for: .milliseconds(100))
         }
-        try #require(session.renderer.visible)
+        let fixtureOverlayVisible = session.renderer.visible
+        try #require(fixtureOverlayVisible)
         // Repeat start/stop on the same camera session.
         await session.record()
         try await Task.sleep(for: .seconds(6))
         await session.stopRecording()
-        #expect(session.savedSamples.first?.status == .completed)
+        let repeatedRecordingStatus = session.savedSamples.first?.status == .completed
+        #expect(repeatedRecordingStatus)
         // Inject a real capture notification through the app's observer.
         await session.record()
         try await Task.sleep(for: .seconds(2))
@@ -204,8 +236,10 @@ struct MediaDeviceTests {
             if session.phase == .idle { break }
             try await Task.sleep(for: .milliseconds(100))
         }
-        #expect(session.phase == .idle)
-        #expect(session.savedSamples.first?.status == .failed)
+        let phaseAfterRuntimeError = session.phase == .idle
+        #expect(phaseAfterRuntimeError)
+        let statusAfterRuntimeError = session.savedSamples.first?.status == .failed
+        #expect(statusAfterRuntimeError)
     }
 }
 

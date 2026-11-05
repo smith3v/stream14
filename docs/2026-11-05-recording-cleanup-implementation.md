@@ -46,3 +46,23 @@ On 2026-11-05 the owner confirmed deleting old recordings reclaimed phone storag
 and both icons are in place. PR #10 is finalized and marked ready for review at the
 owner's request; merging is not authorized. Longer whole-app qualification remains
 deferred, with development experiments capped at fifteen minutes.
+
+
+## Verification follow-up: private assertion diagnostics
+
+**Goal:** Prevent failed Swift Testing assertions from reflecting a MediaSession
+and printing its Keychain-loaded overlay URL or renderer request URL.
+
+**Design:** Snapshot only the relevant Boolean, phase/status, UUID, saved sample or
+local file URL before each assertion. Keep the session/renderer outside the macro
+expression. This avoids adding production diagnostic conformances or a generic
+assertion framework; runtime app behavior and test decisions remain unchanged.
+
+1. Update direct session assertion expressions in `Stream14Tests/MediaDeviceTests.swift`
+   and `Stream14Tests/MediaExperimentTests.swift` to use safe local values.
+2. Build the test target and run focused Simulator media lifecycle tests without
+   enabling private physical camera tests. Inspect all changed assertions for
+   remaining session/renderer captures; no new recording is required.
+3. Have the independent reviewer inspect the actual diff and validation results;
+   resolve material findings before handing off the PR. Keep the failed raw log
+   private because it already contains reflected session state.

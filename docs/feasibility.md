@@ -467,8 +467,9 @@ while short smoke checks remain. Atomic minute-by-minute diagnostic checkpoints
 reduce evidence loss after unexpected exit. The app's ordinary Record/Stop operation
 has no artificial fifteen-minute limit. Longer integrated-app qualification is
 deferred under the owner's instruction; no new long experiment should be launched
-until it is agreed. The latest previous thirty-minute attempt had already exited
-unexpectedly at about 25 minutes; it is failed evidence, with cause unconfirmed.
+until it is agreed. The owner clarified on 2026-11-05 that the previous thirty-minute validation was
+interrupted around 25 minutes when the assistant session ran out of tokens. That
+run remains incomplete evidence, not a confirmed application reliability failure.
 This does not alter or erase the earlier completed runs and their stated limits.
 
 Deletion's three focused tests and isolated synthetic-recording UI Cancel/Delete
@@ -494,3 +495,112 @@ Development experiments remain capped at fifteen minutes; longer integrated
 whole-app qualification is deferred. The existing failed/limited long-run evidence
 is retained honestly and does not become a passed M3/M5 gate through this handoff.
 No new recording experiment or automatic deletion was performed for closeout.
+
+
+### Post-merge verification setup (2026-11-05)
+
+The owner clarified that the earlier roughly 25-minute validation could not be
+continued after the assistant session reached its token limit. Do not present it
+as an established application crash or reliability defect. Native runner-exit
+messages alone do not establish that causal claim.
+
+The first new fifteen-minute attempt received a real capture/audio interruption
+after about a minute; the owner confirmed contemporaneous phone activity or an
+interruption. The app finalized the file, stored interrupted status, returned to
+idle and required explicit restart. This is useful interruption-handling evidence,
+not a completed fifteen-minute performance run. The test's explicit recording-state
+assertion correctly failed rather than reporting an incomplete run as passing.
+The independent writer-failure/interruption test, including the iOS 27 audio-inactive
+notification path, passed before this attempt. Private logs/result:
+`/tmp/stream14-issue5-verification-15m.log` / `.xcresult`.
+
+The owner then prepared the phone again and authorized a fresh uninterrupted
+fifteen-minute check. It uses the same source tree as merged main, USB connection,
+foreground/unlocked capture, the existing two-minute injected WebKit document-request
+outage, manual hiding through source recovery, ten-second resident/charged-footprint
+observations and requested start/end physical clap markers. The completed results
+and missing end-marker limitation follow below.
+
+
+### Completed fifteen-minute verification (2026-11-05)
+
+The retry on the USB-connected iPhone 13 mini/iOS 27.2 completed successfully
+using the merged PR #10 source (main `0dd269c`). `combinedDeviceRecording` passed
+in 911.901 seconds including setup and follow-up checks; the original main MP4 is
+900.034 seconds, 1920×1080 H.264 with stereo 44.1 kHz AAC. Recording finalized as
+completed. Independent native AVAssetReader video and decoded-audio reads both
+finished with `.completed` status.
+
+| Measurement | Result and interpretation |
+| --- | --- |
+| Nonempty video frames | 26,976 |
+| Estimated missing 30 Hz output intervals | 128 / 0.472%; below the 1% development target |
+| Largest video timestamp gap | 393.3 ms; no gaps ≥500 ms |
+| Writer admission drops | Zero video and zero audio; no recorded writer stalls |
+| Charged physical footprint, sampled every 10 s | 119.0–150.3 MiB; first 134.9, final 135.3 MiB |
+| Resident size | 50.5–437.4 MiB; final 252.5 MiB; mappings/caches differ from charged footprint |
+| Thermal state | Nominal in all 90 observations |
+| Overlay snapshot time | Median 40.1 ms; maximum 72.1 ms |
+
+Cadence uses nonempty video sample presentation timestamps sorted into order and
+counts estimated missing 30 Hz intervals. It is not a direct sensor-frame-drop
+measurement and does not detect all upstream losses or duplicated stale images.
+Writer counters measure its own bounded admission; library-internal queues are not
+fully observable. Charged footprint returned near its initial value without
+continuous runaway growth during this run; these samples do not establish total
+WebKit/GPU memory or longer whole-app stability.
+
+The existing test blocked WebKit document requests for two minutes, from recording
+second 30 to 150. This is an injected request outage, not a Wi-Fi/cellular radio
+outage. Recording continued, the overlay hid after the source-access deadline,
+and source access recovered. Manual hiding persisted through recovery (asserted
+at second 175); the overlay returned after manual unhide at second 200. Saved
+frames at 20, 60, 170 and 210 seconds were inspected: visible, hidden, still manually
+hidden and restored respectively, without app controls in the composition.
+
+The owner missed the end clap and explicitly requested moving on without it.
+No end A/V offset or start-to-end drift is claimed for this run, and its start
+marker has not been quantified. The earlier short owner-reviewed sample remains
+short-sample evidence only. Carry measured start/end A/V offset ≤100 ms into the
+later TestFlight/whole-app qualification in issue #6. This agreed deferral does not
+turn the sync acceptance item or M3/M5 into a pass. Do not launch another recording
+merely to replace the missed marker.
+
+Reproduction uses the existing shared scheme and physical-device destination from
+the development guide (substitute the locally configured device ID/signing team):
+
+```sh
+TEST_RUNNER_STREAM14_DEVICE_RECORDING=1 \
+TEST_RUNNER_STREAM14_RECORDING_SECONDS=900 \
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS,id=<device-id>' \
+  -derivedDataPath /tmp/stream14-issue5-update-phone \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -allowProvisioningUpdates \
+  -only-testing:Stream14Tests/MediaDeviceTests \
+  -resultBundlePath /tmp/stream14-issue5-verification-15m-retry.xcresult \
+  DEVELOPMENT_TEAM='<local-team>' test
+```
+
+Private evidence, excluded from Git: `/tmp/stream14-issue5-verification-15m-retry.log`,
+the corresponding `.xcresult`, and `/tmp/stream14-issue5-verification-15m-evidence/`
+(original MP4, completed status, observations, native-reader analysis and inspected
+frames). These temporary paths are local evidence, not durable shared artifacts.
+The original recording remains on the phone; no owner recordings were deleted.
+USB was needed for this automated run and copying evidence, not for ordinary
+standalone recording; the completed check no longer requires it.
+
+
+Independent closeout review found that direct session-property expressions in
+Swift Testing macros can reflect the entire session on failure. The interrupted
+run's private raw log demonstrates this path, including URL-bearing session and
+renderer fields. Device assertions and the launch-state unit test now evaluate
+safe local values before invoking macros, so neither object enters macro failure
+diagnostics. Production app behavior is unchanged. Existing raw logs remain
+private; do not attach them to issues or PRs without separate redaction.
+
+Focused Simulator `MediaExperimentTests` passed after the safe-local change, and
+both modified test files compiled. Independent re-review found no remaining
+material privacy/correctness issue in these assertions. Documentation local-link
+and Markdown-fence checks and `git diff --check` passed. No physical-device rerun
+was needed for this test-only diagnostics change.
