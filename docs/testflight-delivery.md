@@ -1,9 +1,15 @@
-# TestFlight delivery record — issue #6
+# TestFlight delivery record — MVP and updates
 
 Updated: 2026-11-05. **Version 0.1 (1) was installed and used through TestFlight. The owner
 exported and reviewed an approximately 35-minute recording; objective file
 verification and qualification limits are recorded in feasibility.** Prerequisite PRs #10 and #11 merged; issue #5 closed with explicit
 start/end sync and TestFlight qualification carryover.
+
+UI update **0.1 (2)** uploaded successfully on 2026-11-05 at 22:55 Amsterdam;
+processing and compliance completed, and Owner MVP shows it **Testing** at 23:10.
+Actual build 2 installation has not been observed. See the
+[issue #30 release record](2026-11-05-recording-ui-testflight.md). The historical
+0.1 (1) owner review below remains unchanged.
 
 ## Current state and attention boundaries
 
@@ -86,8 +92,8 @@ because SPM resolved them; inspect the actual archive before making export claim
 
 Use [privacy policy](privacy.md) and [support](support.md) as public source pages
 after their branch is published; use stable main URLs once merged. The app links
-to the main-branch privacy page near the top of setup, before
-permissions or recording. PR #12 was owner-merged; the exact main-branch privacy
+to the main-branch privacy page in the footer beside Third-party notices,
+available before permissions or recording. PR #12 was owner-merged; the exact main-branch privacy
 and support URLs both returned HTTP 200 without authentication before upload.
 Verify the in-app link on the delivered build as well. A compiled URL alone does
 not prove the remote page is readable. No custom legal terms have been
@@ -126,8 +132,8 @@ Long recording qualification is in progress.
 
 Open Overlay, choose Use reference URL, then Load overlay. Close settings, Open
 camera, and allow camera/microphone access. Record a short clip; toggle Hide overlay
-manually to check it disappears from preview and file. Stop, Play sample, then
-Export original sample → Save to Files and open that copy. Report build/model/OS
+manually to check it disappears from preview and file. Stop, tap the recording’s Play icon, then its Export icon → Save to Files and
+open that copy. Report build/model/OS
 and visible failures using TestFlight feedback. Do not attach private media or
 secret-bearing URLs. Keep important recordings exported before replacing a beta.
 

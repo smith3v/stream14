@@ -674,7 +674,8 @@ separately below.
 
 Independent review inspected the full actual diff/source/resources. It found the
 missing in-app privacy link; a standard SwiftUI Link near the top of setup now
-addresses it. Focused re-review found no remaining material findings. The guide
+addresses it. Issue #30 subsequently moves the link beside Third-party notices in
+the setup footer, retaining availability before camera permissions. Focused re-review found no remaining material findings. The guide
 explicitly blocks upload until owner-authorized publication makes the exact
 main-branch policy URL publicly readable. Signed upload, actual TestFlight
 installation, delivered-build checks and owner review remain pending.
