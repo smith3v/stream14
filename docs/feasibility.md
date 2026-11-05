@@ -604,3 +604,107 @@ both modified test files compiled. Independent re-review found no remaining
 material privacy/correctness issue in these assertions. Documentation local-link
 and Markdown-fence checks and `git diff --check` passed. No physical-device rerun
 was needed for this test-only diagnostics change.
+
+## Stage 5: TestFlight preparation (issue #6, 2026-11-05)
+
+Prerequisites #10/#11 are merged; source baseline is main 122c69c. App identity
+remains com.smith3v.stream14, version 0.1 (1) pending an App Store Connect
+unused-build check. No media behavior or dependency pins change in this preparation. Setup gains
+a standard Privacy policy link before camera permissions, pointing to the
+canonical public main-branch policy. Publishing and checking that URL signed
+out is an explicit pre-upload blocker; no merge is authorized by this task.
+
+Source audit: WebOverlayRenderer uses ProcessInfo.systemUptime only for elapsed
+freshness, retry and raster timing. ExperimentSample.delete uses
+FileManager.attributesOfItem only on selected UUID artifacts in the app container
+to refuse recursive removal. The manifest declares Apple's 35F9.1 and C617.1
+reasons respectively; there is no disk-capacity subsystem or declaration.
+The selected HaishinKit 2.3.0 core and Logboard 2.6.0 source targets have no
+additional matched required-reason calls or supplied privacy manifests in the
+local pinned checkouts. Unselected SRT/RTC/OpenSSL package resolution is not
+evidence those binaries ship. Inspect the archive's actual dependencies.
+
+See Apple's [required-reason API documentation](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api)
+and [manifest guidance](https://developer.apple.com/documentation/bundleresources/adding-a-privacy-manifest-to-your-app-or-third-party-sdk).
+The app manifest declares no developer collection/tracking; the
+[privacy policy](privacy.md) describes ordinary overlay website requests, original
+export destinations, local Keychain/file storage and Apple TestFlight feedback.
+Final App Store Connect disclosures require review of actual service flows.
+
+Prepared [delivery instructions and beta text](testflight-delivery.md) cover
+activation, archive/upload, groups, installation, expiry/replacement and remaining
+acceptance. Owner reports enrollment is in progress and is waiting for Apple confirmation;
+activation and App Store Connect access are not verified. No signed upload, invitation, TestFlight
+installation or new physical recording has occurred. No recordings were deleted.
+M3/M5 remain pending, including ≤100 ms physical sync at both ends and actual
+delivered-build memory/queue measurements. The development harness cannot itself
+measure a TestFlight install. Do not run another long experiment before agreeing
+the measurement route and owner attention slot.
+
+### Release packaging evidence
+
+The native unsigned Release archive succeeded on 2026-11-05 with Xcode 27.2
+(27B52), iOS SDK 27.2, Swift 6 and existing package pins:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /tmp/stream14-issue6-release \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution \
+  -archivePath /tmp/stream14-issue6-final-unsigned.xcarchive \
+  CODE_SIGNING_ALLOWED=NO archive
+```
+
+Private local log: /tmp/stream14-issue6-final-archive.log. The archived Stream14.app
+reports version 0.1 (1), iPhone/iOS 27.0 minimum, both permission descriptions
+and AppIcon. Its PrivacyInfo.xcprivacy matches the source plist exactly;
+ThirdPartyNotices.txt and Assets.car are present. No xctest bundle, recording
+or private signing-key file was found in the app. The target dependency graph
+contains Stream14, HaishinKit and Logboard; otool -L lists only Apple system
+frameworks/libraries, with no embedded transport/OpenSSL framework. Package
+pins and media code are unchanged. This is packaging evidence, not Apple's signed
+upload validation or approval.
+
+plutil -lint, documentation relative-link/fence checks and git diff --check
+pass. Existing iOS 27 AVAssetWriter deprecation warnings and the unused
+AppIntents metadata-extraction warning remain; no new compilation error occurred.
+No physical media run was repeated. The privacy-link UI change is checked
+separately below.
+
+Independent review inspected the full actual diff/source/resources. It found the
+missing in-app privacy link; a standard SwiftUI Link near the top of setup now
+addresses it. Focused re-review found no remaining material findings. The guide
+explicitly blocks upload until owner-authorized publication makes the exact
+main-branch policy URL publicly readable. Signed upload, actual TestFlight
+installation, delivered-build checks and owner review remain pending.
+
+### Setup verification after the privacy link
+
+Two hosted AppConfigurationTests passed on the dedicated iPhone 13 mini / iOS
+27.2 Simulator in /tmp/stream14-issue6-ui.xcresult. The initial portrait audit
+reported contrast on the existing overlay-status caption. Its exported element
+image shows black text on white; this did not reproduce on the focused rerun,
+with no code changes. Both portrait and largest accessibility-text landscape
+tests passed with full accessibility audits in
+/tmp/stream14-issue6-ui-recheck.xcresult. Portrait and landscape screenshots were
+exported and inspected; the privacy control is visible on initial portrait setup.
+This is Simulator evidence only. The initial failed result is retained.
+
+Exact passing UI command (log: /tmp/stream14-issue6-ui-recheck.log):
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -derivedDataPath /tmp/stream14-issue6-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14UITests/SetupScreenTests/testLaunchShowsHonestSetupStatus \
+  -only-testing:Stream14UITests/SetupScreenTests/testLargestTextRemainsAccessibleInLandscape \
+  -resultBundlePath /tmp/stream14-issue6-ui-recheck.xcresult test
+```
+
+Use a fresh result path on repeat runs and choose the corresponding Simulator
+identifier on another Mac. The app privacy URL also appears in the final archived
+binary. Its remote main-branch publication is still a pre-upload check, not
+established by a compiled URL or a visible Link.

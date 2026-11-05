@@ -392,6 +392,13 @@ clearly as tests. Do not experiment on a real scheduled public event.
 
 ## 5. TestFlight, step by step
 
+Issue #6 now has a [concrete delivery record](testflight-delivery.md) with owner
+setup, prepared beta text, privacy/support sources, packaging checks and pending
+acceptance. Paid membership activation remains unverified. Archive/upload require
+no connected phone; installation and qualification wait for owner availability.
+The [focused plan](2026-11-05-testflight-implementation.md) separates these stages.
+
+
 1. Enroll in the Apple Developer Program and complete required account agreements.
    Register the chosen bundle identifier and create the app record in App Store
    Connect. These are owner/team setup actions, not part of the current docs change.

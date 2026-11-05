@@ -229,6 +229,14 @@ qualification; M3/M5 are not complete.
 
 ## Task 6: Deliver the MVP through TestFlight and review it
 
+**Status (2026-11-05): Release preparation in progress; Apple activation, upload,
+TestFlight installation and delivered-build acceptance pending.** Prerequisite
+PRs #10/#11 are merged. See the [focused plan](2026-11-05-testflight-implementation.md)
+and [delivery record](testflight-delivery.md). The owner submitted enrollment and is waiting for Apple confirmation;
+active membership remains unverified. No longer recording is authorized
+without a separate agreed slot.
+
+
 **Prompt:**
 Follow the development guide's TestFlight steps: owner-controlled Apple Developer
 Program membership, app record/bundle identifier, automatic signing, version/build,
