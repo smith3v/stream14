@@ -220,6 +220,13 @@ TestFlight build in Task 6. Review and commit.
 **Acceptance:** M2/M4 and fifteen-minute development checks pass on the 13 mini, with longer integrated qualification explicitly deferred. Files contain synchronized audio, video,
 and the actual overlay, with no app UI; overlay-network failure does not stop recording.
 
+**2026-11-05 evidence:** PR #10 is merged. The fifteen-minute device retry passed
+cadence, writer admission, charged-footprint and injected overlay-outage/manual-hide
+checks; see [measurements and limits](feasibility.md#completed-fifteen-minute-verification-2026-11-05).
+The owner missed the end clap and requested moving on. Start/end A/V offset for
+this run remains unverified and is deferred to Task 6 with longer integrated
+qualification; M3/M5 are not complete.
+
 ## Task 6: Deliver the MVP through TestFlight and review it
 
 **Prompt:**

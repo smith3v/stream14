@@ -827,8 +827,9 @@ Development recording experiments now hard-cap requested durations at 900 second
 Thirty-second smoke checks remain available. Actual recording through the app's
 Record/Stop button has no artificial fifteen-minute limit. Longer integrated-app
 qualification is deliberately deferred, not passed by a shorter run. The latest
-old 30-minute attempt had already ended unexpectedly at about 25 minutes before
-the new instruction; it is not passing evidence and its cause is unconfirmed.
+old 30-minute attempt was interrupted around 25 minutes when the assistant session
+ran out of tokens, as the owner clarified on 2026-11-05. It is incomplete validation,
+not a confirmed application reliability failure.
 No further long experiment should be started now. Test observations are checkpointed
 atomically every minute so an unexpected exit loses less diagnostic evidence.
 

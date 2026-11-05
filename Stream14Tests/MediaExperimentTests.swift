@@ -27,11 +27,16 @@ struct MediaExperimentTests {
 
     @Test @MainActor func launchDoesNotCaptureOrRecord() {
         let experiment = MediaSession()
-        #expect(experiment.phase == .idle)
-        #expect(!experiment.canRecord)
-        #expect(experiment.sampleURL == nil)
+        // Macro failure diagnostics must not reflect the URL-bearing session.
+        let initiallyIdle = experiment.phase == .idle
+        let initiallyCannotRecord = !experiment.canRecord
+        let initiallyHasNoSample = experiment.sampleURL == nil
+        #expect(initiallyIdle)
+        #expect(initiallyCannotRecord)
+        #expect(initiallyHasNoSample)
         experiment.requestStop(interruption: true)
-        #expect(experiment.phase == .idle)
+        let remainsIdle = experiment.phase == .idle
+        #expect(remainsIdle)
     }
 
     @Test @ScreenActor func repeatedOverlayInstallDoesNotAccumulateLayers() async throws {
