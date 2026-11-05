@@ -431,7 +431,7 @@ Independent review inspected each material correction and regression, including
 actual dependency cache behavior, failure/interruption tests and playback state.
 No remaining material implementation finding was identified after the fixes.
 Release and Simulator/device results are listed in the development guide. Issue #5
-stays open and its PR remains draft while long-run qualification is pending; M3/M5 and broadcasting are not claimed complete.
+stays open while the PR is prepared for review; long-run qualification remains deferred, and M3/M5 and broadcasting are not claimed complete.
 
 
 ### Owner short-flow review
@@ -480,3 +480,17 @@ sizes match. No owner recording was automatically deleted and no new recording
 experiment was launched during this update. Owner can now deliberately reclaim
 space through the installed UI. TestFlight and longer whole-app qualification
 remain later work; shorter experiments are not promoted to those gates.
+
+
+### Owner acceptance and PR handoff (2026-11-05)
+
+The owner deleted old recordings in the installed app and confirmed that device
+storage was reclaimed. The owner also confirmed that the main and separate test-app
+icons are in place. This completes the manual cleanup/icon acceptance in addition
+to the earlier playback and original Files-export review.
+
+At the owner's request, PR #10 is finalized for review rather than merged.
+Development experiments remain capped at fifteen minutes; longer integrated
+whole-app qualification is deferred. The existing failed/limited long-run evidence
+is retained honestly and does not become a passed M3/M5 gate through this handoff.
+No new recording experiment or automatic deletion was performed for closeout.

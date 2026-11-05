@@ -38,3 +38,11 @@ Private checks/results: `/tmp/stream14-issue5-deletion2.xcresult`,
 `/tmp/stream14-issue5-cleanup-suite.xcresult`,
 `/tmp/stream14-issue5-phone-icons-build3.log`, and
 `/tmp/stream14-issue5-cleanup-release.log`.
+
+
+## Owner acceptance and closeout
+
+On 2026-11-05 the owner confirmed deleting old recordings reclaimed phone storage
+and both icons are in place. PR #10 is finalized and marked ready for review at the
+owner's request; merging is not authorized. Longer whole-app qualification remains
+deferred, with development experiments capped at fifteen minutes.
