@@ -230,7 +230,8 @@ qualification; M3/M5 are not complete.
 ## Task 6: Deliver the MVP through TestFlight and review it
 
 **Status (2026-11-05): Active membership verified; signed 0.1 (1) archive passed
-Organizer validation and uploaded. Apple processing, TestFlight installation
+Organizer validation, uploaded and finished processing. Export compliance is
+resolved and the internal owner group is Testing. TestFlight installation
 and delivered-build acceptance remain pending.** Prerequisite
 PRs #10/#11 are merged. See the [focused plan](2026-11-05-testflight-implementation.md)
 and [delivery record](testflight-delivery.md). Apple activation and App Store Connect access are now verified. No longer recording is authorized

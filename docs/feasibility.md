@@ -758,3 +758,31 @@ Apple processing, export-compliance status, build assignment, installation,
 expiry and delivered-build acceptance are being checked separately. Owner reports
 the TestFlight app is installed and ready. No new phone recording or cleanup has
 run, and no M3/M5 completion is claimed.
+
+### Processing, compliance and owner availability
+
+Apple completed processing and displayed Missing Compliance. In the build's
+App Encryption Documentation dialog, selected None of the algorithms mentioned
+above: the app uses only Apple's OS-provided HTTPS/WebKit/Keychain encryption,
+without proprietary algorithms or standard algorithms implemented outside the OS.
+This matches the reviewed core-only dependency graph. Saved the declaration;
+the build advanced to Ready to Submit without an encryption-document upload.
+The app's Info.plist was not changed, so a replacement build must answer the
+questions again unless a separately reviewed declaration key is added later.
+
+Assigned 0.1 (1) to Owner MVP. App Store Connect then showed one internal tester,
+one build, status Testing and Expires in 90 days (observed 2026-11-05). The existing
+owner tester's invitation status is Invited. Saved build-specific What to Test
+instructions covering a short recording, manual overlay hide/show, playback,
+original Files export and privacy link. No external group/public invite or
+external beta review was used.
+
+Phone installation and the actual short flow remain pending owner confirmation.
+A successful upload, Testing status and invitation do not establish installation,
+M2/M4 or final M3/M5. The owner may answer later and needs no USB connection to
+install. No long run has been started.
+
+Focused independent review of the resolved compliance/group status update found
+no material findings. The review confirmed the encryption rationale and the
+separation between internal beta availability, unconfirmed installation and
+pending acceptance gates. Documentation whitespace checks pass.

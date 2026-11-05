@@ -1,7 +1,7 @@
 # TestFlight delivery record — issue #6
 
-Updated: 2026-11-05. **Version 0.1 (1) uploaded; Apple processing and TestFlight installation
-are being checked.** Prerequisite PRs #10 and #11 merged; issue #5 closed with explicit
+Updated: 2026-11-05. **Version 0.1 (1) is available to the internal owner group in TestFlight;
+phone installation and delivered-build acceptance are being checked.** Prerequisite PRs #10 and #11 merged; issue #5 closed with explicit
 start/end sync and TestFlight qualification carryover.
 
 ## Current state and attention boundaries
@@ -13,8 +13,8 @@ start/end sync and TestFlight qualification carryover.
 | Apple membership | Active membership and Xcode paid team verified |
 | App record / distribution team | Stream14 app record created; same bundle ID and existing team |
 | Release packaging | Signed Release archive, strict signature check and Organizer validation passed |
-| Upload / processing / review / invitations | Organizer upload succeeded; processing pending; private contacts saved only in App Store Connect |
-| TestFlight installation / expiry date | Upload 2026-11-05; installation/Apple expiry evidence pending |
+| Upload / processing / review / invitations | Upload/processing completed; export declaration saved; internal Owner MVP group is Testing |
+| TestFlight installation / expiry date | Upload 2026-11-05; Apple displays Expires in 90 days; phone installation pending |
 | Delivered-build M1–M5 / owner review | Pending; historical development evidence is not delivered-build acceptance |
 
 The owner does not monitor this chat continuously. Requests remain pending until
@@ -24,6 +24,13 @@ a disconnection is a resumable setup/transfer interruption, not proof of an app
 failure. Do not automatically reinstall, erase data or start another recording.
 Copy only stopped/finalized files and verify copies before drawing conclusions.
 No recordings are deleted as cleanup.
+
+Build 0.1 (1) was assigned to Owner MVP after processing and export compliance.
+The group has one existing internal owner tester, with invitation status Invited
+and build status Testing. Automatic build distribution is disabled; replacements
+must be assigned deliberately. No external beta review or external testers were
+needed for this internal route. Apple displays Expires in 90 days as observed on
+2026-11-05; check the current expiry in TestFlight before planning later use.
 
 TestFlight installation and ordinary testing work without a laptop connection.
 Ask the owner to reserve attention for installation/permission prompts, physical
