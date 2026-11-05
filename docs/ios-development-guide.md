@@ -846,3 +846,84 @@ main app. The shared scheme's build post-action brands and normally signs the
 built test wrapper before installation. Do not edit Xcode's template app or bypass
 signing. When reusing an xctestrun product, verify it was already branded/signed.
 Assets and exact built-in generation prompts are in [app-icons.md](app-icons.md).
+
+## Recording list polish (issue #30, integration branch)
+
+Setup now ends with Privacy policy and Third-party notices; these stack when
+larger text needs more space. Each saved entry has wrapping date/time and original
+MP4 size, status, then one horizontal Play/Export/Delete icon row. VoiceOver labels
+include the recording date and time. Targets are at least 44×44 points, deletion
+still confirms, and export still shares the original file. Missing/unavailable
+metadata says “File size unavailable” and disables Play/Export. Actual empty files
+can report zero. Size is read with Foundation file attributes when rendering a
+row; no stored estimate, available-capacity API or polling is added.
+
+The focused implementation/handoff is in
+[the recording UI plan](2026-11-05-recording-ui-implementation.md). Issue #23 must
+retain these details when splitting the full-app screens. This PR targets
+`codex/full-app`; it does not update the local-only MVP/TestFlight candidate.
+
+Native hosted tests and Release build:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /tmp/stream14-issue30-build \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -only-testing:Stream14Tests \
+  -resultBundlePath /tmp/stream14-issue30-unit2.xcresult test
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath /tmp/stream14-issue30-release \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+```
+
+Use fresh result-bundle paths on reruns. `RecordingFileSizeTests` checks a missing
+MP4 despite a present sidecar, actual bytes after rewrite, a real empty file,
+removal and an unexpected directory. The complete hosted suite passes 23 tests
+in 9 suites; the unsigned iPhone Release build passes with Xcode 27.2.
+
+The opt-in UI checks use **only synthetic Simulator fixtures**. Seed three fresh
+UUID status JSONs under the Simulator app's `Library/Application Support/MediaExperiments`:
+one completed entry with a generated playable MP4, one pending entry without a
+video, and a separate pending entry to delete. Use JSONEncoder-compatible seconds
+since 2001 for `created`; assign the video the newest date. Never reuse an owner's
+UUID or run this against a phone container. Pass their UUIDs as follows, alongside
+the same scheme/destination/cache options above and `-only-testing:Stream14UITests`:
+
+```sh
+TEST_RUNNER_STREAM14_RECORDING_UI_FIXTURE_ID="$VIDEO_FIXTURE_ID" \
+TEST_RUNNER_STREAM14_RECORDING_UI_MISSING_ID="$MISSING_FIXTURE_ID" \
+TEST_RUNNER_STREAM14_DELETE_FIXTURE_ID="$DELETE_FIXTURE_ID" \
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /tmp/stream14-issue30-build \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -only-testing:Stream14UITests \
+  -resultBundlePath /tmp/stream14-issue30-ui.xcresult test
+```
+
+The UI checks cover portrait and both landscape directions at normal and largest
+accessibility text, horizontal action alignment/targets/labels, missing-file
+actions, footer placement, accessibility audits, playback sheet, Save to Files
+availability, and Cancel/confirmed deletion of only the separate deletion fixture.
+They do not certify actual media playback or exported-file readback. Keep physical
+13 mini layout, spoken VoiceOver navigation, real playback and completed Files
+export as manual acceptance; Simulator audits do not replace those checks.
+
+The recording-list audit excludes only contrast findings on static text that
+intersects the scroll viewport but extends vertically beyond it, within its
+horizontal bounds. Xcode reported a contrast failure on the black overlay-status
+line partly covered by the fixed WebKit surface after scrolling. This exception
+does not suppress fully visible text, controls, text-clipping or other audit types.
+
+Final evidence: all six seeded layout combinations pass in
+`/tmp/stream14-issue30-layout7.xcresult`; retained screenshots in
+`/tmp/stream14-issue30-final-attachments` were visually inspected. The final
+Release log is `/tmp/stream14-issue30-release-final2.log`. Focused playback/export
+availability passes in `/tmp/stream14-issue30-ui2.xcresult`; selected-only deletion
+and baseline setup checks passed in `/tmp/stream14-issue30-ui.xcresult`, which also
+contains earlier superseded footer/test failures. Final independent review of the
+actual source and both branch diffs found no material issue. Physical acceptance
+above remains pending; no phone installation or recording was performed here.

@@ -23,6 +23,16 @@ struct ExperimentSample: Codable, Identifiable {
         try data.write(to: directory.appendingPathComponent(id.uuidString + ".json"), options: .atomic)
     }
 
+    /// Read the original video's current logical size, never a sidecar or estimate.
+    /// Missing/unreadable artifacts and unexpected file types have no known size.
+    func fileSize(in directory: URL) -> Int64? {
+        guard let attributes = try? FileManager.default.attributesOfItem(
+            atPath: directory.appendingPathComponent(fileName).path),
+              attributes[.type] as? FileAttributeType == .typeRegular,
+              let size = attributes[.size] as? NSNumber, size.int64Value >= 0 else { return nil }
+        return size.int64Value
+    }
+
     /// Remove only this recording's artifacts. Keep status last so failures leave
     /// a visible entry that can be retried. Never recursively remove a directory.
     func delete(in directory: URL) throws {

@@ -9,6 +9,7 @@ struct SetupView: View {
     @State private var showingNotices = false
     @State private var showingOverlayTest = false
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         NavigationStack {
@@ -25,9 +26,6 @@ struct SetupView: View {
                         .accessibilityIdentifier("setupStatus")
                     Text("Record camera, microphone and a transparent web overlay. Keep the phone in landscape with the rear camera upright.")
                         .accessibilityIdentifier("setupExplanation")
-                    if let privacyURL = URL(string: "https://github.com/smith3v/stream14/blob/main/docs/privacy.md") {
-                        Link("Privacy policy", destination: privacyURL)
-                    }
                     if experiment.phase != .idle {
                         ExperimentPreview(view: experiment.preview)
                             .aspectRatio(16 / 9, contentMode: .fit)
@@ -65,36 +63,16 @@ struct SetupView: View {
                         Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
                             .disabled(experiment.phase == .stopping)
                     }
-                    if let url = experiment.sampleURL {
-                        Text("Latest recording")
-                            .font(.callout)
-                        Button("Play sample", systemImage: "play.circle") { playback = PlaybackSelection(url: url) }
-                        ShareLink(item: url) { Label("Export original sample", systemImage: "square.and.arrow.up") }
-                        Text("Export to keep a copy outside the app. Deleting the app removes its local samples.")
-                            .font(.footnote)
-                    }
                     ForEach(experiment.savedSamples) { sample in
-                        VStack(alignment: .leading) {
-                            Text(sample.created, format: .dateTime.month().day().hour().minute().second())
-                            Text(sample.status.rawValue).font(.caption)
-                            if let directory = try? ExperimentSample.directory() {
-                                let url = directory.appendingPathComponent(sample.fileName)
-                                if FileManager.default.fileExists(atPath: url.path) {
-                                    Button("Play saved file") { playback = PlaybackSelection(url: url) }
-                                    ShareLink("Export original file", item: url)
-                                }
-                            }
-                            Button("Delete recording", systemImage: "trash", role: .destructive) {
-                                pendingDeletion = sample
-                            }
-                            .disabled(!experiment.canDeleteSamples)
-                            .accessibilityLabel("Delete recording from " + sample.created.formatted(date: .abbreviated, time: .standard))
-                            .accessibilityIdentifier("deleteRecording-" + sample.id.uuidString)
-                        }
+                        RecordingRow(sample: sample, canDelete: experiment.canDeleteSamples,
+                                     play: { playback = PlaybackSelection(url: $0) },
+                                     delete: { pendingDeletion = sample })
                     }
+                    Text("Export to keep a copy outside the app. Deleting the app removes its local samples.")
+                        .font(.footnote)
                     Text("1080p30 · H.264/AAC · local MP4 · no media upload")
                         .font(.footnote)
-                    Button("Third-party notices") { showingNotices = true }
+                    footerLayout { footerLinks }
                 }
                 .padding()
                 .buttonStyle(.bordered)
@@ -158,10 +136,82 @@ struct SetupView: View {
         }
     }
 
+    private var footerLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 16))
+    }
+
+    @ViewBuilder private var footerLinks: some View {
+        Link(destination: URL(string: "https://github.com/smith3v/stream14/blob/main/docs/privacy.md")!) {
+            Text("Privacy policy")
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: 44)
+        }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("privacyPolicy")
+        Button { showingNotices = true } label: {
+            Text("Third-party notices")
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: 44)
+        }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("thirdPartyNotices")
+    }
+
     private var notices: String {
         guard let url = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt"),
               let text = try? String(contentsOf: url, encoding: .utf8) else { return "Notices unavailable." }
         return text
+    }
+}
+
+/// One original file, one set of actions. Reuse this contract in the full-app list.
+private struct RecordingRow: View {
+    let sample: ExperimentSample
+    let canDelete: Bool
+    let play: (URL) -> Void
+    let delete: () -> Void
+
+    var body: some View {
+        let directory = try? ExperimentSample.directory()
+        let size = directory.flatMap { sample.fileSize(in: $0) }
+        let url = directory?.appendingPathComponent(sample.fileName)
+        let date = sample.created.formatted(date: .abbreviated, time: .standard)
+        let sizeLabel = size.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) }
+            ?? "File size unavailable"
+        VStack(alignment: .leading, spacing: 8) {
+            Text("\(date) · \(sizeLabel)")
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("recordingMetadata-" + sample.id.uuidString)
+            Text(sample.status.rawValue).font(.caption)
+            HStack(spacing: 12) {
+                Button { if let url { play(url) } } label: {
+                    Label("Play recording", systemImage: "play.circle")
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .disabled(size == nil)
+                .accessibilityLabel("Play recording from " + date)
+                .accessibilityIdentifier("playRecording-" + sample.id.uuidString)
+                if let url {
+                    ShareLink(item: url) {
+                        Label("Export original recording", systemImage: "square.and.arrow.up")
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .disabled(size == nil)
+                    .accessibilityLabel("Export original recording from " + date)
+                    .accessibilityIdentifier("exportRecording-" + sample.id.uuidString)
+                }
+                Button(role: .destructive, action: delete) {
+                    Label("Delete recording", systemImage: "trash")
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .disabled(!canDelete)
+                .accessibilityLabel("Delete recording from " + date)
+                .accessibilityIdentifier("deleteRecording-" + sample.id.uuidString)
+            }
+            .labelStyle(.iconOnly)
+        }
     }
 }
 
