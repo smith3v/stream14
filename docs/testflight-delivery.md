@@ -1,21 +1,28 @@
-# TestFlight delivery record — issue #6
+# TestFlight delivery record — MVP and updates
 
-Updated: 2026-11-05. **Release resources prepared; nothing uploaded or installed from
-TestFlight yet.** Prerequisite PRs #10 and #11 merged; issue #5 closed with explicit
+Updated: 2026-11-05. **Version 0.1 (1) was installed and used through TestFlight. The owner
+exported and reviewed an approximately 35-minute recording; objective file
+verification and qualification limits are recorded in feasibility.** Prerequisite PRs #10 and #11 merged; issue #5 closed with explicit
 start/end sync and TestFlight qualification carryover.
+
+UI update **0.1 (2)** uploaded successfully on 2026-11-05 at 22:55 Amsterdam;
+processing and compliance completed, and Owner MVP shows it **Testing** at 23:10.
+Actual build 2 installation has not been observed. See the
+[issue #30 release record](2026-11-05-recording-ui-testflight.md). The historical
+0.1 (1) owner review below remains unchanged.
 
 ## Current state and attention boundaries
 
 | Item | Status |
 | --- | --- |
-| Source baseline | main 122c69c; focused branch codex/issue-6-testflight |
-| App identity | com.smith3v.stream14; planned first candidate 0.1 (1), subject to unused-build check |
-| Apple membership | Enrollment submitted; owner is waiting for Apple confirmation |
-| App record / distribution team | Pending active membership and App Store Connect access |
-| Release packaging | Unsigned Release archive and bundle inspection passed; not upload validation |
-| Upload / processing / review / invitations | Pending; private contacts not collected in Git |
-| TestFlight installation / expiry date | Pending; record actual upload date and Apple expiry after upload |
-| Delivered-build M1–M5 / owner review | Pending; historical development evidence is not delivered-build acceptance |
+| Source baseline | main 4f831e1 (merged PR #12); delivery branch codex/issue-6-testflight-delivery |
+| App identity | com.smith3v.stream14; uploaded candidate 0.1 (1) |
+| Apple membership | Active membership and Xcode paid team verified |
+| App record / distribution team | Stream14 app record created; same bundle ID and existing team |
+| Release packaging | Signed Release archive, strict signature check and Organizer validation passed |
+| Upload / processing / review / invitations | Upload/processing completed; export declaration saved; internal Owner MVP group is Testing |
+| TestFlight installation / expiry date | Upload 2026-11-05; owner confirms TestFlight use/export; Apple displays Expires in 90 days |
+| Delivered-build M1–M5 / owner review | Owner confirms picture/sound/overlay and requests closeout; formal measurement limits remain explicit |
 
 The owner does not monitor this chat continuously. Requests remain pending until
 answered; silence never authorizes a run. Archive and upload require no connected
@@ -24,6 +31,20 @@ a disconnection is a resumable setup/transfer interruption, not proof of an app
 failure. Do not automatically reinstall, erase data or start another recording.
 Copy only stopped/finalized files and verify copies before drawing conclusions.
 No recordings are deleted as cleanup.
+
+The owner subsequently installed through the invitation, recorded 35 min 26.410 s
+using the TestFlight app, exported the original MP4 to the laptop,
+and confirmed picture, sound and overlay look correct. There were no start/end
+sync markers. This establishes actual beta use and owner playback/export review;
+it does not quantify ≤100 ms sync or prove memory/queue stability. See the
+[original-file measurements and remaining limits](feasibility.md#owner-testflight-recording-and-review-2026-11-05).
+
+Build 0.1 (1) was assigned to Owner MVP after processing and export compliance.
+At assignment, the group had one existing internal owner tester, with invitation
+status Invited and build status Testing; the owner subsequently reports installation. Automatic build distribution is disabled; replacements
+must be assigned deliberately. No external beta review or external testers were
+needed for this internal route. Apple displays Expires in 90 days as observed on
+2026-11-05; check the current expiry in TestFlight before planning later use.
 
 TestFlight installation and ordinary testing work without a laptop connection.
 Ask the owner to reserve attention for installation/permission prompts, physical
@@ -71,13 +92,11 @@ because SPM resolved them; inspect the actual archive before making export claim
 
 Use [privacy policy](privacy.md) and [support](support.md) as public source pages
 after their branch is published; use stable main URLs once merged. The app links
-to the main-branch privacy page near the top of setup, before
-permissions or recording. **Pre-upload blocker:** merge the reviewed privacy-page
-change with owner authorization and verify that exact in-app main URL and support
-page open signed out before uploading. Branch publication alone does not make
-the main URL live. Verify the link on the delivered build as well. Do not use
-a local path
-or claim unpublished documents are already hosted. No custom legal terms have been
+to the main-branch privacy page in the footer beside Third-party notices,
+available before permissions or recording. PR #12 was owner-merged; the exact main-branch privacy
+and support URLs both returned HTTP 200 without authentication before upload.
+Verify the in-app link on the delivered build as well. A compiled URL alone does
+not prove the remote page is readable. No custom legal terms have been
 adopted. Fill current age-rating questions accurately for configurable web content,
 and review App Privacy against actual overlay-service data flows before submitting.
 The app-level empty collected-data manifest is not a claim that overlay websites
@@ -113,8 +132,8 @@ Long recording qualification is in progress.
 
 Open Overlay, choose Use reference URL, then Load overlay. Close settings, Open
 camera, and allow camera/microphone access. Record a short clip; toggle Hide overlay
-manually to check it disappears from preview and file. Stop, Play sample, then
-Export original sample → Save to Files and open that copy. Report build/model/OS
+manually to check it disappears from preview and file. Stop, tap the recording’s Play icon, then its Export icon → Save to Files and
+open that copy. Report build/model/OS
 and visible failures using TestFlight feedback. Do not attach private media or
 secret-bearing URLs. Keep important recordings exported before replacing a beta.
 

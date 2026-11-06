@@ -135,6 +135,15 @@ is disabled during recording/setup/finalization. There is no automatic cleanup o
 available-space estimation/polling. This supersedes the earlier experiment's
 always-retain policy only after explicit owner confirmation for a selected record.
 
+Issue #30 refines this list on the full-app integration branch: each recording
+shows date/time beside its original MP4's current logical file size, formatted
+with readable units. Missing/unreadable/nonregular files say “File size unavailable”
+and disable Play/Export; a real empty file can report zero. One horizontal row of
+Play, original Export and confirmed Delete icons has dated VoiceOver labels and
+at least 44×44-point targets. Date/size text wraps for Dynamic Type. There is no
+persisted size, capacity polling or estimate. Carry this behavior into issue #23's
+recordings screen, including failed/pending entries and unchanged confirmation.
+
 Current development experiments are capped at 15 minutes; longer integrated
 whole-app qualification is deferred until an agreed later run. Fifteen minutes
 must not be labeled a completed long-run M3/M5 gate. The app's normal Record/Stop
@@ -152,16 +161,26 @@ freshness (35F9.1) and app-container file metadata access for safe deliberate
 deletion (C617.1). It declares no developer collection/tracking. The configurable
 WebKit overlay still contacts its website and subresources; this is explicitly
 covered in the [privacy policy](privacy.md) and must be considered in submission
-disclosures. A standard Privacy policy link is visible near the top of setup before camera
-permissions. Its main-branch policy URL must be published and verified before
+disclosures. A standard Privacy policy link is available at the bottom of setup
+beside Third-party notices, stacking when larger text needs more space.
+Native AnyLayout preserves the controls when accessibility text changes the footer
+from a row to a column. Portrait/both-landscape normal/largest-text Simulator
+layout and scoped accessibility audits pass; physical VoiceOver acceptance remains
+pending. The link remains
+available before camera permissions. Its main-branch policy URL must be published and verified before
 upload. No transport or account feature is added.
 
 The [delivery record](testflight-delivery.md) separates packaging from signed
-upload, processing, TestFlight installation and M1–M5 evidence. Paid membership,
-private contact fields and owner acceptance remain pending. Archive/upload do
-not require a phone; device work waits for owner availability and tolerates
+upload, processing, TestFlight installation and M1–M5 evidence. Membership, signed
+upload, internal distribution and owner TestFlight use/export are now confirmed.
+The owner reviewed a 35 min 26.410 s original recording and reports correct picture,
+sound and overlay; file cadence/decode checks and remaining qualification limits
+are in the [owner verification report](feasibility.md#owner-testflight-recording-and-review-2026-11-05).
+Numerical start/end A/V sync and this run's memory/queue stability remain unverified.
+Owner-requested closeout does not turn those formal M3/M5 criteria into passes.
+Archive/upload do not require a phone; device work waits for owner availability and tolerates
 disconnection without deleting originals or automatically retrying capture.
-The later 30-minute qualification requires a separately agreed run, start/end
+Any additional formal qualification requires a separately agreed run, start/end
 sync markers and a defined delivered-build memory measurement route. The current
 hosted development harness is not that TestFlight measurement route.
 

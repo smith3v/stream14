@@ -674,7 +674,8 @@ separately below.
 
 Independent review inspected the full actual diff/source/resources. It found the
 missing in-app privacy link; a standard SwiftUI Link near the top of setup now
-addresses it. Focused re-review found no remaining material findings. The guide
+addresses it. Issue #30 subsequently moves the link beside Third-party notices in
+the setup footer, retaining availability before camera permissions. Focused re-review found no remaining material findings. The guide
 explicitly blocks upload until owner-authorized publication makes the exact
 main-branch policy URL publicly readable. Signed upload, actual TestFlight
 installation, delivered-build checks and owner review remain pending.
@@ -708,3 +709,184 @@ Use a fresh result path on repeat runs and choose the corresponding Simulator
 identifier on another Mac. The app privacy URL also appears in the final archived
 binary. Its remote main-branch publication is still a pre-upload check, not
 established by a compiled URL or a visible Link.
+
+## Signed upload progress (issue #6, 2026-11-05)
+
+The owner confirmed completed enrollment. The Apple Developer portal shows active
+Program membership, and Xcode's account exposes the paid developer team.
+App Store Connect initially contained no apps or builds. Created the Stream14
+iOS record with the existing com.smith3v.stream14 identifier, English (U.S.) and
+SKU stream14-ios. The owner had selected the display-name casing and language
+during setup; the stable bundle ID is unchanged. No public App Store release was
+submitted.
+
+The exact public main-branch privacy and support URLs returned HTTP 200 without
+authentication after the owner's merge of PR #12. Media source and package pins
+are unchanged from main 4f831e1.
+
+Signed Release archive command (local team remains uncommitted):
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /tmp/stream14-issue6-signed-release \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -allowProvisioningUpdates \
+  -archivePath /tmp/stream14-issue6-signed.xcarchive archive
+```
+
+Archive succeeded. Strict deep codesign verification passed; identity is
+com.smith3v.stream14, version 0.1, build 1, and the privacy resource matches the
+reviewed manifest. Local log: /tmp/stream14-issue6-signed-archive.log.
+Private signing material and raw account/tester information are not committed.
+
+Organizer initially rejected validation because its cached account still labeled
+the team Personal Team. The local archive's development provisioning profile was
+the older seven-day profile, not evidence of paid distribution. Downloaded profiles
+and restarted Xcode to refresh membership; Organizer then recognized the paid team.
+The unmodified archive passed all App Store Connect validation checks and Organizer
+reported successful upload of Stream14 0.1 (1). There was no signing bypass or
+manual archive mutation.
+
+Beta description, public privacy URL and no-login local-recording review notes
+were saved in TestFlight Test Information. The owner explicitly authorized use of
+existing Apple profile contact details; those remain only in Apple's designated
+fields. Created the internal Owner MVP group with automatic distribution disabled
+and added only the existing owner account. No third-party testers or public links
+were added.
+
+Apple processing, export-compliance status, build assignment, installation,
+expiry and delivered-build acceptance are being checked separately. Owner reports
+the TestFlight app is installed and ready. No new phone recording or cleanup has
+run, and no M3/M5 completion is claimed.
+
+### Processing, compliance and owner availability
+
+Apple completed processing and displayed Missing Compliance. In the build's
+App Encryption Documentation dialog, selected None of the algorithms mentioned
+above: the app uses only Apple's OS-provided HTTPS/WebKit/Keychain encryption,
+without proprietary algorithms or standard algorithms implemented outside the OS.
+This matches the reviewed core-only dependency graph. Saved the declaration;
+the build advanced to Ready to Submit without an encryption-document upload.
+The app's Info.plist was not changed, so a replacement build must answer the
+questions again unless a separately reviewed declaration key is added later.
+
+Assigned 0.1 (1) to Owner MVP. App Store Connect then showed one internal tester,
+one build, status Testing and Expires in 90 days (observed 2026-11-05). The existing
+owner tester's invitation status is Invited. Saved build-specific What to Test
+instructions covering a short recording, manual overlay hide/show, playback,
+original Files export and privacy link. No external group/public invite or
+external beta review was used.
+
+Phone installation and the actual short flow remain pending owner confirmation.
+A successful upload, Testing status and invitation do not establish installation,
+M2/M4 or final M3/M5. The owner may answer later and needs no USB connection to
+install. No long run has been started.
+
+Focused independent review of the resolved compliance/group status update found
+no material findings. The review confirmed the encryption rationale and the
+separation between internal beta availability, unconfirmed installation and
+pending acceptance gates. Documentation whitespace checks pass.
+
+## Owner TestFlight recording and review (2026-11-05)
+
+The owner reports recording approximately 35 minutes using the TestFlight app
+and exporting the original MP4 to the laptop. This follows the invitation/install
+flow for the only distributed local-only candidate, version 0.1 (1), main 4f831e1.
+The session's testing device is the iPhone 13 mini/iOS 27.2; the owner did not
+separately reconfirm the model/OS/build fields in this final message, so file
+analysis itself is not independent proof of those device metadata fields.
+
+The owner confirms picture, sound and overlay look correct, believes the audio
+is correct, and requests updating PR #29 so it can be merged and issue #6 closed.
+There were no visible/audible sync markers at the start/end. Treat this as actual
+TestFlight use, original-file export and subjective owner review, not a measured
+≤100 ms physical A/V offset or a complete formal M1–M5 qualification.
+
+### Original-file verification
+
+Native AVFoundation inspection and an independent compressed-sample/timing read
+produced the following evidence. No app changes or new recording experiment were
+needed, and the original file was neither modified nor deleted.
+
+| Check | Observed result |
+| --- | --- |
+| Duration | 2,126.410430839 s — 35 min 26.410 s |
+| Original file size | 3,751,346,827 bytes |
+| Video | One 1920×1080 H.264/avc1 track; identity orientation transform |
+| Audio | One stereo AAC track, 44,100 Hz |
+| Video metadata nominal frame rate | 29.835510 fps; cadence assessed against the 30 Hz target |
+| Nonempty compressed video samples | 63,440 |
+| Estimated missing 30 Hz intervals | 631 / 0.98484494%, below 1% as an output-timing estimate |
+| Largest sorted video PTS gap | 400 ms |
+| Sorted video PTS gaps ≥500 ms | Zero |
+| Duplicate video presentation timestamps | Four, near 32.908, 37.807, 39.307 and 39.573 s |
+| Full native decoded-video read | Completed; 63,436 decoded buffers |
+| Full native decoded-audio read | Completed; 11,448 decoded buffers |
+| Owner playback/export review | Picture, sound and overlay look correct; original exported to laptop |
+
+Cadence sorts nonempty compressed video presentation timestamps and uses exact
+CMTime differences converted to 30 Hz with round-half-away-from-zero, counting
+positive intervals beyond one. An initial Double subtraction produced 630 rather
+than 631 estimated intervals at a half-frame rounding boundary; the independent
+rational calculation above is the recorded result. This is not a direct
+camera-drop or writer-admission counter, does not establish all internal queue
+behavior and cannot detect every duplicated/stale picture. The full decode readers
+reached completed status; do not claim every compressed sample yielded a decoded
+buffer. Four duplicate timestamps match the magnitude of the count difference,
+but their causal relationship has not been established.
+
+The video's edit list accounts for a 66.7 ms compressed/decoded timeline-origin
+difference. Audio has its own priming/edit structure. Comparing track endpoints
+or those origins does not measure physical lip/clap sync. No numerical start/end
+offset or drift is established without identifiable synchronized visual/audio
+events.
+
+Private original-derived thumbnails at 0.5, 20, 300, 900, 1,800 seconds and near
+the end show real camera footage with a stable translucent scoreboard overlay;
+app buttons/alerts do not appear in those inspected frames. The sampled scoreboard
+is unchanged. Sparse samples and owner playback are not a new deterministic
+changing-score, manual-hide, network-outage or interruption test on this build.
+Earlier development evidence for these behaviors remains separately labeled.
+
+### Acceptance and closeout limits
+
+TestFlight installation/use, a longer-than-30-minute original file, stop/export
+and owner review now have evidence. The owner requests closeout on that basis.
+This does not make the formal M3/M5 criteria an unconditional pass:
+
+- Start/end physical A/V offset ≤100 ms was not measured; subjective audio
+  correctness is owner-confirmed.
+- No time series for this TestFlight run's charged memory, WebKit/GPU memory,
+  thermal state, queues or writer-admission metrics was exported. Do not import
+  the earlier development harness's values into this run.
+- Output cadence and timestamp-gap checks support the stated targets only within
+  the method's limits; no complete sensor-frame-drop/frozen-frame proof is claimed.
+- Prior failure/outage checks are development-build evidence, not newly repeated
+  delivered-build qualification. There is no three-hour or simultaneous
+  recording/broadcasting qualification.
+
+PR #29 records the owner-requested delivery handoff with these unverified
+criteria visible. Issue #6 stays open until the owner's merge/closure decision;
+closing an owner-accepted delivery stage must not rewrite the formal gates as
+all passed. Preserve local-only 0.1 (1) and its samples while the separately
+owner-coordinated full-app work proceeds on codex/full-app (epic #13); this
+verification change adds no broadcasting behavior and does not silently replace
+the local-only candidate or retarget an existing PR.
+
+Private evidence directory: /tmp/stream14-testflight-owner-verification/.
+It contains inspect.swift, inspection.json/log, the independent timing reader and
+JSON, edit-list analysis, verification-summary.json, original.sha256 and sampled
+PNGs. The original remains at the owner-provided Downloads path. Raw footage,
+thumbnails, audio-derived data, signing material and tester identity are excluded
+from Git and public PR/issue attachments. The native inspection executable accepts
+the original path and the private output directory; it reads the original and
+writes only derived evidence there. Full video/audio decode completed on the Mac;
+no new build or physical-device test was necessary for this documentation change.
+
+Independent final review inspected the actual five-document diff and private
+original-file evidence, independently reproduced the exact cadence calculation
+and inspected the edit lists. It found no remaining material findings. Markdown
+relative-link/fence checks and git diff --check pass. Existing local signing
+settings remain excluded. The PR is prepared for the owner's merge; no merge,
+issue closure or new recording is performed by this verification update.
