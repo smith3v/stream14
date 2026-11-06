@@ -1,11 +1,11 @@
 # iOS development and TestFlight: a first-project guide
 
-> Parallel development (2026-11-05): the owner authorized full-app work on
-> `codex/full-app` while Apple enrollment and MVP issue #6 are pending. All new
-> PRs target that branch. Follow the [full-app plan](2026-11-05-full-app-implementation.md)
-> for the later Google/RTMPS work; keep the local-only TestFlight candidate and
-> its M1–M5 evidence separate. Main promotion still needs completed MVP testing
-> and explicit owner approval. Earlier sequential wording below is historical.
+> Owner workflow update (2026-11-06): all new PRs target main and start from
+> current main. The temporary codex/full-app integration workflow is superseded.
+> Follow the [full-app plan](2026-11-05-full-app-implementation.md) for authorized
+> Google/RTMPS development. Issue #6 is closed after TestFlight delivery/owner
+> review; retain the documented measurement limits and independently qualify
+> later builds. Review and explicit merge authorization remain required.
 
 
 Checked: 2026-11-05. Read the [application specification](2026-11-01-stream14-design.md)

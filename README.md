@@ -21,15 +21,17 @@ No media upload/ingestion connection or export transcode is used. See the
 [feasibility evidence and outstanding qualification](docs/feasibility.md).
 The integrated development build does not establish M3–M5 or TestFlight delivery.
 
-## Parallel full-app development
+## Full-app development
 
-Apple enrollment is pending and [MVP delivery/acceptance #6](https://github.com/smith3v/stream14/issues/6)
-remains open. The owner authorized full-app development on `codex/full-app` on
-2026-11-05. All new PRs target that branch while MVP testing is pending; main stays
-the local-only candidate. This supersedes the earlier sequential development wording
-below, without waiving TestFlight or qualification. See [full-app epic #13](https://github.com/smith3v/stream14/issues/13) and the
-[full-app plan and issue handoffs](docs/2026-11-05-full-app-implementation.md).
-Promotion to main needs completed MVP review and a separately approved PR.
+Use focused branches from current `main` and target all new PRs to `main`.
+The owner restored this workflow on 2026-11-06, superseding the temporary
+`codex/full-app` integration branch. [MVP issue #6](https://github.com/smith3v/stream14/issues/6)
+is closed following TestFlight delivery/owner review, with qualification limits
+retained in the evidence. Full-app implementation follows
+[epic #13](https://github.com/smith3v/stream14/issues/13) and the
+[full-app plan](docs/2026-11-05-full-app-implementation.md).
+Earlier MVP-only sequencing below does not block that work. PRs still require
+review and explicit merge authorization.
 
 ## Current MVP
 

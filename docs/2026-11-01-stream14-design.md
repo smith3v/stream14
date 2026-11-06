@@ -8,23 +8,21 @@ the agreed behavior. "Starting default" is an explicit engineering choice that c
 be revised using measured results. "Feasibility gate" means the approach is not yet
 proven and must not be presented as a working capability.
 
-## Owner sequencing update — 2026-11-05
+## Owner sequencing and workflow update — 2026-11-06
 
-Apple Developer Program enrollment is pending. The owner explicitly authorizes
-full-product implementation in parallel with outstanding MVP delivery/testing on
-`codex/full-app`, based on main `4f831e1` after PR #12. All new PRs target that
-integration branch while issue #6 is pending; main remains the local-only candidate.
-The [separate full-app plan](2026-11-05-full-app-implementation.md) supplies staged
-issue prompts, dependencies and A1–A9 delivery work.
+The owner authorizes full-product development using focused branches from current
+main and PRs targeting main. This replaces the temporary 2026-11-05 `codex/full-app`
+integration workflow; no integration promotion or MVP backport gate remains.
+The [full-app plan](2026-11-05-full-app-implementation.md) supplies issue prompts,
+dependencies and A1–A9 delivery work. Older instructions to defer all broadcasting
+implementation until MVP qualification do not block this authorized development.
 
-This overrides the earlier “implement broadcasting only after MVP review” sequencing
-in this document on the integration branch. It changes development order, not the
-required behavior or acceptance gates. M1–M5/TestFlight/owner review stay pending;
-full-app development is not MVP acceptance. A later full-app TestFlight candidate
-must preserve/complete the local-only review first. Promotion into main remains a
-separate reviewed, explicitly approved PR. Development experiments remain capped at
-15 minutes; longer qualification requires a later agreed run. All older stage notes
-below are historical evidence for their stated build, not claims of current delivery.
+Issue #6 is closed after actual local-only TestFlight delivery and owner review.
+Its recorded measurement limits remain: closure does not establish all formal
+M1–M5 or full-product gates. Preserve historical build evidence and independently
+qualify the later full-app build. Development experiments remain capped at 15 minutes;
+longer qualification needs a later explicit agreement. A PR target does not authorize
+merging; use independent review and explicit merge approval.
 
 ## Current milestone: local-recording MVP
 
@@ -739,7 +737,7 @@ evaluation, then the local-recording MVP, TestFlight delivery, and M1–M5 revie
 only after that review, then independent-output failure handling, long-event
 qualification, and updated TestFlight builds for the small beta group. Detailed work prompts for the first
 milestone only are in [the MVP implementation plan](2026-11-01-stream14-implementation.md).
-The owner sequencing update above authorizes the separate full-app plan now on integration; MVP review remains a delivery/promotion prerequisite.
+The owner workflow update above authorizes the separate full-app plan on focused branches from main; full-product acceptance remains evidence-based.
 
 Before MVP TestFlight distribution, configure Apple team membership, the final
 bundle identifier/app record, signing, tester access, and privacy/support information

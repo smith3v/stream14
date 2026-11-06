@@ -1,6 +1,6 @@
 # Full App Implementation Plan
 
-**Goal:** Implement the specified YouTube broadcaster on an isolated integration branch while local-only MVP delivery and testing remain open.
+**Goal:** Implement and qualify the specified YouTube broadcaster through focused PRs into main, preserving prior local-MVP evidence and its limitations.
 
 **Architecture:** Retain one HaishinKit camera/composition pipeline and independently owned file and RTMPS outputs. Verify encoding/fan-out feasibility before adopting a production transport path. Use a concrete SwiftUI session coordinator, Google authorization adapter and small URLSession YouTube client; keep recording, transport and remote broadcast state independent.
 
@@ -8,17 +8,17 @@
 
 ---
 
-## Owner scope and integration policy — 2026-11-05
+## Owner scope and branch policy — updated 2026-11-06
 
-Apple Developer Program enrollment blocks MVP TestFlight testing. The owner explicitly authorized full-app development now on a separate branch. This supersedes the earlier sequential MVP-before-broadcasting development restriction only on `codex/full-app`; it does not pass or waive M1–M5, A1–A9, or owner review. No application code is changed by this plan.
+The owner restored main as the merge target. Start each focused `codex/issue-<number>-<topic>` branch from current main and target its PR to main. This replaces the temporary 2026-11-05 `codex/full-app` workflow; no integration promotion or MVP backport stage is required. This planning PR also targets main. Do not delete old branches, rewrite shared history or merge automatically.
 
-`codex/full-app` starts at remote main `4f831e1f3714129d83ded76cba14c5358daa0cc2`, the merge of release-preparation PR #12. Issue #6 remains open. All new PRs, including this planning PR, target integration while MVP testing is pending. The main branch remains the local-only candidate; do not replace that candidate with the full-app build for MVP acceptance. Any MVP fix requiring a backport needs explicit coordination rather than silently retargeting a PR. Merge authorization is separate from the destination rule. Do not merge the full branch into main until #6 is complete and the owner approves promotion; F14 prepares the reviewed PR.
+At this update remote main is `36e1150` (merged PR #32), including TestFlight delivery PR #29 and the reviewed UI update. Issue #6 is closed following delivered-build use and owner review, with formal measurement limits explicitly retained. Those limits are not waived by changing the PR base. Full-app development remains authorized; historical MVP-only sequencing does not block the planned implementation. This plan changes no app behavior.
 
 ### Approach and decision gates
 
 Use staged media and YouTube work converging at F7. A single monolithic broadcast change would make independent failure behavior difficult to review. A new custom media pipeline would discard working capture/composition and adds ownership risk. The selected approach retains the native/library implementation and front-loads the uncertain shared-encoding boundary in F1; a second encoder or pipeline replacement needs measured evidence and an explicit decision.
 
-F1/F2/F4 can begin independently. F3 follows F2; F5 follows F3; F6 follows F1/F4. F7 combines all prerequisites; F8/F9 complete recovery, followed by F10 interface, F11 files/recovery and F12 instrumentation. F13 prepares and delivers the later beta only after preserving/completing the MVP delivery. F14 owns measured full-product acceptance and promotion. These are dependency lanes, not instructions to spawn agents or begin implementation in this planning task.
+F1/F2/F4 can begin independently. F3 follows F2; F5 follows F3; F6 follows F1/F4. F7 combines all prerequisites; F8/F9 complete recovery, followed by F10 interface, F11 files/recovery and F12 instrumentation. F13 prepares and delivers the later beta while preserving the completed MVP delivery evidence and its limits. F14 owns measured full-product acceptance and release readiness. These are dependency lanes, not instructions to spawn agents or begin implementation in this planning task.
 
 No new scope beyond the canonical full-product specification: no event creation/editor, visibility changes, chat, arbitrary RTMP destinations, extra cameras/layers, HDR/60 fps, background broadcasting, backend, analytics or storage forecasting. Preserve the owner’s confirmed per-file deletion, main/test icons and 15-minute development-experiment limit. A2/A7 long runs remain future agreed qualification, not an instruction to run them now.
 
@@ -30,9 +30,9 @@ Use @brainstorming for actual behavior/design choices, @writing-plans for a focu
 
 ## Context and branch contract
 
-Owner instruction of 2026-11-05 authorizes full-app development while Apple enrollment blocks MVP delivery. Integration branch: `codex/full-app`, created from remote `main` at `4f831e1` (merged PR #12). Read the latest integration branch, not an old local main. All new PRs target `codex/full-app` while MVP issue #6 is pending. Start a focused `codex/issue-<number>-<topic>` branch from current integration; do not merge into main, force-push or rewrite shared history. The integration branch does not make MVP M1–M5 complete. Main remains the local-only MVP candidate; any necessary MVP backport needs separate explicit coordination. After #6 completion, promotion to main remains an explicitly reviewed/approved PR.
+Owner instruction of 2026-11-06 restores main as the branch/PR base for all full-app work. Start a focused `codex/issue-<number>-<topic>` branch from current main and target main. The former codex/full-app integration, backport and eventual promotion workflow is superseded; do not delete branches or rewrite shared history. PR destination is not permission to merge automatically.
 
-Read AGENTS.md, docs/2026-11-01-stream14-design.md (R1–R11, sections 2–10, A1–A9), docs/2026-11-05-full-app-implementation.md, docs/ios-development-guide.md and docs/feasibility.md on the integration branch, plus this epic and prerequisite issue/PR handoffs. Earlier instructions deferring broadcasting until MVP review are superseded only for this branch by the owner instruction; other reliability/privacy requirements stand.
+Read AGENTS.md, docs/2026-11-01-stream14-design.md (R1–R11, sections 2–10, A1–A9), docs/2026-11-05-full-app-implementation.md, docs/ios-development-guide.md and docs/feasibility.md on current main, plus epic #13 and prerequisite issue/PR handoffs. Until planning PR #28 merges, its head branch publishes the full plan. Full-app development remains authorized despite historical MVP-only sequencing. Issue #6 is closed after local-only TestFlight delivery/owner review; preserve its objective measurement limits and qualify later builds independently.
 
 Baseline is Swift 6/SwiftUI, iOS 27, one HaishinKit 2.3.0 MediaMixer, attached MainActor WebKit at about 1 Hz, explicit ScreenActor overlay visibility and a concrete LocalRecorder on composed NV12/PCM output. AVAssetWriter currently encodes H.264/AAC once for the file; shared encoded streaming output is unproven. Keep source/render freshness separate, 10-second hide/fresh-image recovery and manual-hide precedence. Keep Google/transport state separate from recording. No backend, analytics, generic output framework, 60 fps/HDR/camera switching or storage-estimation/polling/threshold subsystem.
 
@@ -42,7 +42,7 @@ Development media experiments stay at most 15 minutes; 30-minute/three-hour qual
 
 1. Inspect the current files and prerequisite merged PRs; preserve unrelated local work. Implement in small changes, adding deterministic tests for material decisions and updating the relevant specification/guide/feasibility section with actual APIs and evidence.
 2. Use the shared Stream14 scheme. Follow the plan’s exact baseline native build/test commands, resolve packages if changed, and add focused tests for this issue. Report command/build/device/OS/result and missing external evidence honestly; do not close an unmet device/API acceptance gate on Simulator evidence.
-3. Open a focused PR into `codex/full-app`, reference this issue/epic and record validation/limits. A separate agent must inspect actual files and the full diff against main plus the incremental integration-base diff, focusing on correctness/data loss/privacy/build/media reliability. Resolve material findings, rerun affected checks and record the review. Do not merge automatically without explicit merge authorization; specifying a PR destination alone does not authorize a merge.
+3. Open a focused PR into `main`, reference this issue/epic and record validation/limits. A separate agent must inspect actual files and the full PR diff against current main, focusing on correctness/data loss/privacy/build/media reliability. Resolve material findings, rerun affected checks and record the review. Do not merge automatically without explicit merge authorization; specifying a PR destination alone does not authorize a merge.
 4. Leave a fresh-agent handoff: resulting files/public APIs, ownership decisions, exact reproducible commands, nonsecret configuration, evidence locations and unresolved requirements. Dependent work starts after prerequisite PRs merge unless the owner explicitly coordinates stacked work.
 
 ## GitHub issue index
@@ -62,7 +62,7 @@ Development media experiments stay at most 15 minutes; 30-minute/three-hour qual
 - [F11: #24 — Full app F11: Add honest fragment recovery and persistent recording review](https://github.com/smith3v/stream14/issues/24)
 - [F12: #25 — Full app F12: Add private qualification metrics for the delivered app](https://github.com/smith3v/stream14/issues/25)
 - [F13: #26 — Full app F13: Prepare and deliver a full-app TestFlight qualification candidate](https://github.com/smith3v/stream14/issues/26)
-- [F14: #27 — Full app F14: Qualify A1–A9 and prepare controlled integration into main](https://github.com/smith3v/stream14/issues/27)
+- [F14: #27 — Full app F14: Qualify A1–A9 and record full-app release readiness](https://github.com/smith3v/stream14/issues/27)
 
 ## Stages and dependencies
 
@@ -370,7 +370,7 @@ Extend existing per-record metrics/sidecars with bounded sampling/checkpoints ou
 
 Add a small useful diagnostic export/control and instructions for start/end visible+audible clap markers, original-file analysis, receiver observation and power/network/ambient conditions. A generic internal debug panel is unnecessary. Maintain the development harness 900-second cap; never auto-run 30-minute or three-hour tests. Normal user recording has no artificial limit.
 
-Provide reproducible native tools/scripts for analyzing original sample timestamps/decodability and a qualification report template mapping A1–A9. If measurement hooks differ by build type, prove the delivered build uses the claimed route. Any MVP instrumentation backport is separately scoped; this full-app build does not substitute for #6.
+Provide reproducible native tools/scripts for analyzing original sample timestamps/decodability and a qualification report template mapping A1–A9. If measurement hooks differ by build type, prove the delivered build uses the claimed route. Scope new instrumentation as a normal PR into main; it does not retroactively change the evidence for the earlier MVP build.
 
 **Validation and acceptance:**
 
@@ -392,11 +392,11 @@ Perform the common delivery steps above, including focused tests, documentation,
 
 Prepare the streaming beta without rewriting the historical local-only MVP evidence. Update docs/privacy.md, docs/support.md, service terms/YouTube links and in-app disclosures for actual Google token/API, direct RTMPS and overlay data flows. Explain disconnect/revocation and API-data deletion separately from user recordings. Check current Google/YouTube policies, OAuth scope/consent/branding and Apple third-party login rules; no unrelated app account or added Sign in with Apple merely by assumption. Ask owner only for actual account/legal decisions; never fabricate contact details.
 
-Audit selected dependencies, linked binary/license notices, SDK privacy manifests/required-reason APIs, purpose strings, TLS and export compliance using current submission rules. Publish and verify the exact policy/support URLs used by the build. If branch URLs are needed for an integration beta, use verifiable URLs and switch to stable production URLs before promotion; do not silently publish unreleased policy as the local MVP’s behavior.
+Audit selected dependencies, linked binary/license notices, SDK privacy manifests/required-reason APIs, purpose strings, TLS and export compliance using current submission rules. Publish and verify the exact policy/support URLs used by the build. Use verified published URLs matching the beta’s actual behavior; coordinate policy changes with the delivered build rather than describing unreleased behavior as already available.
 
 Document/verify owner Cloud/OAuth configuration, real channel eligibility, unlisted dedicated manual/auto-start test events with auto-stop off, tester access, quota/verification limitations and normal signing. Google setup and Apple enrollment are separate dependencies. Keep secrets/tester lists outside Git.
 
-Build a normally signed distinct full-app version/build, archive/validate/upload, wait for processing/review, install through TestFlight on the 13 mini and verify the installed identity. Do not replace the only MVP candidate before #6’s local-only testing/owner review is preserved and completed; preparation can proceed now, actual replacement delivery waits on #6. No invitation is sent without owner-specified recipients. Document beta limitations, reproducible test flow and expiry/replacement.
+Build a normally signed distinct full-app version/build, archive/validate/upload, wait for processing/review, install through TestFlight on the 13 mini and verify the installed identity. Issue #6 is closed; preserve its local-only delivery/review evidence and recorded limits when producing the later full-app candidate. No invitation is sent without owner-specified recipients. Document beta limitations, reproducible test flow and expiry/replacement.
 
 **Validation and acceptance:**
 
@@ -406,7 +406,7 @@ Perform the common delivery steps above, including focused tests, documentation,
 
 ---
 
-### Task F14: Qualify A1–A9 and prepare controlled integration into main
+### Task F14: Qualify A1–A9 and record full-app release readiness
 
 **Dependencies:** F13.
 
@@ -416,19 +416,19 @@ Perform the common delivery steps above, including focused tests, documentation,
 
 **Prompt:**
 
-Use the actual full-app TestFlight candidate from F13 and complete the specification’s A1–A9 matrix. Issue #6 must independently complete M1–M5 and owner review; this issue cannot replace it. Before any 30-minute or three-hour recording, obtain the owner’s explicit agreement on that run/time and physical markers. Current development experiments remain capped at 15 minutes.
+Use the actual full-app TestFlight candidate from F13 and complete the specification’s A1–A9 matrix. Issue #6 is closed following MVP delivery/owner review, with objective measurement limits retained; this issue must independently prove the full-product gates. Before any 30-minute or three-hour recording, obtain the owner’s explicit agreement on that run/time and physical markers. Current development experiments remain capped at 15 minutes.
 
 On 13 mini/iOS 27, qualify both profiles with exact-canvas alpha/reloads and common preview/file/remote composition. Cover manual/auto-start, confirmed remote start/end and second-device playback. Exercise permission denial, empty/disabled/missing/wrong-channel events, expired/revoked consent, quota/rate-limit, startup reject/timeout, two-minute real network loss, retry exhaustion, remote completion, overlay freshness/manual hide, writer faults, route/audio/camera interruptions, background/lock/explicit resume and A5 forced-termination recovery.
 
 Run the agreed 30-minute A2 and powered three-hour 1080p30 broadcast+recording A7 on stable qualified network: <1% measured pipeline drops, no repeated video stalls ≥500 ms, no monotonic memory/queue growth, A/V offset ≤100 ms at start/end with uncertainty. Record delivered build/commit/device/OS/profile, power/mount/case/brightness/airflow/ambient/network, original-file and receiver analysis, instrumentation limits and private evidence locations. Test without external cooling first. Do not silently lower resolution or substitute a newer device if 13 mini fails.
 
-Validate available iPhone 15/17 representatives including Pro variants, 720p, VoiceOver/larger text and full Files export/delete flows. Record unavailable required coverage as pending and resolve with owner before full-release acceptance. Fix material failures through PRs into codex/full-app, deliver a new candidate and rerun affected gates; never infer a changed build passed from old media.
+Validate available iPhone 15/17 representatives including Pro variants, 720p, VoiceOver/larger text and full Files export/delete flows. Record unavailable required coverage as pending and resolve with owner before full-release acceptance. Fix material failures through PRs into main, deliver a new candidate and rerun affected gates; never infer a changed build passed from old media.
 
-Present private samples and sanitized report for owner acceptance. Once #6 is complete, review the full integration diff against current main, merge main fixes into integration without rewriting history, resolve conflicts/regressions and open a promotion PR to main. Do not merge it automatically; promotion needs explicit owner approval.
+Present private samples and sanitized report for owner acceptance. Prepare any remaining qualification fixes and release documentation as focused reviewed PRs into current main. Resolve conflicts/regressions without rewriting shared history. There is no integration-branch promotion step; merging each PR still needs explicit owner authorization.
 
 **Validation and acceptance:**
 
-Every A1–A9 row has measured pass evidence for the relevant delivered build or is explicitly pending/failed; missing markers and missing hardware do not count as passes. Owner reviews working app/report, #6 is closed only on its own evidence, recordings remain retained, and promotion PR includes full independent review, current-main regression results, dependency/privacy audit and remaining agreed limits. Full-app completion is blocked by unmet acceptance, even if all code PRs merged.
+Every A1–A9 row has measured pass evidence for the relevant delivered build or is explicitly pending/failed; missing markers and missing hardware do not count as passes. Owner reviews working app/report, historical #6 evidence remains unchanged, recordings remain retained, and release readiness includes independent review, current-main regression results, dependency/privacy audit and remaining agreed limits. Full-app completion is blocked by unmet acceptance, even if all code PRs merged.
 
 Perform the common delivery steps above, including focused tests, documentation, independent review/fixes and commits. Leave unmet evidence pending.
 
@@ -463,11 +463,11 @@ xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
 
 Expected: native build/test succeed with no new concurrency errors; opt-in physical/reference checks remain explicitly skipped unless configured. Add `-only-testing:<target>/<suite>` for focused iteration, then run relevant regression coverage. Use the guide’s normally signed physical-device commands after checking owner/device availability, using local team overrides and branded test products. Never invoke live publishing, crash tests or long recording experiments from the default suite. Keep external prerequisites explicit; missing Google configuration does not block fixture-driven development or local rehearsal.
 
-For each issue: inspect requirements → implement a small step → write meaningful tests for that decision → run affected checks → update evidence/docs → review actual diff and fix material findings → commit a focused change → prepare PR into integration. Independent review inspects both the full diff against main and the incremental diff against current integration, with prerequisite evidence. Do not merge automatically. Documentation-only edits need content/link checks and `git diff --check`, not artificial app tests.
+For each issue: inspect requirements → implement a small step → write meaningful tests for that decision → run affected checks → update evidence/docs → review actual diff and fix material findings → commit a focused change → prepare PR into main. Independent review inspects the actual full PR diff against current main, with prerequisite evidence. Do not merge automatically. Documentation-only edits need content/link checks and `git diff --check`, not artificial app tests.
 
 ## Acceptance evidence and delivery boundaries
 
-Issue #6 independently retains local-only TestFlight/M1–M5 and owner review. F13 delivers a distinct later full-app candidate after that review; F14 proves A1–A9 on the delivered build. Do not infer start/end sync from track endpoints or reuse the prior run with a missed end clap. Device availability, OAuth setup, native recovery limitations and media decisions are real dependencies; leave issues/gates pending if unmet.
+Issue #6 is closed after local-only TestFlight delivery and owner review, with formal qualification limits retained in the report. F13 delivers a distinct later full-app candidate; F14 proves A1–A9 on that delivered build. Do not infer start/end sync from track endpoints or reuse the prior run with a missed end clap. Device availability, OAuth setup, native recovery limitations and media decisions are real dependencies; leave issues/gates pending if unmet.
 
 Each issue must leave exact APIs/ownership, test commands/results, build/device/profile, sanitized measurements, private sample locations and unresolved acceptance. A code-complete PR is not milestone completion. All referenced future APIs and policy details must be checked at implementation time.
 
