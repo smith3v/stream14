@@ -9,9 +9,13 @@ struct YouTubeEventsView: View {
             HStack {
                 Text("Scheduled YouTube event").font(.headline)
                 Spacer()
-                Button("Refresh", systemImage: "arrow.clockwise") { Task { await selection.refresh() } }
-                    .disabled(!authorization.isAuthorized || selection.isRefreshing)
+                if authorization.isAuthorized {
+                    Button { Task { await selection.refresh() } } label: {
+                        Label("Refresh", systemImage: "arrow.clockwise").frame(minHeight: 44)
+                    }
+                    .disabled(selection.isRefreshing)
                     .accessibilityIdentifier("refreshYouTubeEvents")
+                }
             }
             if selection.isRefreshing { ProgressView("Reading YouTube…") }
             if let channel = selection.channel {

@@ -1447,3 +1447,13 @@ contain only invented channel/event data and a clearly fake stream name/address.
 No actual Google request, media publishing, phone recording or deletion occurred.
 The [F3 implementation handoff](2026-11-07-youtube-client-implementation.md) records
 build/integration/review status separately from live-owner acceptance.
+
+After merging F4, the combined F3/auth/config/profile run passed 32 hosted tests at
+`/private/tmp/stream14-f3-merged-tests.xcresult`. Final Release passed in
+`/private/tmp/stream14-f3-release-final-2.log`. The first portrait audit found low
+contrast on an unavailable disabled Refresh label; Refresh is now shown only
+after authorization, with an explicit 44-point target. The final recheck passed
+13 F3 tests and both portrait/largest-text landscape setup accessibility tests at
+`/private/tmp/stream14-f3-ui-recheck.xcresult`. Private screenshots were inspected;
+authenticated event rows and physical VoiceOver remain pending. The initial failed
+UI result is retained, and no audit issue was suppressed.

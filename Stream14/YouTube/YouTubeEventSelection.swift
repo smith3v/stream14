@@ -67,6 +67,7 @@ import Observation
     }
 
     func select(_ id: String) {
+        guard !isRefreshing else { return }
         operation &+= 1
         guard let channel, let event = events.first(where: { $0.id == id }) else { selectedID = nil; return }
         guard let reason = event.ineligibility(channelID: channel.id) else {
