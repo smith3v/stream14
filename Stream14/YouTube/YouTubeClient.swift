@@ -120,8 +120,11 @@ nonisolated struct YouTubeClient: Sendable {
             guard response.url?.scheme == "https", response.url?.host == "www.googleapis.com" else { throw YouTubeReadError.malformedResponse }
             if (200..<300).contains(response.statusCode) {
                 guard data.count <= 2_000_000 else { throw YouTubeReadError.malformedResponse }
-                do { return try JSONDecoder().decode(Value.self, from: data) }
+                let decoded: Value
+                do { decoded = try JSONDecoder().decode(Value.self, from: data) }
                 catch { throw YouTubeReadError.malformedResponse }
+                try await check(generation)
+                return decoded
             }
             if response.statusCode == 401, !refreshed {
                 // The provider calls the SDK-supported refresh-if-needed operation;

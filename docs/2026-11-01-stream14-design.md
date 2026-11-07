@@ -924,3 +924,54 @@ works. SDK privacy declarations and Google-side processing are recorded in the
 Google setup, signed-phone callback, Brand Account/channel identity or revoke test
 has passed yet. See the [development guide](ios-development-guide.md#f2-google-authorization-setup-2026-11-07)
 for setup and pending evidence. F3 owns channel identity and event selection.
+
+## F3 read-only channel and event selection — 2026-11-07
+
+`YouTubeClient` uses native ephemeral URLSession/Codable with SDK-refreshed in-memory
+access tokens; it adds no dependency or backend. Requests do not use a disk cache,
+cookie store or automatic redirects, and normal HTTPS certificate validation remains
+in force. API response bodies, headers and ingestion keys are not logged or saved.
+The F3 stream model intentionally discards ingestion addresses/keys; F5 owns their
+later short-lived use. Channel/event metadata lives in memory and is cleared on
+account change, sign-out or detected revoked/insufficient authorization. Recordings
+and overlay configuration are independent.
+
+Verified official contracts are [channels.list](https://developers.google.com/youtube/v3/docs/channels/list),
+[liveBroadcasts.list](https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list),
+[the broadcast resource](https://developers.google.com/youtube/v3/live/docs/liveBroadcasts),
+[liveStreams.list](https://developers.google.com/youtube/v3/live/docs/liveStreams/list)
+and [live API errors](https://developers.google.com/youtube/v3/live/docs/errors).
+The client resolves `channels.list(mine=true)` rather than inferring a channel
+from Google identity. Multiple returned channels require reconnecting to the intended
+channel/Brand Account instead of silently choosing one. It reads each upcoming-event
+page with `broadcastStatus=upcoming`, `broadcastType=event`, `maxResults=50` and
+`snippet,status,contentDetails`; by-ID reads use `id` alone as their filter.
+Repeated pagination tokens or a 100-page safety limit fail explicitly without
+handing off a truncated selection. A moving YouTube list is not an atomic snapshot;
+selected events are read again by ID before use.
+
+Only idempotent reads retry: at most two transient retries plus one SDK-supported
+refresh-if-needed/401 retry (at most four requests for one page). Bounded exponential
+backoff respects numeric or HTTP-date Retry-After. A server delay over ten seconds
+returns a wait/retry message instead of sleeping indefinitely or shortening the delay.
+Disabled live streaming, missing channel/event/stream, wrong channel, insufficient
+scope, exhausted quota, rate limiting, transient service/network failure and invalid
+responses have distinct safe messages. Account-generation and cancellation checks
+surround async operations and decoding; late responses cannot restore old data.
+
+The app-owned `YouTubeEventSelection` supplies native explicit Refresh and event
+rows with actual channel identity, device-local date/time, visibility and eligibility.
+Unknown or missing state/visibility/time/auto-start/auto-stop information stays
+ineligible; auto-stop must be disabled in Studio. Auto-start is disclosed when an
+otherwise eligible event is selected. A disappeared/ineligible event clears selection,
+and changing selection during a by-ID recheck rejects the old result. Selecting,
+refreshing or opening a preview performs no API write and sends no camera media.
+F3 adds no Go Live action. F5/F7 must freeze the selection and recheck account/remote
+state around their own subsequent mutations.
+
+The focused Simulator run passed 26 deterministic tests across F3, authorization
+and app-configuration suites; it used only sanitized fixtures. The Google console
+project/client/API/testing audience are now prepared, but signed-device OAuth,
+actual API-returned channel identity and an upcoming unlisted test event remain
+external acceptance work. See the [F3 handoff](2026-11-07-youtube-client-implementation.md)
+for reproducible commands and remaining evidence.

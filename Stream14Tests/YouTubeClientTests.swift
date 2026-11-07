@@ -174,6 +174,33 @@ import UIKit
         #expect(model.message.contains("Schedule an encoder event"))
     }
 
+    @Test func selectionChangeDuringRecheckRejectsTheOldEvent() async throws {
+        let server = ReadFixtureServer([.fixture("channel"), .fixture("upcoming-first"), .fixture("upcoming-last"), .fixture("upcoming-first")])
+        let model = YouTubeEventSelection(authorization: await authorized(), client: makeClient(server))
+        await model.refresh()
+        model.select("fixture-event-one")
+        await server.pause()
+        let recheck = Task { try await model.recheckSelected() }
+        while await server.requests.count < 4 { await Task.yield() }
+        model.select("fixture-event-two")
+        await server.release()
+        await #expect(throws: CancellationError.self) { try await recheck.value }
+        #expect(model.selected?.id == "fixture-event-two")
+    }
+
+    @Test func missingSelectedEventAndStreamProduceActionableErrors() async throws {
+        let first = try fixture("upcoming-first").utf8String.replacingOccurrences(of: "\"nextPageToken\":\"fixture-page-two\",", with: "")
+        let server = ReadFixtureServer([.fixture("channel"), .json(first), .error(404, "notFound"), .error(404, "notFound")])
+        let client = makeClient(server)
+        let model = YouTubeEventSelection(authorization: await authorized(), client: client)
+        await model.refresh(); model.select("fixture-event-one")
+        await #expect(throws: YouTubeReadError.missingEvent) { try await model.recheckSelected() }
+        #expect(model.selected == nil && model.message.contains("selected event is unavailable"))
+        await #expect(throws: YouTubeReadError.missingStream) {
+            try await client.stream(id: "missing", channelID: "fixture-brand-channel", generation: 1)
+        }
+    }
+
     private func makeClient(_ server: ReadFixtureServer, access: ReadTokenFixture? = nil) -> YouTubeClient {
         let access = access ?? ReadTokenFixture()
         return YouTubeClient(token: { generation in
@@ -212,6 +239,7 @@ private actor ReadFixtureServer {
     var hold: Bool
     var waiting: CheckedContinuation<Void, Never>?
     init(_ replies: [Reply], hold: Bool = false) { self.replies = replies; self.hold = hold }
+    func pause() { hold = true }
     func release() { hold = false; waiting?.resume(); waiting = nil }
     func recordDelay(_ value: Double) { delays.append(value) }
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
