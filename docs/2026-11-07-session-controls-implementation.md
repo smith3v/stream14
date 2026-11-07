@@ -27,3 +27,63 @@ manifest declares `NSPrivacyAccessedAPICategoryUserDefaults` reason `CA92.1` for
 this use; no app group, system preferences or third-party preferences are accessed.
 Checked against [Apple's required reasons reference](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitypereasons)
 on 2026-11-07.
+
+## Implementation handoff and evidence
+
+Branch: `codex/issue-17-session-controls`, isolated worktree
+`/private/tmp/stream14-epic13-f4`, started from `origin/main` `ededeb1`.
+Plan checkpoint `c2cb946`; implementation checkpoint `615ea08`. Root owns later
+merging of reviewed F2 predecessor into this branch for the requested PR chain.
+No merge, transport connection, physical camera test, upload or recording cleanup
+has occurred in this stage. Independent review and PR creation are pending root
+coordination.
+
+Public concrete boundaries:
+
+- `SessionProfile` constants and `videoSettings`, `audioSettings`,
+  `audioSettings(muted:)`; future transport must consume the same selected value.
+- `MediaSession(profile:persistProfile:authorizeCapture:)` keeps profile explicit
+  and frozen outside idle. Setup reads the saved enum; hosted tests default to the
+  baseline profile so prior app preferences cannot change test media dimensions.
+- `WebOverlayRenderer(profile:)`, `setProfile(_:)`, and `canvasSize` retire the old
+  browser/generation/raster and rebuild the attached exact-size viewport.
+- `RearCameraLens` format/discovery and `WebOverlayLayer.install` accept the profile.
+- `LocalRecorder.start(_:injection:profile:)` retains one native encode path and
+  original MP4 export. Existing defaults preserve baseline callers.
+- Shared mixer mute is upstream of every mixed output. `MicrophoneMeter` retains
+  only a bounded scalar reading, no audio buffers or callback Tasks.
+- `MediaMixer.configureZoom(_:)` returns a Sendable range/value snapshot from its
+  serial device configuration; no AVCaptureDevice moves to UI. Touch commits on
+  release; VoiceOver has explicit bounded 0.1× increments/decrements.
+
+Validation so far (Xcode 27.2, iOS SDK/Simulator 27.2):
+
+| Check | Result and local evidence |
+| --- | --- |
+| Native unsigned Release, final implementation | Passed, `/tmp/stream14-f4-release-final.log` |
+| Build-for-testing, final bundle/resources | Passed, `/tmp/stream14-f4-build-tests-final.log` |
+| Six focused SessionProfileTests | Passed, `/tmp/stream14-f4-profiles.xcresult`, log `/tmp/stream14-f4-profiles.log` |
+| 18 regression tests in six suites | Passed, `/tmp/stream14-f4-regression.xcresult`, log `/tmp/stream14-f4-regression.log` |
+| Privacy plist and whitespace | `plutil -lint Stream14/PrivacyInfo.xcprivacy` and `git diff --check` passed |
+
+The focused suite verifies both attached CSS/raster dimensions with alpha, profile
+rebuild/manual-hide preservation, preference fallback, rejection during suspended
+capture preparation and cancellation before device activation, bounded meter
+handling of float/interleaved/int16 PCM, and actual shared mixer mute/unmute output
+samples delivered to two consumers. Regression suites cover local writer failure
+injections plus an original 720p H.264/AAC file, identity orientation, existing
+1080p overlay rendering/recovery, explicit composition visibility, lens filtering,
+health rules and app configuration. Synthetic unit-test temporary files are isolated;
+owner originals are untouched.
+
+Physical F4 acceptance remains pending exactly as listed in the development guide.
+No Simulator result proves real-device controls, camera formats, audible sync,
+route/interruption behavior or long-run performance. No CBR, color-fidelity or
+network fan-out performance qualification is claimed.
+
+Two existing setup UI tests also passed in `/tmp/stream14-f4-layout.xcresult`:
+portrait setup and largest-text landscape accessibility audits. Exported screenshots
+under `/tmp/stream14-f4-layout-images` were visually inspected. The portrait profile
+button is clear; the largest-text screenshot covers the introduction before scrolling,
+so it does not itself verify the profile button at that size. A focused profile
+selection/persistence/scroll check is being added before final handoff.
