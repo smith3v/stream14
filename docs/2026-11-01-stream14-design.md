@@ -24,6 +24,10 @@ qualify the later full-app build. Development experiments remain capped at 15 mi
 longer qualification needs a later explicit agreement. A PR target does not authorize
 merging; use independent review and explicit merge approval.
 
+## Owner testing-time update — 2026-11-07
+
+Routine connected-iPhone validation targets five minutes TOTAL, not an hour. Prepare builds and deterministic/Simulator checks on the laptop first; combine a short smoke with only a targeted physical case relevant to the change. The full inventory is a backlog, not every-visit work. If setup consumes the budget, retain a blocked/incomplete result rather than extending silently. Longer runs need explicit agreement; the existing 15-minute development ceiling is not the default. Long-run criteria remain unverified until separately agreed/measured; five-minute smoke results do not establish endurance or waive those criteria.
+
 ## Current milestone: local-recording MVP
 
 The owner's 2026-11-01 architecture handoff and subsequent instruction select a
@@ -719,6 +723,14 @@ The [F1 feasibility audit](feasibility.md#full-app-f1-public-dual-output-api-aud
 compares this with library-native separate encoding. Production keeps its existing
 single local encode until physical evidence and explicit architecture review select
 a dual-output path. Test-only RTMP experiments do not authorize production adoption.
+
+F6 preparation adds a test-only native single-encoder/file-fan-out candidate and a
+reviewable, unadopted package admission patch. Synthetic compressed-file bytes,
+explicit AAC trim-origin handling and independently decoded midpoint markers pass
+Simulator checks; these are not physical or receiver evidence. See the
+[F6 feasibility record](feasibility.md#full-app-f6-isolated-single-encoder-and-output-admission-preparation-2026-11-07)
+for retained failures, proposed bounds and unresolved adoption/qualification gates.
+No production encoding, transport or recording-lifecycle selection changes yet.
 
 ## 7. Architecture, ownership, and interfaces
 

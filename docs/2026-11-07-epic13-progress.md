@@ -16,7 +16,7 @@ Preserve the original checkout and its private signing/concurrent setup edits. A
 | F2 / #15 | Reviewed [PR #41](https://github.com/smith3v/stream14/pull/41), includes F1 | `codex/issue-15-youtube-authorization` / `f2` | Signed-phone Google callback, Keychain, scope/revoke and actual channel |
 | F3 / #16 | Reviewed [PR #43](https://github.com/smith3v/stream14/pull/43), F4 integrated | `codex/issue-16-youtube-client` / `f3` | Actual authorized event read |
 | F4 / #17 | Reviewed [PR #42](https://github.com/smith3v/stream14/pull/42), F1/F2 integrated | `codex/issue-17-session-controls` / `f4` | Physical profile/mute/zoom/route/media checks |
-| F5 / #18 | Implemented at `4ed574e`; focused independent re-review passed; phone-plan prerequisite integrated | `codex/issue-18-safe-ingestion` / `f5` | PR publication and real dedicated-event acceptance via later F7/integration entry |
+| F5 / #18 | Reviewed [PR #45](https://github.com/smith3v/stream14/pull/45), phone-plan prerequisite integrated | `codex/issue-18-safe-ingestion` / `f5` | Real dedicated-event acceptance via later F7/integration entry |
 | F6 / #19 | Fresh agent auditing/prototyping single shared encoder and actual bounded-send feasibility; no production adoption | `codex/issue-19-independent-transport` / `f6` | F1 gates; library nested tasks/unbounded socket queue cannot be bounded by an app queue alone |
 | F7 / #20 | Not started | — | F2–F6 prerequisites |
 | F8 / #21 | Not started | — | F7 prerequisite |
@@ -27,7 +27,7 @@ Preserve the original checkout and its private signing/concurrent setup edits. A
 | F13 / #26 | Not started | — | Integrated reviewed candidate, service setup and signed delivery |
 | F14 / #27 | Not started | — | Delivered candidate, separately agreed qualification and owner acceptance |
 
-Current chain: F1/#40 → F2/#41 → F4/#42 → F3/#43 → phone plan/#44 → F5 → F6, then lifecycle stages. None has merged into main. Stage numbering follows dependency lanes, not PR creation order. Worktree paths use prefix `/private/tmp/stream14-epic13-` plus the suffix above. Inspect actual refs/status before resuming.
+Current chain: F1/#40 → F2/#41 → F4/#42 → F3/#43 → phone plan/#44 → F5/#45 → F6, then lifecycle stages. None has merged into main. Stage numbering follows dependency lanes, not PR creation order. Worktree paths use prefix `/private/tmp/stream14-epic13-` plus the suffix above. Inspect actual refs/status before resuming.
 
 ## Validation and review evidence
 
@@ -71,4 +71,31 @@ The consolidated [50-check connected-iPhone plan](2026-11-07-connected-iphone-te
 
 F5 independent review found a completed single-slot mutation intent blocked later events. Fix `4ed574e` uses a per-channel/event journal and adds sequential/relaunch/manual-resolution coverage while preserving unknown-create duplicate guards. Focused re-review found no new material findings. All 46 hosted checks execute successfully with no skips, final unsigned Release passes, and the phone-plan merge `7f4af87` changes documentation only. F5 exposes a component for later confirmed Go Live, not a ready phone-facing binding UI.
 
-F6 is continuing synthetic encoder/timestamp/failure-preservation work and an isolated bounded-send library patch. The local package patch has 32 deterministic checks passing under a reduced validation manifest; this is not full iOS product/dependency adoption or physical transport qualification. Keep actual failing/progress evidence distinct from final acceptance.
+F6 is continuing synthetic encoder/timestamp/failure-preservation work and an isolated bounded-send library patch. The local package patch has 34 deterministic checks passing under a reduced validation manifest; this is not full iOS product/dependency adoption or physical transport qualification. Keep actual failing/progress evidence distinct from final acceptance.
+
+## Coordinator checkpoint — F6 experimental evidence
+
+F5 is reviewed PR [#45](https://github.com/smith3v/stream14/pull/45), stacked on the phone-plan PR #44. F6 merged its latest `ce00961` checkpoint normally at `e2a3b66`; no PR has merged into main.
+
+F6 native synthetic prototype checkpoint `9753224` passes two Simulator tests in `/private/tmp/stream14-f6-prototype-4.xcresult`: one native encode fans into two original files with matching codec bytes, explicit AAC priming-origin handling, and independently decoded midpoint markers within 35 ms. The failure seam retains a finalized partial artifact marked failed instead of calling AVAssetWriter.cancelWriting, which deletes output. These are synthetic test proofs, not actual storage-failure retention or physical camera/receiver sync.
+
+Candidate bounded-send patch artifacts at `Experiments/HaishinKit-2.3.0-bounded-output` are not adopted or published as a fork. Independent review found handshake wire-order and reconnect-during-close races; both are fixed with passing deterministic regressions and await focused re-review. Reduced-manifest source tests passing does not establish the normal iOS product build, real TLS/socket/receiver behavior or whole transport acceptance. The current connected-iPhone checklist reflects these limits.
+
+F6 combined stack validation at `e2a3b66` passes eight hosted checks in three suites
+(prototype, existing LocalRecorder and AppConfiguration) at
+`/private/tmp/stream14-f6-stack-checks.xcresult`, no skips. The isolated package
+candidate passes 34 deterministic tests in 15 suites with two review regressions;
+its reduced manifest is still not the normal iOS dependency/product validation.
+The candidate remains unadopted and has no production MediaSession wiring.
+
+F6 original-manifest patched iOS product compile/link gate also passes: an isolated
+detached app copy selects actual local RTMPHaishinKit via Xcode's normal full
+package manifest; `/private/tmp/stream14-f6-patched-ios-build.log` reports unsigned
+generic-iOS TEST BUILD SUCCEEDED. The production project/package pins and shared
+caches remain unchanged. Both independent reviews report no remaining material
+findings after package-race fixes; no physical execution or production dependency
+adoption occurred. The reviewed five-minute routine phone-plan correction has now joined this branch through the F5 prerequisite; no device work has started.
+
+## Owner correction — five-minute routine
+
+The owner rejected an hour-long connected-phone test session and requested about five minutes. The connected-phone plan now starts with a five-minute TOTAL timeline; its 50 rows are a backlog, not a single run. Laptop-only preparation/fixtures/Simulator checks happen beforehand; setup blockers stop the visit within budget, long-run criteria remain pending/unscheduled unless agreed. A fresh short-smoke agent is implementing one local-only opt-in two-profile test targeting 60–90 seconds actual execution. Do not claim that selector exists or passes before its source/build evidence. Root is updating PR #44 and will merge this correction forward into F5/F6 without rewriting history.

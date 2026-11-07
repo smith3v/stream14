@@ -1,0 +1,2 @@
+# Unified patch context includes a required single-space prefix on blank lines.
+Experiments/HaishinKit-2.3.0-bounded-output/*.patch -whitespace
