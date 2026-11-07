@@ -94,5 +94,8 @@ package manifest; `/private/tmp/stream14-f6-patched-ios-build.log` reports unsig
 generic-iOS TEST BUILD SUCCEEDED. The production project/package pins and shared
 caches remain unchanged. Both independent reviews report no remaining material
 findings after package-race fixes; no physical execution or production dependency
-adoption occurred. The revised five-minute routine phone-plan update is still
-owned by its coordinating branch and will join the chain separately.
+adoption occurred. The reviewed five-minute routine phone-plan correction has now joined this branch through the F5 prerequisite; no device work has started.
+
+## Owner correction — five-minute routine
+
+The owner rejected an hour-long connected-phone test session and requested about five minutes. The connected-phone plan now starts with a five-minute TOTAL timeline; its 50 rows are a backlog, not a single run. Laptop-only preparation/fixtures/Simulator checks happen beforehand; setup blockers stop the visit within budget, long-run criteria remain pending/unscheduled unless agreed. A fresh short-smoke agent is implementing one local-only opt-in two-profile test targeting 60–90 seconds actual execution. Do not claim that selector exists or passes before its source/build evidence. Root is updating PR #44 and will merge this correction forward into F5/F6 without rewriting history.

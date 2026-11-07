@@ -24,6 +24,10 @@ qualify the later full-app build. Development experiments remain capped at 15 mi
 longer qualification needs a later explicit agreement. A PR target does not authorize
 merging; use independent review and explicit merge approval.
 
+## Owner testing-time update — 2026-11-07
+
+Routine connected-iPhone validation targets five minutes TOTAL, not an hour. Prepare builds and deterministic/Simulator checks on the laptop first; combine a short smoke with only a targeted physical case relevant to the change. The full inventory is a backlog, not every-visit work. If setup consumes the budget, retain a blocked/incomplete result rather than extending silently. Longer runs need explicit agreement; the existing 15-minute development ceiling is not the default. Long-run criteria remain unverified until separately agreed/measured; five-minute smoke results do not establish endurance or waive those criteria.
+
 ## Current milestone: local-recording MVP
 
 The owner's 2026-11-01 architecture handoff and subsequent instruction select a
