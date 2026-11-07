@@ -1,5 +1,13 @@
 # iOS development and TestFlight: a first-project guide
 
+> Owner workflow update (2026-11-06): all new PRs target main and start from
+> current main. The temporary codex/full-app integration workflow is superseded.
+> Follow the [full-app plan](2026-11-05-full-app-implementation.md) for authorized
+> Google/RTMPS development. Issue #6 is closed after TestFlight delivery/owner
+> review; retain the documented measurement limits and independently qualify
+> later builds. Review and explicit merge authorization remain required.
+
+
 Checked: 2026-11-05. Read the [application specification](2026-11-01-stream14-design.md)
 for product behavior and the [implementation plan](2026-11-01-stream14-implementation.md)
 for development order. This guide explains setup; it does not mean those steps have

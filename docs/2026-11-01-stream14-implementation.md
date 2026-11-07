@@ -1,5 +1,13 @@
 # stream14 Local-Recording MVP Implementation Plan
 
+> Owner workflow update (2026-11-06): use focused branches from current main
+> and target all PRs to main. This replaces the temporary integration workflow.
+> Issue #6 is closed following local-only TestFlight delivery and owner review;
+> documented qualification limits remain. Full-app work is authorized under the
+> [full-app plan](2026-11-05-full-app-implementation.md). Older sequential wording
+> here describes the local milestone and does not block that development.
+
+
 Scope clarified: 2026-11-02. This plan covers the first milestone only.
 
 **Goal:** Deliver an iPhone app that captures camera video and microphone audio,

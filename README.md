@@ -21,6 +21,18 @@ No media upload/ingestion connection or export transcode is used. See the
 [feasibility evidence and outstanding qualification](docs/feasibility.md).
 The integrated development build does not establish M3–M5 or TestFlight delivery.
 
+## Full-app development
+
+Use focused branches from current `main` and target all new PRs to `main`.
+The owner restored this workflow on 2026-11-06, superseding the temporary
+`codex/full-app` integration branch. [MVP issue #6](https://github.com/smith3v/stream14/issues/6)
+is closed following TestFlight delivery/owner review, with qualification limits
+retained in the evidence. Full-app implementation follows
+[epic #13](https://github.com/smith3v/stream14/issues/13) and the
+[full-app plan](docs/2026-11-05-full-app-implementation.md).
+Earlier MVP-only sequencing below does not block that work. PRs still require
+review and explicit merge authorization.
+
 ## Current MVP
 
 Use HaishinKit for rear-camera/microphone capture and, where verified APIs support
@@ -47,6 +59,7 @@ See the
 
 - [Application specification and design](docs/2026-11-01-stream14-design.md)
 - [iOS development and TestFlight guide](docs/ios-development-guide.md)
+- [Full-app implementation plan](docs/2026-11-05-full-app-implementation.md)
 - [First-milestone implementation plan: local-recording MVP](docs/2026-11-01-stream14-implementation.md)
 - [Instructions for development agents](AGENTS.md)
 

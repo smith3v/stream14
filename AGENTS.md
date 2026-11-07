@@ -18,6 +18,25 @@ the outgoing video, and keeping a local copy of that composition.
 - The repository initially contains documentation only. Do not claim there is a
   working app, a build pipeline, or a passed device test until it exists.
 
+## Owner workflow update — 2026-11-06
+
+Use current `main` as the base for focused development branches and the merge target
+for every new PR, including full-app work. This supersedes the 2026-11-05 temporary
+`codex/full-app` integration workflow. No integration-branch promotion or MVP backport
+step is needed. Do not delete old branches or rewrite history as part of this change.
+
+Full-app development remains authorized under the
+[full-app plan](docs/2026-11-05-full-app-implementation.md) and epic #13. Earlier
+MVP-only sequencing below describes the local milestone and does not block planned
+YouTube/OAuth, RTMPS or 720p implementation on focused branches from main.
+Issue #6 is closed after TestFlight delivery and owner review; preserve its documented
+measurement limits rather than claiming every formal qualification gate passed.
+
+Prepare reviewed PRs into main; the target change does not authorize automatic
+merging. Keep independent review, the 15-minute development-experiment cap, explicit
+agreement for longer qualification, retained originals and all reliability/privacy
+requirements.
+
 ## Current milestone: local-recording MVP
 
 - Build only rear camera + microphone → HaishinKit capture/composition/encoding →

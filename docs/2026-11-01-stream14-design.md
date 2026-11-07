@@ -8,6 +8,22 @@ the agreed behavior. "Starting default" is an explicit engineering choice that c
 be revised using measured results. "Feasibility gate" means the approach is not yet
 proven and must not be presented as a working capability.
 
+## Owner sequencing and workflow update — 2026-11-06
+
+The owner authorizes full-product development using focused branches from current
+main and PRs targeting main. This replaces the temporary 2026-11-05 `codex/full-app`
+integration workflow; no integration promotion or MVP backport gate remains.
+The [full-app plan](2026-11-05-full-app-implementation.md) supplies issue prompts,
+dependencies and A1–A9 delivery work. Older instructions to defer all broadcasting
+implementation until MVP qualification do not block this authorized development.
+
+Issue #6 is closed after actual local-only TestFlight delivery and owner review.
+Its recorded measurement limits remain: closure does not establish all formal
+M1–M5 or full-product gates. Preserve historical build evidence and independently
+qualify the later full-app build. Development experiments remain capped at 15 minutes;
+longer qualification needs a later explicit agreement. A PR target does not authorize
+merging; use independent review and explicit merge approval.
+
 ## Current milestone: local-recording MVP
 
 The owner's 2026-11-01 architecture handoff and subsequent instruction select a
@@ -766,7 +782,7 @@ evaluation, then the local-recording MVP, TestFlight delivery, and M1–M5 revie
 only after that review, then independent-output failure handling, long-event
 qualification, and updated TestFlight builds for the small beta group. Detailed work prompts for the first
 milestone only are in [the MVP implementation plan](2026-11-01-stream14-implementation.md).
-Prepare later implementation plans separately after the MVP review.
+The owner workflow update above authorizes the separate full-app plan on focused branches from main; full-product acceptance remains evidence-based.
 
 Before MVP TestFlight distribution, configure Apple team membership, the final
 bundle identifier/app record, signing, tester access, and privacy/support information
