@@ -72,3 +72,22 @@ No physical media is captured or uploaded by these deterministic tests. Required
 independent code review, owner configuration and signed-device Google checks remain
 pending. Later F3 must pass/capture `generation` for every API result and must not
 confuse Google account readiness with an actual YouTube channel or live state.
+
+### Final stage validation (2026-11-07)
+
+The dedicated iPhone 13 mini/iOS 27.2 Simulator hosted run passed **13 tests in two
+suites**: 11 authorization lifecycle tests plus two existing app configuration
+tests. The rerun after malformed-client validation passed the same 13 tests with
+zero failures. Final result: `/private/tmp/stream14-f2-auth-recheck.xcresult`, log
+`/private/tmp/stream14-f2-auth-recheck.log`. The native unsigned Release build
+passed; existing writer deprecations and SDK/library warnings remain. The initial
+Swift SDK enum and callback-isolation compile failures were corrected without
+unchecked annotations or diagnostic suppression.
+
+`plutil -lint` passes for Config/AppInfo.plist and the project file;
+`git diff --check` passes. The compiled Release Info.plist contains an empty client
+ID and the unconfigured callback scheme, confirming the checked-in default cannot
+start Google authorization. Real owner values remain absent. No phone test,
+Google request, media upload, recording or deletion occurred. Independent review
+is arranged by the parent agent before PR handoff; this implementation does not
+claim F2's external-device acceptance complete.

@@ -12,6 +12,9 @@ import UIKit
         let info: [String: Any] = ["GIDClientID": "fixture.apps.googleusercontent.com",
             "CFBundleURLTypes": [["CFBundleURLSchemes": ["com.googleusercontent.apps.fixture"]]]]
         #expect(GoogleAuthorizationConfiguration(info: info)?.callbackScheme == "com.googleusercontent.apps.fixture")
+        var malformed = info
+        malformed["GIDClientID"] = "fixture.extra.apps.googleusercontent.com"
+        #expect(GoogleAuthorizationConfiguration(info: malformed) == nil)
     }
 
     @Test func missingConfigurationNeverCallsSDK() async {

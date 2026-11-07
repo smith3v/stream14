@@ -10,7 +10,9 @@ struct GoogleAuthorizationConfiguration: Equatable {
         guard let id = info["GIDClientID"] as? String,
               id.hasSuffix(".apps.googleusercontent.com"),
               !id.contains("$"), !id.contains(where: \.isWhitespace),
-              let prefix = id.split(separator: ".").first, !prefix.isEmpty else { return nil }
+              id.count > ".apps.googleusercontent.com".count else { return nil }
+        let prefix = String(id.dropLast(".apps.googleusercontent.com".count))
+        guard prefix.unicodeScalars.allSatisfy({ CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-").contains($0) }) else { return nil }
         let callback = "com.googleusercontent.apps." + prefix
         let types = info["CFBundleURLTypes"] as? [[String: Any]] ?? []
         guard types.contains(where: { ($0["CFBundleURLSchemes"] as? [String] ?? []).contains(callback) }) else { return nil }
