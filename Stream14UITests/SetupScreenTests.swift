@@ -294,6 +294,47 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(app.buttons["openExperiment"].exists)
     }
 
+    func testProfileSelectionPersistsAndRemainsAccessibleInLandscape() throws {
+        let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launch()
+        let profile = app.buttons["sessionProfile"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(profile.frame.height, 44)
+        profile.tap()
+        app.buttons["720p30 · 8 Mbps"].tap()
+        XCTAssertEqual(profile.value as? String, "720p30 · 8 Mbps")
+        XCTAssertFalse(app.buttons["recordSample"].exists)
+        app.terminate()
+        app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        XCUIDevice.shared.orientation = .landscapeLeft
+        app.launch()
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
+        XCTAssertEqual(profile.value as? String, "720p30 · 8 Mbps")
+        for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight] {
+            XCUIDevice.shared.orientation = orientation
+            let scroll = app.scrollViews.firstMatch
+            for _ in 0..<12 {
+                let visible = scroll.frame.insetBy(dx: 0, dy: 8)
+                let frame = profile.frame
+                if visible.contains(frame), !frame.isEmpty, profile.isHittable { break }
+                if frame.midY < visible.midY { scroll.swipeDown() }
+                else { scroll.swipeUp() }
+            }
+            XCTAssertTrue(profile.isHittable)
+            XCTAssertGreaterThanOrEqual(profile.frame.height, 44)
+            let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            screenshot.name = "Profile largest text landscape \(orientation.rawValue)"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            try app.performAccessibilityAudit()
+        }
+        profile.tap()
+        app.buttons["1080p30 · 14 Mbps"].tap()
+        XCTAssertEqual(profile.value as? String, "1080p30 · 14 Mbps")
+    }
+
     func testLaunchShowsHonestSetupStatus() throws {
         XCUIDevice.shared.orientation = .portrait
         defer { XCUIDevice.shared.orientation = .portrait }

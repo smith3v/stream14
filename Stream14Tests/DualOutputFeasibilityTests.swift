@@ -229,7 +229,8 @@ struct DualOutputFeasibilityTests {
         let previousAppender = transportLogger.appender
         transportLogger.appender = DiscardTransportLogs()
         defer { transportLogger.appender = previousAppender }
-        let session = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in })
+        // This private candidate has fixed 1080p fixtures/transport settings.
+        let session = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in }, profile: .fullHD)
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         let window = UIWindow(windowScene: scene)
         let controller = UIViewController()

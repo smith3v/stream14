@@ -92,7 +92,7 @@ struct SetupView: View {
                                 else { await experiment.record() }
                             }
                         }
-                        .disabled(!experiment.canRecord && !experiment.isRecording)
+                        .disabled(experiment.isRecording ? !experiment.canAdjustMedia : !experiment.canRecord)
                         .accessibilityIdentifier("recordSample")
                         Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
                             .disabled(experiment.phase == .stopping)
