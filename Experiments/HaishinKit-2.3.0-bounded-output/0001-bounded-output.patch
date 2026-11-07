@@ -1,0 +1,614 @@
+diff --git a/RTMPHaishinKit/Sources/RTMP/RTMPConnection.swift b/RTMPHaishinKit/Sources/RTMP/RTMPConnection.swift
+index 6e3cc329..ed5b7072 100644
+--- a/RTMPHaishinKit/Sources/RTMP/RTMPConnection.swift
++++ b/RTMPHaishinKit/Sources/RTMP/RTMPConnection.swift
+@@ -196,6 +196,10 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+     }
+ 
+     private var socket: RTMPSocket?
++    private var outputAborting = false
++    private var isClosing = false
++    /// Shared by all streams. Synchronous admission precedes any retained Task.
++    private nonisolated let outputQueue: RTMPOutputQueue
+     private var chunks: [UInt16: RTMPChunkMessageHeader] = [:]
+     private var streams: [RTMPStream] = []
+     private var sequence: Int64 = 0
+@@ -265,7 +269,9 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+         timeout: Int = RTMPConnection.defaultTimeout,
+         requestTimeout: UInt64 = RTMPConnection.defaultRequestTimeout,
+         chunkSize: Int = RTMPConnection.defaultChunkSizeS,
+-        qualityOfService: DispatchQoS = .userInitiated) {
++        qualityOfService: DispatchQoS = .userInitiated,
++        maximumPendingOutputBytes: Int = 4 * 1024 * 1024,
++        maximumPendingOutputMessages: Int = 128) {
+         self.swfUrl = swfUrl
+         self.pageUrl = pageUrl
+         self.flashVer = flashVer
+@@ -277,9 +283,29 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+         self.requestTimeout = requestTimeout
+         self.chunkSize = chunkSize
+         self.qualityOfService = qualityOfService
++        let outputQueue = RTMPOutputQueue(byteLimit: maximumPendingOutputBytes,
++            messageLimit: maximumPendingOutputMessages, chunkSize: max(1, chunkSize))
++        self.outputQueue = outputQueue
++        // Two tasks per connection, independent of media callback rate.
++        Task { [weak self, outputQueue] in
++            for await _ in outputQueue.wakeups {
++                while let lease = outputQueue.take() {
++                    guard let self else { outputQueue.close(.closed); return }
++                    do { try await self.sendOutput(lease); outputQueue.acknowledge(lease) }
++                    catch { outputQueue.close(.sendFailed); outputQueue.acknowledge(lease) }
++                }
++            }
++        }
++        Task { [weak self, outputQueue] in
++            for await generation in outputQueue.failures {
++                guard let self else { return }
++                await self.outputFailed(generation: generation)
++            }
++        }
+     }
+ 
+     deinit {
++        outputQueue.shutdown()
+         streams.removeAll()
+     }
+ 
+@@ -320,6 +346,7 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+         self.uri = uri
+         self.arguments = arguments
+         let secure = uri.scheme == "rtmps" || uri.scheme == "rtmpts"
++        try outputQueue.reset()
+         handshake.clear()
+         chunks.removeAll()
+         sequence = 0
+@@ -401,10 +428,13 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+ 
+     /// Closes the connection from the server.
+     public func close() async throws {
++        guard !isClosing else { return }
+         guard readyState != .uninitialized else {
+             throw Error.invalidState
+         }
+ 
++        isClosing = true
++        defer { isClosing = false }
+         uri = nil
+         for stream in streams {
+             if await stream.fcPublishName == nil {
+@@ -413,6 +443,7 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+                 await stream.deleteStream()
+             }
+         }
++        outputQueue.close(.closed)
+         await socket?.close()
+         await networkMonitor?.stopRunning()
+ 
+@@ -432,14 +463,44 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+ 
+     @discardableResult
+     func doOutput(_ type: RTMPChunkType, chunkStreamId: RTMPChunkStreamId, message: some RTMPMessage) -> Int {
+-        if logger.isEnabledFor(level: .trace) {
+-            logger.trace("<<", message)
+-        }
+-        let chunks = Array(outputBuffer.putMessage(type, chunkStreamId: chunkStreamId.rawValue, message: message))
+-        Task {
+-            await socket?.send(chunks)
++        enqueueOutput(type, chunkStreamId: chunkStreamId, message: message)
++    }
++
++    /// Nonisolated, lock-admitted entry: RTMPStream need not create a Task just
++    /// to hand over each payload. Queue capacity is reserved before retention.
++    @discardableResult
++    nonisolated func enqueueOutput(_ type: RTMPChunkType, chunkStreamId: RTMPChunkStreamId,
++                                  message: some RTMPMessage) -> Int {
++        outputQueue.offer(type, chunkStreamId: chunkStreamId, message: message)
++    }
++
++    func sendAcknowledged(_ type: RTMPChunkType, chunkStreamId: RTMPChunkStreamId,
++                          message: some RTMPMessage) async throws {
++        try await outputQueue.send(type, chunkStreamId: chunkStreamId, message: message)
++    }
++
++    private func sendOutput(_ lease: RTMPOutputQueue.Lease) async throws {
++        guard lease.generation == outputQueue.metrics.generation, let socket else {
++            throw RTMPOutputQueue.Failure.closed
+         }
+-        return message.payload.count
++        let chunks = Array(outputBuffer.putMessage(lease.chunkType,
++            chunkStreamId: lease.chunkStreamId.rawValue, message: lease.message))
++        try await socket.sendAcknowledged(chunks)
++    }
++
++    private func outputFailed(generation: UInt64) async {
++        let metrics = outputQueue.metrics
++        guard generation == metrics.generation, metrics.failed,
++              metrics.failure != .closed, !outputAborting else { return }
++        outputAborting = true
++        defer { outputAborting = false }
++        // Abort the socket first; graceful NetStream acknowledgment cannot arrive
++        // on a stalled transport. close() then reconciles stream/public state.
++        let failedSocket = socket
++        await failedSocket?.close()
++        guard generation == outputQueue.metrics.generation else { return }
++        connected = false
++        try? await close()
+     }
+ 
+     func addStream(_ stream: RTMPStream) {
+diff --git a/RTMPHaishinKit/Sources/RTMP/RTMPOutputQueue.swift b/RTMPHaishinKit/Sources/RTMP/RTMPOutputQueue.swift
+new file mode 100644
+index 00000000..24bea45a
+--- /dev/null
++++ b/RTMPHaishinKit/Sources/RTMP/RTMPOutputQueue.swift
+@@ -0,0 +1,200 @@
++import Foundation
++
++/// An internal connection-wide mailbox, not a media frame queue. Admission is
++/// synchronous before any output Task retains payloads. Bytes include the one
++/// in-flight message until socket completion. The two wake streams retain only
++/// scalar notifications, never media.
++///
++/// Ownership proof for Sendable: every mutable field is inside State and all
++/// access goes through lock.withLock; continuations are removed under the lock
++/// and resumed outside it. Record/Lease snapshots contain only Sendable values.
++/// NSLock preserves the package's existing deployment targets (Mutex needs newer
++/// OS versions). Concurrent admission/close/ack tests verify exactly-once release.
++final class RTMPOutputQueue: @unchecked Sendable {
++    enum Failure: Swift.Error, Sendable, Equatable { case closed, overflow, cancelled, sendFailed }
++    struct Message: RTMPMessage {
++        let type: RTMPMessageType
++        let streamId: UInt32
++        let timestamp: UInt32
++        let payload: Data
++    }
++    struct Lease: Sendable {
++        let id: UInt64
++        let generation: UInt64
++        let chunkType: RTMPChunkType
++        let chunkStreamId: RTMPChunkStreamId
++        let message: Message
++    }
++    struct Metrics: Sendable {
++        let retainedBytes: Int
++        let retainedMessages: Int
++        let highWaterBytes: Int
++        let highWaterMessages: Int
++        let generation: UInt64
++        let failed: Bool
++        let failure: Failure?
++    }
++    private struct Record {
++        let lease: Lease
++        let cost: Int
++        let completion: (@Sendable (Result<Void, Failure>) -> Void)?
++    }
++    private struct State {
++        var generation: UInt64 = 0
++        var nextID: UInt64 = 0
++        var queued: [UInt64] = []
++        var records: [UInt64: Record] = [:]
++        var bytes = 0
++        var inFlight: UInt64?
++        var failure: Failure?
++        var highWaterBytes = 0
++        var highWaterMessages = 0
++    }
++    let byteLimit: Int
++    let messageLimit: Int
++    private let chunkSize: Int
++    private let lock = NSLock()
++    private var state = State()
++    let wakeups: AsyncStream<Void>
++    private let wake: AsyncStream<Void>.Continuation
++    let failures: AsyncStream<UInt64>
++    private let fail: AsyncStream<UInt64>.Continuation
++
++    init(byteLimit: Int, messageLimit: Int, chunkSize: Int) {
++        precondition(byteLimit > 0 && messageLimit > 0 && chunkSize > 0)
++        self.byteLimit = byteLimit
++        self.messageLimit = messageLimit
++        self.chunkSize = min(chunkSize, 128)
++        (wakeups, wake) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
++        (failures, fail) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
++    }
++    deinit { wake.finish(); fail.finish() }
++    func shutdown() { close(.closed); wake.finish(); fail.finish() }
++
++    var metrics: Metrics {
++        lock.withLock {
++            Metrics(retainedBytes: state.bytes, retainedMessages: state.records.count,
++                highWaterBytes: state.highWaterBytes, highWaterMessages: state.highWaterMessages,
++                generation: state.generation, failed: state.failure != nil, failure: state.failure)
++        }
++    }
++
++    /// Must follow cancellation/closure of the preceding socket. Old completions
++    /// carry a generation and cannot release credit from a new connection.
++    func reset() throws {
++        close(.closed)
++        try lock.withLock {
++            // Never reuse credit while a previous socket still retains a send.
++            // Callers may create a fresh connection, or retry after cancellation
++            // completion. This cannot block a new recorder or wait indefinitely.
++            guard state.inFlight == nil else { throw Failure.closed }
++            state.generation &+= 1
++            state.failure = nil
++        }
++    }
++
++    @discardableResult
++    func offer(_ type: RTMPChunkType, chunkStreamId: RTMPChunkStreamId, message: some RTMPMessage,
++               completion: (@Sendable (Result<Void, Failure>) -> Void)? = nil) -> Int {
++        // The payload is a value snapshot. No Task/continuation captures it before
++        // the byte/message check. Reserve conservative RTMP chunk header overhead.
++        let payload = message.payload
++        let count = payload.count
++        let overhead = ((count / chunkSize) + 1) * 18 + 32
++        let (cost, overflow) = count.addingReportingOverflow(overhead)
++        var callbacks: [@Sendable (Result<Void, Failure>) -> Void] = []
++        var failure: Failure?
++        var failedGeneration: UInt64?
++        let accepted = lock.withLock { () -> Bool in
++            if let existing = state.failure { failure = existing; return false }
++            guard !overflow, cost <= byteLimit, state.bytes <= byteLimit - cost,
++                  state.records.count < messageLimit else {
++                state.failure = .overflow
++                failedGeneration = state.generation
++                callbacks = state.records.values.compactMap(\.completion)
++                retainOnlyInFlight(&state)
++                failure = .overflow
++                return false
++            }
++            let id = state.nextID
++            state.nextID &+= 1
++            let snapshot = Message(type: message.type, streamId: message.streamId,
++                timestamp: message.timestamp, payload: payload)
++            let lease = Lease(id: id, generation: state.generation, chunkType: type,
++                chunkStreamId: chunkStreamId, message: snapshot)
++            state.records[id] = Record(lease: lease, cost: cost, completion: completion)
++            state.queued.append(id)
++            state.bytes += cost
++            state.highWaterBytes = max(state.highWaterBytes, state.bytes)
++            state.highWaterMessages = max(state.highWaterMessages, state.records.count)
++            return true
++        }
++        if accepted { wake.yield(()); return count }
++        if let failure {
++            callbacks.forEach { $0(.failure(failure)) }
++            completion?(.failure(failure))
++        }
++        if let failedGeneration { fail.yield(failedGeneration) }
++        return 0
++    }
++
++    func send(_ type: RTMPChunkType, chunkStreamId: RTMPChunkStreamId,
++              message: some RTMPMessage) async throws {
++        try Task.checkCancellation()
++        try await withTaskCancellationHandler {
++            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Swift.Error>) in
++                offer(type, chunkStreamId: chunkStreamId, message: message) {
++                    continuation.resume(with: $0.mapError { $0 as any Swift.Error })
++                }
++            }
++        } onCancel: {
++            // RTMP cannot safely cancel/drop a partially written message. End the
++            // transport generation, freeing every waiter and forcing reconnect.
++            self.close(.cancelled)
++        }
++    }
++
++    func take() -> Lease? {
++        lock.withLock {
++            guard state.failure == nil, state.inFlight == nil, !state.queued.isEmpty else { return nil }
++            let id = state.queued.removeFirst()
++            state.inFlight = id
++            return state.records[id]?.lease
++        }
++    }
++
++    func acknowledge(_ lease: Lease) {
++        let completion = lock.withLock { () -> (@Sendable (Result<Void, Failure>) -> Void)? in
++            guard lease.generation == state.generation,
++                  let record = state.records.removeValue(forKey: lease.id) else { return nil }
++            state.bytes -= record.cost
++            state.inFlight = nil
++            return record.completion
++        }
++        completion?(.success(()))
++    }
++
++    func close(_ failure: Failure) {
++        var generation: UInt64?
++        let callbacks = lock.withLock { () -> [@Sendable (Result<Void, Failure>) -> Void] in
++            guard state.failure == nil else { return [] }
++            state.failure = failure
++            generation = state.generation
++            let result = state.records.values.compactMap(\.completion)
++            retainOnlyInFlight(&state)
++            return result
++        }
++        callbacks.forEach { $0(.failure(failure)) }
++        if let generation { fail.yield(generation) }
++    }
++    /// On close, the socket may still retain one lease until contentProcessed.
++    /// Keep charging it, but strip its already-resumed completion.
++    private func retainOnlyInFlight(_ state: inout State) {
++        if let id = state.inFlight, let record = state.records[id] {
++            state.records = [id: Record(lease: record.lease, cost: record.cost, completion: nil)]
++            state.bytes = record.cost
++        } else { state.records.removeAll(); state.bytes = 0 }
++        state.queued.removeAll()
++    }
++
++}
+diff --git a/RTMPHaishinKit/Sources/RTMP/RTMPSocket.swift b/RTMPHaishinKit/Sources/RTMP/RTMPSocket.swift
+index ddf1fc49..cf9cbbd1 100644
+--- a/RTMPHaishinKit/Sources/RTMP/RTMPSocket.swift
++++ b/RTMPHaishinKit/Sources/RTMP/RTMPSocket.swift
+@@ -10,6 +10,7 @@ final actor RTMPSocket {
+         case endOfStream
+         case connectionTimedOut
+         case connectionNotEstablished(_ error: NWError?)
++        case outputOverflow
+     }
+ 
+     private var timeout: UInt64 = 15
+@@ -83,31 +84,36 @@ final actor RTMPSocket {
+         }
+     }
+ 
++    private static let maximumPendingBytes = 4 * 1024 * 1024
++
++    // Legacy handshake path only; bounded both in bytes and stream elements.
+     func send(_ data: Data) {
+-        guard connected else {
+-            return
+-        }
++        guard connected else { return }
++        guard data.count <= Self.maximumPendingBytes - queueBytesOut else { close(); return }
+         queueBytesOut += data.count
+-        outputs?.yield(data)
++        if case .dropped = outputs?.yield(data) { close() }
+     }
+ 
+-    func send(_ iterator: AnyIterator<Data>) {
+-        guard connected else {
+-            return
+-        }
+-        for data in iterator {
+-            queueBytesOut += data.count
+-            outputs?.yield(data)
+-        }
+-    }
++    func send(_ iterator: AnyIterator<Data>) { for data in iterator { send(data) } }
++    func send(_ chunks: [Data]) { for data in chunks { send(data) } }
+ 
+-    func send(_ chunks: [Data]) {
+-        guard connected else {
+-            return
+-        }
++    /// One connection pump awaits each chunk completion; this bypasses the legacy
++    /// AsyncStream rather than moving a bounded app queue into an unbounded one.
++    func sendAcknowledged(_ chunks: [Data]) async throws {
+         for data in chunks {
++            guard connected else { throw Error.invalidState }
++            guard data.count <= Self.maximumPendingBytes - queueBytesOut else {
++                close(); throw Error.outputOverflow
++            }
+             queueBytesOut += data.count
+-            outputs?.yield(data)
++            do {
++                try await send(data)
++                totalBytesOut += data.count
++                queueBytesOut -= data.count
++            } catch {
++                queueBytesOut -= data.count
++                throw error
++            }
+         }
+     }
+ 
+@@ -146,7 +152,7 @@ final actor RTMPSocket {
+         case .ready:
+             logger.info("Connection is ready.")
+             connected = true
+-            let (stream, continuation) = AsyncStream<Data>.makeStream()
++            let (stream, continuation) = AsyncStream<Data>.makeStream(bufferingPolicy: .bufferingOldest(32))
+             Task {
+                 for await data in stream where connected {
+                     try await send(data)
+diff --git a/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift b/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift
+index 79d38f07..1bd09651 100644
+--- a/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift
++++ b/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift
+@@ -550,10 +550,8 @@ public actor RTMPStream {
+     }
+ 
+     func doOutput(_ type: RTMPChunkType, chunkStreamId: RTMPChunkStreamId, message: some RTMPMessage) {
+-        Task {
+-            let length = await connection?.doOutput(type, chunkStreamId: chunkStreamId, message: message) ?? 0
+-            info.byteCount += length
+-        }
++        let length = connection?.enqueueOutput(type, chunkStreamId: chunkStreamId, message: message) ?? 0
++        info.byteCount += length
+     }
+ 
+     func dispatch(_ message: some RTMPMessage, type: RTMPChunkType) {
+@@ -727,6 +725,39 @@ extension RTMPStream: _Stream {
+         outgoing.videoSettings = videoSettings
+     }
+ 
++    /// Sends already-encoded H.264 and awaits Network.framework processing of
++    /// the complete codec header/payload sequence. This is not receiver delivery.
++    /// Call from one bounded app pump; cancellation closes this connection.
++    public func sendCompressedVideo(_ sampleBuffer: CMSampleBuffer) async throws {
++        guard readyState == .publishing,
++              sampleBuffer.formatDescription?.isCompressed == true,
++              sampleBuffer.formatDescription?.mediaType == .video,
++              let connection else { throw Error.invalidState }
++        let time = sampleBuffer.decodeTimeStamp.isValid ? sampleBuffer.decodeTimeStamp : sampleBuffer.presentationTimeStamp
++        let delta = try videoTimestamp.update(time)
++        videoFormat = sampleBuffer.formatDescription // header enters same FIFO first
++        guard let message = RTMPVideoMessage(streamId: id, timestamp: delta, sampleBuffer: sampleBuffer) else {
++            throw Error.unsupportedCodec
++        }
++        try await connection.sendAcknowledged(.one, chunkStreamId: .video, message: message)
++        frameCount += 1
++        info.byteCount += message.payload.count
++    }
++
++    /// AAC counterpart of sendCompressedVideo. Original shared timestamp origin
++    /// still needs a separate reviewed change; this proposal preserves upstream
++    /// per-track rebasing and must not claim measured physical A/V correctness.
++    public func sendCompressedAudio(_ audioBuffer: AVAudioCompressedBuffer, when: AVAudioTime) async throws {
++        guard readyState == .publishing, let connection else { throw Error.invalidState }
++        let delta = try audioTimestamp.update(when)
++        audioFormat = audioBuffer.format
++        guard let message = RTMPAudioMessage(streamId: id, timestamp: delta, audioBuffer: audioBuffer) else {
++            throw Error.unsupportedCodec
++        }
++        try await connection.sendAcknowledged(.one, chunkStreamId: .audio, message: message)
++        info.byteCount += message.payload.count
++    }
++
+     public func append(_ sampleBuffer: CMSampleBuffer) {
+         switch sampleBuffer.formatDescription?.mediaType {
+         case .video:
+diff --git a/RTMPHaishinKit/Tests/RTMP/RTMPOutputQueueTests.swift b/RTMPHaishinKit/Tests/RTMP/RTMPOutputQueueTests.swift
+new file mode 100644
+index 00000000..63d5e026
+--- /dev/null
++++ b/RTMPHaishinKit/Tests/RTMP/RTMPOutputQueueTests.swift
+@@ -0,0 +1,131 @@
++import Foundation
++import Testing
++@testable import RTMPHaishinKit
++
++@Suite struct RTMPOutputQueueTests {
++    private struct Packet: RTMPMessage {
++        let type = RTMPMessageType.video
++        let streamId: UInt32 = 1
++        let timestamp: UInt32 = 0
++        let payload: Data
++        init(_ byte: UInt8 = 1, count: Int = 64) { payload = Data(repeating: byte, count: count) }
++    }
++
++    @Test func stalledSendRetainsItsCreditAndOverflowClosesWholeGeneration() throws {
++        let queue = RTMPOutputQueue(byteLimit: 300, messageLimit: 2, chunkSize: 128)
++        let outcomes = Locked((success: 0, failure: 0))
++        let completion: @Sendable (Result<Void, RTMPOutputQueue.Failure>) -> Void = { result in
++            outcomes.withLock {
++                switch result { case .success: $0.success += 1; case .failure: $0.failure += 1 }
++            }
++        }
++        #expect(queue.offer(.zero, chunkStreamId: .video, message: Packet(0), completion: completion) == 64)
++        let header = try #require(queue.take())
++        #expect(queue.offer(.one, chunkStreamId: .video, message: Packet(1), completion: completion) == 64)
++        #expect(queue.metrics.retainedMessages == 2)
++        #expect(queue.metrics.retainedBytes <= 300)
++        // Neither the task handing off a packet nor take() frees capacity.
++        #expect(queue.offer(.one, chunkStreamId: .video, message: Packet(2), completion: completion) == 0)
++        #expect(queue.metrics.failed)
++        #expect(outcomes.withLock { $0.failure } == 3)
++        #expect(queue.take() == nil)
++        // The socket still owns the header until its completion; no false zero.
++        #expect(queue.metrics.retainedMessages == 1)
++        #expect(queue.metrics.retainedBytes > 0)
++        #expect(throws: RTMPOutputQueue.Failure.self) { try queue.reset() }
++        queue.acknowledge(header)
++        queue.acknowledge(header)
++        #expect(outcomes.withLock { $0.success } == 0)
++        #expect(outcomes.withLock { $0.failure } == 3)
++        #expect(queue.metrics.retainedBytes == 0)
++        try queue.reset()
++        #expect(!queue.metrics.failed)
++        #expect(queue.offer(.zero, chunkStreamId: .video, message: Packet(3)) == 64)
++        queue.acknowledge(header) // stale completion cannot credit new generation
++        #expect(queue.metrics.retainedMessages == 1)
++    }
++
++    @Test func headerPayloadOrderAndCompletionAreAcknowledged() async throws {
++        let queue = RTMPOutputQueue(byteLimit: 4096, messageLimit: 8, chunkSize: 128)
++        let completed = Locked([Int]())
++        queue.offer(.zero, chunkStreamId: .video, message: Packet(0)) { _ in completed.withLock { $0.append(0) } }
++        queue.offer(.one, chunkStreamId: .video, message: Packet(1)) { _ in completed.withLock { $0.append(1) } }
++        let header = try #require(queue.take())
++        #expect(header.chunkType == .zero)
++        #expect(header.message.payload.first == 0)
++        #expect(queue.take() == nil)
++        #expect(completed.withLock { $0.isEmpty })
++        queue.acknowledge(header)
++        let payload = try #require(queue.take())
++        #expect(payload.chunkType == .one)
++        #expect(payload.message.payload.first == 1)
++        queue.acknowledge(payload)
++        #expect(completed.withLock { $0 } == [0, 1])
++        #expect(queue.metrics.retainedBytes == 0)
++    }
++
++    @Test func closeAndSocketCompletionResumeEachWaiterExactlyOnce() throws {
++        let queue = RTMPOutputQueue(byteLimit: 65_536, messageLimit: 128, chunkSize: 128)
++        let calls = Locked([Int: Int]())
++        for id in 0..<64 {
++            queue.offer(.one, chunkStreamId: .video, message: Packet()) { _ in
++                calls.withLock { $0[id, default: 0] += 1 }
++            }
++        }
++        let inFlight = try #require(queue.take())
++        DispatchQueue.concurrentPerform(iterations: 128) { id in
++            if id.isMultiple(of: 2) { queue.close(.cancelled) }
++            else { queue.acknowledge(inFlight) }
++        }
++        #expect(calls.withLock { $0.count } == 64)
++        #expect(calls.withLock { $0.values.allSatisfy { $0 == 1 } })
++        #expect(queue.metrics.retainedBytes == 0)
++        #expect(queue.metrics.failed)
++    }
++
++    @Test func cancellationFailsAwaitedSendAndDoesNotReleaseUnprocessedBytes() async throws {
++        let queue = RTMPOutputQueue(byteLimit: 4096, messageLimit: 4, chunkSize: 128)
++        var wakeups = queue.wakeups.makeAsyncIterator()
++        let sender = Task { try await queue.send(.one, chunkStreamId: .video, message: Packet()) }
++        _ = await wakeups.next()
++        let inFlight = try #require(queue.take())
++        sender.cancel()
++        do { try await sender.value; Issue.record("Cancelled send unexpectedly succeeded") }
++        catch { #expect(error is RTMPOutputQueue.Failure) }
++        #expect(queue.metrics.failed)
++        #expect(queue.metrics.retainedBytes > 0)
++        queue.acknowledge(inFlight)
++        #expect(queue.metrics.retainedBytes == 0)
++    }
++
++    @Test func idleConnectionDoesNotRetainItsOutputWorkers() async {
++        weak var reference: RTMPConnection?
++        do {
++            let connection = RTMPConnection()
++            reference = connection
++        }
++        #expect(reference == nil)
++    }
++
++    @Test func concurrentAdmissionCannotOvercommitBudget() {
++        let queue = RTMPOutputQueue(byteLimit: 2048, messageLimit: 8, chunkSize: 128)
++        DispatchQueue.concurrentPerform(iterations: 1000) { _ in
++            queue.offer(.one, chunkStreamId: .video, message: Packet())
++        }
++        #expect(queue.metrics.failed)
++        #expect(queue.metrics.highWaterBytes <= 2048)
++        #expect(queue.metrics.highWaterMessages <= 8)
++        #expect(queue.metrics.retainedBytes == 0)
++    }
++}
++
++// Test counters use the same explicit lock ownership across supported OSes.
++// No reference to mutable storage escapes the synchronous critical section.
++private final class Locked<Value>: @unchecked Sendable {
++    private let lock = NSLock()
++    private var value: Value
++    init(_ value: Value) { self.value = value }
++    func withLock<Result>(_ body: (inout Value) -> Result) -> Result {
++        lock.withLock { body(&value) }
++    }
++}
