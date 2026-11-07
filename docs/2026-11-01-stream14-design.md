@@ -197,6 +197,14 @@ playback checks on the 13 mini. On 2026-11-07 the owner confirmed the wider view
 and comfortable landscape controls. See the guide for exact results and remaining
 hardware/qualification limits.
 
+Owner UI refinement (2026-11-07): the selector shares the preview's visibility
+boundary and disappears when capture closes, even though discovery and the chosen
+lens remain remembered in memory. Its compact standard bordered button shows a
+camera icon and short magnification (0.5× / 1×, or Telephoto) with the same internal
+44-point minimum target. Full lens names remain in the dialog and accessible value;
+the recording-lock explanation is an accessibility hint rather than a separate
+space-consuming caption. Recording still disables selection.
+
 Device evidence and owner visual review are recorded in the development guide;
 unavailable hardware, long-run performance and future streaming remain separate
 qualification requirements. Existing MVP TestFlight evidence is not proof of this

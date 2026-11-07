@@ -14,6 +14,14 @@ enum RearCameraLens: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    var buttonLabel: String {
+        switch self {
+        case .ultraWide: "0.5×"
+        case .wide: "1×"
+        case .telephoto: "Telephoto"
+        }
+    }
+
     nonisolated var deviceType: AVCaptureDevice.DeviceType {
         switch self {
         case .ultraWide: .builtInUltraWideCamera

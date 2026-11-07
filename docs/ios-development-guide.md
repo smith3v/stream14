@@ -937,12 +937,14 @@ above remains pending; no phone installation or recording was performed here.
 
 ### Rear-camera lens selection, issue #33 (2026-11-06)
 
-Open **stream14 → Open camera**, then use the **Camera: 1× · Wide** button beside the preview.
+Open **stream14 → Open camera**, then use the compact camera-icon button beside the preview (initially **1×**).
 Choose **0.5× · Ultra Wide** for a wider view, or another compatible rear lens when
 present. The native lens-choice dialog reflects the phone's actual capture capabilities. Wide is the
 default on a fresh launch; the choice is retained while closing/reopening the
 camera in the same app session. Selection briefly pauses preview and is disabled
-during recording/finalization. A failed change restores the prior camera, or stops
+during recording/finalization. The selector disappears with Close camera, and its
+short label preserves a 44-point minimum target; reopening remembers the current
+lens. The dialog and VoiceOver retain full lens names. A failed change restores the prior camera, or stops
 capture with guidance to reopen if recovery fails. There is no mid-recording lens
 switching or new output/encoder.
 
@@ -1002,3 +1004,12 @@ remains pending. Telephoto hardware, other iPhones, long-run performance and act
 separate evidence. Field-of-view metadata and structural file checks do not
 establish subjective picture quality or measured A/V alignment. No TestFlight
 upload is included in this change.
+
+The compact/preview-only refinement passed physical UI regression in
+`/tmp/stream14-issue33-compact-device-2.xcresult`: absent before Open camera and
+after Close camera, present with remembered Ultra Wide after reopen, compact
+normal-text dimensions in both landscape orientations, and recording lock/stop/
+playback. Focused Simulator lens/setup checks passed in
+`/tmp/stream14-issue33-compact-simulator.xcresult`; the Release build passed in
+`/tmp/stream14-issue33-compact-release.log`. Independent review found no material
+issues. Private screenshots remain outside Git.

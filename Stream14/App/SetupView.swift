@@ -32,31 +32,32 @@ struct SetupView: View {
                             .aspectRatio(16 / 9, contentMode: .fit)
                             .background(.black)
                             .accessibilityLabel("Composed camera preview with web overlay")
-                    }
-                    if !experiment.availableLenses.isEmpty {
-                        Button {
-                            showingLensChoices = true
-                        } label: {
-                            Label("Camera: " + experiment.selectedLens.label, systemImage: "camera")
-                                .frame(minHeight: 44)
-                        }
-                        .disabled(!experiment.canSelectLens)
-                        .accessibilityLabel("Rear camera lens")
-                        .accessibilityValue(experiment.selectedLens.label)
-                        .accessibilityIdentifier("cameraLensSelector")
-                        .confirmationDialog("Choose rear camera", isPresented: $showingLensChoices,
-                                            titleVisibility: .visible) {
-                            ForEach(experiment.availableLenses) { lens in
-                                Button(lens.label) {
-                                    Task { await experiment.selectLens(lens) }
-                                }
+                            .accessibilityIdentifier("cameraPreview")
+                        if !experiment.availableLenses.isEmpty {
+                            Button {
+                                showingLensChoices = true
+                            } label: {
+                                Label(experiment.selectedLens.buttonLabel, systemImage: "camera")
+                                    .frame(minHeight: 44)
                             }
-                            Button("Cancel", role: .cancel) {}
-                        } message: {
-                            Text("Current lens: " + experiment.selectedLens.label)
+                            .controlSize(.small)
+                            .disabled(!experiment.canSelectLens)
+                            .accessibilityLabel("Rear camera lens")
+                            .accessibilityHint("Choose a rear lens before recording. Selection is locked while recording or finalizing.")
+                            .accessibilityValue(experiment.selectedLens.label)
+                            .accessibilityIdentifier("cameraLensSelector")
+                            .confirmationDialog("Choose rear camera", isPresented: $showingLensChoices,
+                                                titleVisibility: .visible) {
+                                ForEach(experiment.availableLenses) { lens in
+                                    Button(lens.label) {
+                                        Task { await experiment.selectLens(lens) }
+                                    }
+                                }
+                                Button("Cancel", role: .cancel) {}
+                            } message: {
+                                Text("Current lens: " + experiment.selectedLens.label)
+                            }
                         }
-                        Text("Choose a rear lens before recording. Camera selection is locked while recording or finalizing.")
-                            .font(.caption)
                     }
                     Text(experiment.renderer.status).font(.caption)
                     Toggle("Hide overlay manually", isOn: Binding(

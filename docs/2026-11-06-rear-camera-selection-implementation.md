@@ -45,3 +45,20 @@ separate checks. No broadcast output,
 measured A/V alignment or TestFlight delivery is claimed for this feature.
 Recordings are retained on the phone; media, private results, device identifiers
 and unrelated local project signing settings are excluded from commits/PRs.
+
+## Owner UI follow-up (2026-11-07)
+
+Use the existing brainstorming/writing-plans workflow for this focused correction:
+1. In `Stream14/App/SetupView.swift`, nest the selector inside the same non-idle condition as the preview. Keep discovered choices/selected lens intact when closing capture. Use a small standard bordered camera button, a short magnification label and an internal 44-point minimum target; move the explanatory caption to its accessibility hint.
+2. In `RearCameraLens.swift`, provide the short button label while retaining full dialog/accessibility names. Extend the existing opt-in device UI check to assert initial absence, compact touch-target bounds, disappearance after Close camera, and remembered selection after reopen. No new recording experiment is needed beyond the existing short UI smoke clip.
+3. Run focused physical UI validation, inspect its screenshots, build Release and run relevant hosted checks. Update specification/guide, get an independent review of the actual follow-up diff and full PR, commit only feature files and update PR #35. Preserve unrelated signing settings and all phone recordings; do not merge.
+
+Follow-up validation: `/tmp/stream14-issue33-compact-device-2.xcresult` passed
+initial selector absence, compact dimensions (44–64 points high and at most 180
+points wide for Ultra Wide at normal text) in both landscape orientations,
+selection/recording lock/playback, absence after Close camera, and retained Ultra
+Wide after reopen. `/tmp/stream14-issue33-compact-simulator.xcresult` passed the
+focused lens/setup checks; `/tmp/stream14-issue33-compact-release.log` passed
+Release build. The first physical attempt hit XCTest's offscreen activation-point
+error after rotation; the final helper scrolls before querying hittability.
+Independent review of the actual follow-up/full PR found no material issues.

@@ -14,11 +14,18 @@ final class SetupScreenTests: XCTestCase {
         defer { XCUIDevice.shared.orientation = .portrait }
         app.launch()
         func reveal(_ element: XCUIElement) {
+            let scroll = app.scrollViews.firstMatch
             for _ in 0..<12 {
-                if element.isHittable { return }
-                app.swipeUp()
+                let visible = scroll.frame.insetBy(dx: 0, dy: 8)
+                let frame = element.frame
+                // XCTest can fail the test while querying an offscreen element's
+                // activation point after rotation. Scroll it fully into view first.
+                if visible.contains(frame), !frame.isEmpty, element.isHittable { return }
+                if frame.midY < visible.midY { scroll.swipeDown() }
+                else { scroll.swipeUp() }
             }
         }
+        XCTAssertFalse(app.buttons["cameraLensSelector"].exists)
         let open = app.buttons["openExperiment"]
         reveal(open)
         XCTAssertTrue(open.isHittable)
@@ -40,6 +47,8 @@ final class SetupScreenTests: XCTestCase {
             reveal(selector)
             XCTAssertTrue(selector.isHittable)
             XCTAssertGreaterThanOrEqual(selector.frame.height, 44)
+            XCTAssertLessThanOrEqual(selector.frame.height, 64)
+            XCTAssertLessThanOrEqual(selector.frame.width, 180)
             let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
             screenshot.name = "Ultra Wide selector \(orientation.rawValue)"
             screenshot.lifetime = .keepAlways
@@ -63,6 +72,18 @@ final class SetupScreenTests: XCTestCase {
         let done = app.buttons["Done"]
         XCTAssertTrue(done.waitForExistence(timeout: 5))
         done.tap()
+        let close = app.buttons["Close camera"]
+        reveal(close)
+        XCTAssertTrue(close.isHittable)
+        close.tap()
+        XCTAssertTrue(open.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["cameraLensSelector"].exists)
+        XCTAssertFalse(app.otherElements["cameraPreview"].exists)
+        reveal(open)
+        open.tap()
+        XCTAssertTrue(selector.waitForExistence(timeout: 15))
+        expectation(for: NSPredicate(format: "enabled == true AND value == %@", "0.5× · Ultra Wide"), evaluatedWith: selector)
+        waitForExpectations(timeout: 10)
     }
 
     func testConfirmedDeletionRemovesOnlyItsFixture() throws {
