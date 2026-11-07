@@ -60,3 +60,7 @@ An isolated detached candidate at `/private/tmp/stream14-epic13-phone` uses igno
 F6's first synthetic encode/writer run failed with CoreMedia adapter-format/timing errors; native encoding itself ran, but no shared-writer success is claimed. The failed result is retained at `/private/tmp/stream14-f6-prototype.xcresult`. The stage agent is investigating and preparing an isolated bounded-send package patch, with no production dependency adoption.
 
 Current SSH-agent signing is unavailable. Publishing via an explicit HTTPS URL and the existing GitHub CLI credential helper works, without changing repository remotes or exposing tokens: `git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push https://github.com/smith3v/stream14.git <branch>:refs/heads/<branch>`. Do not force-push.
+
+## Connected-phone batching request
+
+The owner will connect the phone later and requested that all connected-device tests be recorded for one coordinated session. The [connected-iPhone test plan](2026-11-07-connected-iphone-test-plan.md) now lists current commands, manual/service-gated checks, future F6–F14 acceptance and separately agreed long runs, with status/evidence templates. No phone tests have been started. This documentation PR is inserted after F3/#43; F5 must merge it before its own chained PR.
