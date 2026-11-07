@@ -79,6 +79,122 @@ struct WebOverlayRendererTests {
         renderer.setManuallyHidden(false)
         #expect(!renderer.visible)
     }
+    @Test @MainActor func navigationThatNeverCommitsRetriesWithoutAnAttachedView() {
+        var offset: TimeInterval = 0
+        let renderer = WebOverlayRenderer(clock: { ProcessInfo.processInfo.systemUptime + offset })
+        defer { renderer.disable() }
+        renderer.load("https://127.0.0.1:1/overlay")
+        let first = renderer.webView
+        // Cancel before callbacks run: no commit and no isLoading signal to rely on.
+        first.stopLoading()
+        offset += 6
+        renderer.supervise()
+        #expect(renderer.webView === first)
+        offset += 2
+        renderer.supervise()
+        #expect(renderer.webView !== first)
+        #expect(renderer.isRunning)
+        #expect(renderer.image == nil)
+    }
+
+    @Test @MainActor func callbackDeadlinesProcessRecoveryAndDisabledLateCallbacks() async throws {
+        var time: TimeInterval = 0
+        let renderer = WebOverlayRenderer(clock: { ProcessInfo.processInfo.systemUptime + time })
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        let controller = UIViewController()
+        window.rootViewController = controller
+        let host = OverlayViewport(webView: renderer.webView)
+        host.frame = CGRect(x: 0, y: 80, width: 375, height: 60)
+        controller.view.addSubview(host)
+        window.makeKeyAndVisible()
+        defer { renderer.disable(); window.isHidden = true }
+        renderer.loadFixture("<html><head><meta name='viewport' content='width=device-width,initial-scale=1'></head><body style='background:transparent'><div>Static healthy score</div></body></html>")
+        host.layoutIfNeeded()
+        try await waitForImage(renderer)
+        let firstBrowser = renderer.webView
+        // Unchanged pixels with a usable render are healthy. No browser replacement.
+        time += 1
+        renderer.supervise()
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(renderer.webView === firstBrowser)
+        #expect(renderer.visible)
+        // JS/snapshot work never calls back: supervision remains independent.
+        let beforeStall = renderer.health.renderTime ?? 0
+        renderer.captureInjection = .stalled
+        time += 1
+        renderer.supervise()
+        time += 6
+        renderer.supervise()
+        #expect(renderer.webView !== firstBrowser)
+        #expect(renderer.webView.superview === host)
+        renderer.captureInjection = .none
+        time += 1
+        try await waitForFreshRender(renderer, after: beforeStall)
+        #expect(renderer.visible)
+        // Actual process-termination delegate path enters bounded failure/retry.
+        let beforeTermination = renderer.health.renderTime ?? 0
+        let terminatedBrowser = renderer.webView
+        renderer.setManuallyHidden(true)
+        renderer.webViewWebContentProcessDidTerminate(terminatedBrowser)
+        renderer.supervise()
+        #expect(renderer.webView === terminatedBrowser)
+        time += 2
+        renderer.supervise()
+        #expect(renderer.webView !== terminatedBrowser)
+        time += 1
+        try await waitForFreshRender(renderer, after: beforeTermination)
+        #expect(renderer.healthy)
+        #expect(!renderer.visible)
+        #expect(renderer.health.manuallyHidden)
+        renderer.setManuallyHidden(false)
+        #expect(renderer.visible)
+        // Returning unusable results forever must also recover, not just hang.
+        let beforeUnusable = renderer.health.renderTime ?? 0
+        renderer.captureInjection = .unusable
+        let unusableBrowser = renderer.webView
+        time += 10
+        renderer.supervise()
+        #expect(!renderer.visible)
+        #expect(renderer.webView !== unusableBrowser)
+        renderer.captureInjection = .none
+        time += 1
+        try await waitForFreshRender(renderer, after: beforeUnusable)
+        #expect(renderer.visible)
+        let retired = renderer.webView
+        let retiredNavigation = retired.loadHTMLString("<html><body>late</body></html>", baseURL: nil)
+        renderer.disable()
+        renderer.webViewWebContentProcessDidTerminate(retired)
+        renderer.webView(retired, didCommit: retiredNavigation)
+        renderer.webView(retired, didFinish: retiredNavigation)
+        time += 30
+        renderer.supervise()
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(!renderer.isRunning)
+        #expect(!renderer.visible)
+        #expect(renderer.image == nil)
+        #expect(renderer.webView !== retired)
+        #expect(renderer.status.hasPrefix("Overlay disabled"))
+    }
+
+    @MainActor private func waitForImage(_ renderer: WebOverlayRenderer) async throws {
+        for _ in 0..<100 {
+            renderer.supervise()
+            if renderer.image != nil { return }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        #expect(renderer.image != nil)
+    }
+
+    @MainActor private func waitForFreshRender(_ renderer: WebOverlayRenderer, after time: TimeInterval) async throws {
+        for _ in 0..<100 {
+            renderer.supervise()
+            if let rendered = renderer.health.renderTime, rendered > time { return }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        #expect((renderer.health.renderTime ?? 0) > time)
+    }
+
     // Opt-in live-service evidence only. Deterministic CI/default tests never depend
     // on the current contents or availability of an external scoreboard.
     @Test(.enabled(if: ProcessInfo.processInfo.environment["STREAM14_REFERENCE_TEST"] == "1"))

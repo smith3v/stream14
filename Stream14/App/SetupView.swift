@@ -9,6 +9,7 @@ struct SetupView: View {
     @State private var showingNotices = false
     @State private var showingLensChoices = false
     @State private var showingOverlayTest = false
+    @State private var overlayURLDraft = ""
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -111,10 +112,13 @@ struct SetupView: View {
             }
             .navigationTitle("stream14")
             .toolbar {
-                Button("Overlay", systemImage: "globe") { showingOverlayTest = true }
+                Button("Overlay", systemImage: "globe") {
+                    overlayURLDraft = experiment.overlayURL
+                    showingOverlayTest = true
+                }
                     .accessibilityLabel("Overlay settings")
                     .accessibilityIdentifier("testWebOverlay")
-                    .disabled(experiment.phase != .idle && experiment.phase != .preview)
+                    .disabled(!experiment.canEditOverlayURL)
             }
             .alert("Delete this recording?", isPresented: Binding(
                 get: { pendingDeletion != nil },
@@ -134,15 +138,21 @@ struct SetupView: View {
             .sheet(isPresented: $showingOverlayTest) {
                 NavigationStack {
                     Form {
-                        TextField("HTTPS overlay URL", text: $experiment.overlayURL)
+                        TextField("HTTPS overlay URL", text: $overlayURLDraft)
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(.URL).textInputAutocapitalization(.never)
                             .autocorrectionDisabled().privacySensitive()
                             .accessibilityLabel("HTTPS overlay URL").accessibilityIdentifier("overlayURL")
-                        Button("Load overlay") { experiment.loadOverlay() }
-                        Button("Use reference URL") { experiment.overlayURL = "https://heren14-overlay.smith3v.com/overlay.html" }
+                        Button("Apply URL") {
+                            if experiment.applyOverlayURL(overlayURLDraft) {
+                                overlayURLDraft = experiment.overlayURL
+                            }
+                        }
+                        .disabled(!experiment.canEditOverlayURL)
+                        .accessibilityIdentifier("applyOverlayURL")
+                        Button("Use reference URL") { overlayURLDraft = "https://heren14-overlay.smith3v.com/overlay.html" }
                         Text(experiment.urlMessage)
-                        Text("An empty URL disables the overlay. Load starts network access. URLs are stored securely on this device. Source document access does not verify a separate scoring backend.")
+                        Text("Apply saves this URL securely and starts the overlay automatically while the app is active. Apply an empty URL to disable it completely. Closing without applying discards edits. Source document access does not verify a separate scoring backend.")
                     }
                     .navigationTitle("Overlay")
                     .toolbar {
@@ -159,10 +169,34 @@ struct SetupView: View {
                         .toolbar { Button("Done") { showingNotices = false } }
                 }
             }
+            .task {
+                guard !runsOverlayRecoveryHarness else { return }
+                experiment.setOverlayForeground(scenePhase != .background)
+                while !Task.isCancelled {
+                    experiment.reconcileOverlay()
+                    do { try await Task.sleep(for: .seconds(1)) } catch { break }
+                }
+                experiment.setOverlayForeground(false)
+            }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .background { experiment.requestStop(interruption: true) }
+                guard !runsOverlayRecoveryHarness else { return }
+                if phase == .active { experiment.setOverlayForeground(true) }
+                if phase == .background {
+                    experiment.setOverlayForeground(false)
+                    experiment.requestStop(interruption: true)
+                }
             }
         }
+    }
+
+    /// The opt-in hosted media test supplies its own session/window. Do not run
+    /// the owner's saved browser alongside it; Release never uses this test hook.
+    private var runsOverlayRecoveryHarness: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["STREAM14_OVERLAY_RECOVERY_DEVICE"] == "1"
+        #else
+        false
+        #endif
     }
 
     private var footerLayout: AnyLayout {

@@ -345,12 +345,43 @@ final class SetupScreenTests: XCTestCase {
             app.swipeUp()
         }
         XCTAssertTrue(field.isHittable)
-        XCTAssertTrue(app.buttons["Load overlay"].exists)
+        XCTAssertTrue(app.buttons["Apply URL"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "Overlay settings landscape accessibility XXXL"
         screenshot.lifetime = .keepAlways
         add(screenshot)
         try app.performAccessibilityAudit()
+    }
+
+    func testOverlayDraftIsDiscardedAndInvalidApplyKeepsConfiguration() throws {
+        let app = XCUIApplication()
+        app.launch()
+        app.buttons["testWebOverlay"].tap()
+        let field = app.textFields["overlayURL"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        let original = field.value as? String
+        app.buttons["Use reference URL"].tap()
+        app.buttons["Close overlay settings"].tap()
+        app.buttons["testWebOverlay"].tap()
+        let draftWasDiscarded = field.value as? String == original
+        XCTAssertTrue(draftWasDiscarded)
+        field.tap()
+        // Select all through the standard editing gesture, then replace with invalid input.
+        field.press(forDuration: 1.2)
+        if app.menuItems["Select All"].waitForExistence(timeout: 2) { app.menuItems["Select All"].tap() }
+        else if let value = field.value as? String, !value.isEmpty, value != "HTTPS overlay URL" {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: value.count))
+        }
+        field.typeText("http://invalid.example")
+        app.buttons["Apply URL"].tap()
+        XCTAssertTrue(app.staticTexts["Enter an HTTPS URL without username or password."].waitForExistence(timeout: 3))
+        app.buttons["Close overlay settings"].tap()
+        app.buttons["testWebOverlay"].tap()
+        let invalidWasDiscarded = field.value as? String == original
+        XCTAssertTrue(invalidWasDiscarded)
+        app.buttons["Close overlay settings"].tap()
+        XCTAssertTrue(app.buttons["openExperiment"].exists)
+        XCTAssertFalse(app.buttons["recordSample"].exists)
     }
 
     func testLargestTextRemainsAccessibleInLandscape() throws {

@@ -620,7 +620,8 @@ translucent inset. Standard toolbar entry, source-first Form, labeled 44pt close
 icon, and stable opaque sibling hosting resolve them. One later device rerun
 stalled awaiting WebKit snapshots; the final clean run passes with the test harness
 disabling/restoring automatic display sleep. This does not prove why that earlier
-run stalled. The production sheet stops when backgrounded and requires explicit Load.
+run stalled. At that stage the production sheet stopped when backgrounded and required explicit
+Load. Issue #38 supersedes this with foreground overlay recovery; see below.
 Markdown local links/fences and `git diff --check` passed. No personal signing
 settings, raw device diagnostics or camera recordings are committed. M2 saved
 web-overlay composition, camera performance under WebKit load, two-minute combined
@@ -629,10 +630,11 @@ does not qualify a long recording or broadcasting.
 
 ### Stage 4 integrated recording checks
 
-Use **Overlay**, enter an HTTPS URL (or **Use reference URL**), then **Load overlay**
-and close the settings sheet. Loading stores the complete URL in device-only
-Keychain and begins network access. An empty URL explicitly disables it. Opening
-the app does not fetch a saved URL. **Open camera** requests camera/microphone
+Use **Overlay**, enter an HTTPS URL (or **Use reference URL**), then **Apply URL**
+and close the settings sheet. Applying stores the complete URL in device-only
+Keychain and begins foreground network access. Applying an empty URL explicitly
+disables it. Since issue #38, opening/returning to the app automatically loads a
+saved valid URL; typing and dismissing unapplied edits leave it unchanged. **Open camera** requests camera/microphone
 permission and starts the composed preview. Keep the phone landscape with the rear
 camera upright, then **Record** / **Stop recording**. The timer/status are native
 UI, excluded from output. Manual hiding changes both preview and file composition.
@@ -1083,3 +1085,128 @@ Build numbers continue increasing across minor versions. Update both app project
 configurations and the hosted app-identity test together, verify the archive's actual
 Info.plist, and check App Store Connect for collisions. See the
 [0.2 release record](2026-11-07-testflight-0.2.md) for packaging/distribution evidence.
+
+### Issue #38 overlay recovery and safe URL editing
+
+The saved URL controls foreground overlay intent independently of camera/recording.
+**Overlay → Apply URL** commits a validated HTTPS URL; close without applying to
+discard edits. The reference button only fills the draft. Apply an empty/whitespace
+value to disable and remove the saved URL. Invalid input/Keychain errors leave the
+active configuration intact. Editing/applying is locked during capture transitions,
+recording and finalization. Token-bearing URLs remain private and device-only.
+
+**Overlay disabled** means no configured source/work; **Overlay paused** means the
+configured source is suspended in the background; **Loading/Overlay unavailable** means
+a configured source is trying/recovering. **Overlay manually hidden** preserves the
+operator's visibility choice even while source/render health recovers. Opening the
+app resumes only overlay work, never camera, recording or publishing.
+
+Reproduction and focused checks:
+
+1. Apply a public test HTTPS overlay and close settings. Reopen/foreground the app;
+   verify loading proceeds without Load and without starting the camera. Repeated
+   appearances must not reload a healthy source.
+2. Reopen settings, edit/clear the draft and dismiss. Reopen: the committed URL is
+   unchanged. Apply invalid HTTP/credential-bearing input: an error appears without
+   replacing the active source. Never include private URLs in screenshots/test logs.
+3. Apply a different valid URL before recording. No image/result from the retired
+   browser may replace the new source. Apply an empty value: the layer disappears,
+   all overlay work stops, and relaunch/foreground return leaves it disabled.
+4. During a short composed camera recording, interrupt source access, then restore.
+   The last frame remains briefly, disappears after ten seconds, then recovers from
+   confirmed source access plus a fresh render. Recording continues. Repeat with
+   manual hiding; recovery must not override it. Keep originals and stay within the
+   fifteen-minute development-experiment cap.
+
+The hosted `OverlayConfigurationTests` inject read/save failures without altering
+owner Keychain configuration. `WebOverlayRendererTests` use an attached local fixture,
+injected monotonic time and Debug-only capture/ticker failures to exercise stopped
+work, capture deadlines, unusable rendering, process-termination delegate handling,
+old callbacks and disabling. No private WebKit process-kill API is used. Default tests
+do not depend on the live scoreboard. `SetupScreenTests` exercise draft cancellation,
+invalid Apply and largest-text landscape settings. The existing actual HaishinKit
+NV12 hide/restore and local-recorder tests remain relevant regressions.
+
+Run from the focused checkout, using fresh result paths for repetitions:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /tmp/stream14-issue38-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution \
+  -resultBundlePath /tmp/stream14-issue38-new-hosted.xcresult \
+  -only-testing:Stream14Tests test
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath /tmp/stream14-issue38-release \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+```
+
+Builds and Simulator evidence alone do not qualify physical WebKit/media performance,
+real OS web-process termination, all failure reasons or long-event stability.
+
+Verification on 2026-11-07:
+
+- Hosted suite: 32 cases in 12 suites passed (including intentional opt-in skips),
+  `/tmp/stream14-issue38-hosted-final.xcresult`. Includes initial navigation cancelled
+  before commit, stopped ticker/renderer, stalled capture, unusable render,
+  process-delegate recovery, stale callback rejection, configuration failure,
+  empty disable, actual HaishinKit NV12 hide/restore and recorder regressions.
+- Four focused UI tests passed in `/tmp/stream14-issue38-ui.xcresult`: portrait setup,
+  maximum Dynamic Type landscape, URL draft dismissal/invalid Apply, and accessible
+  overlay settings without camera. Accessibility audits passed; exported largest-text
+  settings screenshot was visually inspected. A real VoiceOver session is unverified.
+- Unsigned generic-iPhone Release passed in `/tmp/stream14-issue38-release-final.log`.
+  The Debug-only opt-in media harness is excluded from Release.
+- Signed development test on iPhone 13 mini, iOS 27.2 (24B119), passed in
+  `/tmp/stream14-issue38-device-final.xcresult` in 31.594 seconds. One recording
+  survived capture/ticker interruption, blocked real document requests, ten-second
+  stale hiding, recovery while manually hidden, and process-termination delegate
+  handling. Applying an empty URL was rejected during recording and succeeded after
+  stop; foreground return kept it disabled. The test uses injected URL persistence,
+  so the owner's Keychain URL is preserved. It never disables radios or bypasses TLS.
+- The final original is retained on the phone and copied locally as
+  `/tmp/stream14-issue38-final-original.mp4`. Full native AVFoundation decode passed
+  for video and audio: 27.7275 seconds, 1920×1080, 813 video frames, nominal track
+  cadence 29.325 fps, maximum video interval 225 ms, no intervals >=500 ms. Writer
+  metrics report zero audio/video admission drops and 22 estimated missing camera
+  output intervals. Extracted frames verify an initially composed overlay, its
+  absence during the outage/manual hide, and a fresh overlay in the final recorded
+  composition. These are failure-recovery checks, not a passed smooth-30/long-run gate.
+- Two earlier short originals are also retained. The first revealed that the test
+  stopped before final compositor handoff; two-second settling intervals now retain
+  the recovered picture. Review also found a strongly retained retired test browser
+  and possible duplicate root overlay. The final harness compares ObjectIdentifier
+  without retaining the old browser, and suppresses root supervision only for the
+  explicit Debug opt-in test. Earlier cadence figures are therefore confounded.
+  No raw recordings, screenshots of private media, device IDs or signing data are
+  committed or attached publicly.
+
+Opt-in reproduction (after connecting/unlocking the phone and selecting local
+signing; `DEVICE_ID`/`STREAM14_TEAM` are owner-local values):
+
+```sh
+TEST_RUNNER_STREAM14_OVERLAY_RECOVERY_DEVICE=1 xcodebuild \
+  -project Stream14.xcodeproj -scheme Stream14 \
+  -destination "platform=iOS,id=$DEVICE_ID" \
+  -derivedDataPath /tmp/stream14-issue38-device \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -allowProvisioningUpdates \
+  DEVELOPMENT_TEAM="$STREAM14_TEAM" \
+  -resultBundlePath /tmp/stream14-issue38-new-device.xcresult \
+  -only-testing:Stream14Tests/OverlayRecoveryDeviceTests test
+```
+
+This test deliberately records private camera/microphone media and retains it.
+Do not run it without owner agreement. The shared scheme brands/signs the separate
+UI-test runner before installation. This is a development build, not a TestFlight
+release. Actual OS process termination, physical VoiceOver, A/V sync measurements,
+steady-state/long-run frame-drop and thermal qualification remain unverified.
+
+Independent review inspected the actual diff/files against main. It found that
+transient `.inactive` scenes (such as Control Center) would clear the overlay while
+recording continued. Fixed by suspending only on `.background`, preserving
+`.inactive`, and reconciling on `.active`. Focused re-review of this fix, device
+harness corrections and docs found no remaining material code issues.
