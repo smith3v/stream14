@@ -87,3 +87,12 @@ F6 combined stack validation at `e2a3b66` passes eight hosted checks in three su
 candidate passes 34 deterministic tests in 15 suites with two review regressions;
 its reduced manifest is still not the normal iOS dependency/product validation.
 The candidate remains unadopted and has no production MediaSession wiring.
+
+F6 original-manifest patched iOS product compile/link gate also passes: an isolated
+detached app copy selects actual local RTMPHaishinKit via Xcode's normal full
+package manifest; `/private/tmp/stream14-f6-patched-ios-build.log` reports unsigned
+generic-iOS TEST BUILD SUCCEEDED. The production project/package pins and shared
+caches remain unchanged. Both independent reviews report no remaining material
+findings after package-race fixes; no physical execution or production dependency
+adoption occurred. The revised five-minute routine phone-plan update is still
+owned by its coordinating branch and will join the chain separately.

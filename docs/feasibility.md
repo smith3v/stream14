@@ -992,8 +992,11 @@ reproduction manifest. It proposes acknowledged compressed sends and finite
 connection-wide admission before task retention, including in-flight byte charges
 and fail-closed overflow. Thirty-four deterministic tests pass under the reduced
 manifest. Independent review found and prompted fixes for handshake/command output
-ordering and reconnect-during-close races; focused re-review is pending. No fork
-has been published or pinned. Actual patched iOS product building, socket/TLS
+ordering and reconnect-during-close races; focused re-review found both resolved
+and no new material findings. The actual patched iOS RTMP product now compiles/links
+through the ORIGINAL/full package manifest in an isolated unsigned hosted-test
+build; exact evidence is in the F6 plan. No fork has been published or pinned.
+Actual socket/TLS
 receiver behavior, shared initial A/V origin, keyframe-safe reconnect and physical
 13 mini memory/thermal/queue qualification remain gates. F1/F6 acceptance is open;
 production retains the existing local-only writer and capture/composition path.

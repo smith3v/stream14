@@ -114,5 +114,19 @@ The second race admitted reconnect while old stream cleanup was awaiting; connec
 now rejects closing/aborting state until the entire cleanup finishes. A controlled
 actual close-critical-section regression verifies rejection during the wait and
 release afterward. Connect's continuation is registered before a throwing handshake
-send so failure can complete it, rather than orphaning it. Focused re-review remains
-pending before handoff.
+send so failure can complete it, rather than orphaning it. Focused independent re-review found both races resolved and no new material findings.
+
+## Original-manifest iOS product compile evidence
+
+A detached app copy referenced this actual patched local package with its ORIGINAL
+full Package.swift. The app's hosted test target selected RTMPHaishinKit through
+normal Xcode resolution; the validation did not replace the package manifest.
+Generic-iOS unsigned build-for-testing passed at
+`/private/tmp/stream14-f6-patched-ios-build.log`, compiling RTMPOutputQueue.swift
+from the isolated clone for arm64/iphoneos with the library's iOS 15 deployment
+target and Swift 6. A private APFS-copy of the package cache was used; the tracked
+app project and upstream pins remain untouched. Exact reproduction and paths are
+in [the F6 plan](../../docs/2026-11-07-independent-transport-implementation.md#original-manifest-patched-ios-product-build-2026-11-07).
+This is compile/link evidence, not physical execution, receiver delivery or
+production dependency adoption. The full-package all-tests manifest attempt remains
+separately documented as stopped; normal Xcode iOS product selection passed.

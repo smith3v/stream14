@@ -153,3 +153,53 @@ still applicable unless the owner explicitly agrees otherwise.
 Independent native-prototype review found no material findings; the focused
 package-patch re-review is being coordinated by the root after both race fixes.
 The root handles reviewed chained PR publication and subsequent ledger updates.
+
+### Original-manifest patched iOS product build (2026-11-07)
+
+The remaining compile gate now passes in an isolated experiment. A detached app
+worktree at `/private/tmp/stream14-f6-ios-validation` starts from `763c05c`. Only
+that copy's B30000000000000000000003 package reference changes from the exact
+remote HaishinKit reference to an XCLocalSwiftPackageReference for the reviewed
+patched clone `/private/tmp/stream14-f6-haishinkit`. Both core HaishinKit and the
+hosted test target's RTMPHaishinKit product refer to that same local package.
+`git diff --exit-code -- Package.swift` in the clone confirms its ORIGINAL/full
+manifest is unchanged from exact upstream commit aa2149df822f2e965adf2410a106db959b2e1962.
+The experiment does not substitute the reduced test manifest.
+
+The existing package cache was APFS-copied to
+`/private/tmp/stream14-f6-ios-packages`; source caches were not mutated. Exact
+native command, from the detached validation worktree:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /private/tmp/stream14-f6-patched-ios \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f6-ios-packages \
+  -only-testing:Stream14Tests/SharedEncodingPrototypeTests \
+  CODE_SIGNING_ALLOWED=NO build-for-testing
+```
+
+Result: **TEST BUILD SUCCEEDED**, log
+`/private/tmp/stream14-f6-patched-ios-build.log`. Xcode resolves HaishinKit from
+the local patched directory, builds the actual RTMPHaishinKit product and compiles
+RTMPOutputQueue.swift from that directory for arm64/iphoneos, preserving the
+library's iOS 15 deployment target under Swift 6. The 35-target selected graph
+contains core HaishinKit, RTMPHaishinKit, Logboard and the existing app/auth/test
+dependencies; unrelated SRT/RTC/MoQT/OpenSSL products are not selected. The normal
+Xcode product selection completed without a binary-fetch blocker.
+
+To reproduce with fresh paths, first create a new detached worktree of the reviewed
+F6 head and privately copy a normal resolved package cache. In that detached copy
+only, change the B30000000000000000000003 remote package object's isa to
+XCLocalSwiftPackageReference, remove its repositoryURL/requirement, and set
+relativePath to the absolute reviewed patched clone. Preserve both package-product
+references to that object, lint the project and use the command above. The exact
+project diff remains in the experiment worktree for inspection. Never apply that
+local override to the tracked production project or publish it as a dependency pin.
+
+This closes the actual original-manifest iOS **compile/link** gate. No app was
+installed, no hosted test was run on a physical phone, and no media/socket was
+opened by this build. Fork publication/pinning, production architecture adoption,
+TLS/receiver delivery, common live A/V origins/AAC reconnect and physical resource
+qualification remain pending. Both independent source reviews now report no
+remaining material findings after the two package-race fixes.
