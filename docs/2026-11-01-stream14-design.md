@@ -115,7 +115,8 @@ not established by this local uncompressed-output path.
 UUID files/status sidecars remain under backup-excluded Application Support.
 Pending/legacy/failed files are never promoted on relaunch, and export shares the
 original file. Complete overlay URLs use device-only, when-unlocked Keychain
-storage, with explicit Load and no automatic network/camera/recording resume.
+storage. Stage #5 originally required explicit Load with no automatic network/
+camera/recording resume; issue #38 below supersedes only overlay network resume.
 Background/audio/capture interruptions finalize and require explicit restart;
 capture runtime errors fail visibly. Serious thermal state reduces raster cadence
 to three seconds with a warning; critical state finalizes/stops capture. Writer
@@ -123,6 +124,52 @@ failure, missing tracks or metadata-save failure cannot claim a completed file.
 See the [stage 4 evidence](feasibility.md#stage-4-integrated-local-recording-issue-5)
 and [reproduction guide](ios-development-guide.md#stage-4-integrated-recording-checks).
 Qualification remains separate from implementation; M3/M5 require TestFlight.
+
+### Configured overlay recovery and safe URL editing (issue #38, 2026-11-07)
+
+A committed nonempty HTTPS URL now expresses foreground overlay intent. The main
+screen reconciles that intent on activation and every second independently of
+renderer completion. It loads on launch/foreground return and repairs a stopped
+renderer or missing timer without reopening settings. No camera, microphone,
+recording or publishing starts as a result. Background entry suspends the browser; transient foreground inactivity (such as
+Control Center) preserves it. Media interruptions still require explicit camera resume.
+Closing the camera alone no longer stops the independently configured overlay.
+
+The settings sheet owns an unapplied draft. Apply URL validates the trimmed value,
+then commits it to device-only Keychain before changing active state. Invalid input
+and storage failure preserve the old URL/browser. Dismissing discards edits. Applying
+an empty value removes the saved URL, clears/hides the layer and stops all overlay
+loading/capture/refresh/retry work. Disabled, paused, unavailable/recovering and
+manually hidden are distinct states. Only an explicitly applied nonempty URL can
+leave disabled state. URL changes remain locked while capture is transitioning or
+recording/finalizing; existing-session source switching is not introduced.
+
+A main-run-loop timer supervises callback-based public WebKit JavaScript/snapshot
+operations. There is at most one outstanding capture per browser; a six-second
+capture deadline retires a stalled browser rather than accumulating suspended async
+capture tasks. Navigation without a commit times out at six seconds and failures
+retry after two seconds. Ten seconds without a usable render also recreates the
+browser. Successful source access and rendering remain independent of pixel changes;
+the existing eight-second fallback document refresh and approximately 1 Hz raster
+cadence are retained. The ten-second monotonic stale hide and manual-hide precedence
+still apply to the same composed preview/recording layer. Replacing a browser keeps
+its nonpersistent configuration (including test content rules); old delegates are
+removed and callbacks require current browser identity and navigation generation.
+The attached viewport adopts replacement browsers without changing canvas geometry.
+This uses public APIs and adds no media encoder, queue, dependency or native bridge.
+
+Recovery covers observable failures while the app can execute; it cannot guarantee
+recovery from an unresponsive main run loop, OS suspension or arbitrary app failure.
+See the [focused plan](2026-11-07-overlay-recovery-implementation.md) and
+[verification procedure](ios-development-guide.md#issue-38-overlay-recovery-and-safe-url-editing).
+The hosted suite (32 cases including opt-in skips), four focused UI/accessibility
+checks, unsigned Release and a short physical 13 mini/iOS 27.2 recovery recording
+passed. Full audio/video decode and extracted frames confirm recorded hide/restore.
+The final 27.7275-second stress clip averages 29.325 fps with no >=500 ms gaps and
+zero writer admission drops; 22 estimated missing output intervals remain. This
+does not establish smooth-30 or long-run qualification. Actual OS process kill,
+physical VoiceOver and numerical A/V synchronization remain unverified; see the
+guide for evidence and the corrected single-renderer test harness.
 
 ### Owner update: cleanup and development experiments (2026-11-05)
 
@@ -371,7 +418,10 @@ explaining both capture and broadcasting. If denied, explain how to enable acces
 in Settings; do not keep triggering permission prompts. Preview and local rehearsal
 must work without connecting a Google account.
 
-Settings allows editing and testing the overlay URL and selecting the output profile.
+Settings allows editing and explicitly applying an overlay URL draft and selecting the output profile.
+A committed URL loads automatically while the app is active; unsaved edits never
+change the active source. Validation or secure-storage errors preserve the current
+configuration. Applying a replacement URL is restricted to idle/preview state.
 An empty URL means overlay disabled, stated explicitly in readiness status. The
 reference URL is offered as a copyable example, not fetched silently on first launch.
 Before a broadcast, a configured overlay must have rendered successfully; if it

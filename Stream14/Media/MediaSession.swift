@@ -19,7 +19,10 @@ final class MediaSession {
     let renderer = WebOverlayRenderer()
     private(set) var savedSamples: [ExperimentSample] = []
     private(set) var urlMessage = ""
-    var overlayURL = ""
+    private(set) var overlayURL = ""
+    private let saveOverlayURL: @MainActor (String) throws -> Void
+    private var overlayForeground = false
+    var canEditOverlayURL: Bool { !busy && !stopRequested && (phase == .idle || phase == .preview) }
     private var recorder: LocalRecorder?
     private var overlay: WebOverlayLayer?
     private var overlayTask: Task<Void, Never>?
@@ -45,8 +48,10 @@ final class MediaSession {
     var recordingMetrics: LocalRecorder.Metrics? { recorder?.metrics }
     var isRecording: Bool { phase == .recording }
 
-    init() {
-        do { overlayURL = try OverlayURLStore.read() }
+    init(readOverlayURL: @MainActor () throws -> String = OverlayURLStore.read,
+         saveOverlayURL: @escaping @MainActor (String) throws -> Void = OverlayURLStore.save) {
+        self.saveOverlayURL = saveOverlayURL
+        do { overlayURL = try readOverlayURL() }
         catch { urlMessage = "Could not read the saved URL. Enter it again while the device is unlocked." }
         refreshSamples()
     }
@@ -71,18 +76,47 @@ final class MediaSession {
         }
     }
 
-    func loadOverlay() {
-        guard phase == .idle || phase == .preview else { return }
-        let value = overlayURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// The settings sheet owns its draft. Commit only after validation and persistence.
+    @discardableResult
+    func applyOverlayURL(_ draft: String) -> Bool {
+        guard canEditOverlayURL else {
+            urlMessage = "URL changes are unavailable while recording or changing capture state."
+            return false
+        }
+        let value = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard value.isEmpty || WebOverlayRenderer.validatedURL(value) != nil else {
-            urlMessage = "Enter an HTTPS URL without username or password."; return
+            urlMessage = "Enter an HTTPS URL without username or password."
+            return false
         }
         do {
-            try OverlayURLStore.save(value)
+            try saveOverlayURL(value)
             overlayURL = value
             urlMessage = value.isEmpty ? "Overlay disabled" : "URL saved securely on this device"
-            if value.isEmpty { renderer.stop() } else { renderer.load(value) }
-        } catch { urlMessage = "Could not save the overlay URL. Try again while the device is unlocked." }
+            if value.isEmpty { renderer.disable() }
+            else if overlayForeground { renderer.load(value) }
+            return true
+        } catch {
+            urlMessage = "Could not save the overlay URL. Try again while the device is unlocked."
+            return false
+        }
+    }
+
+    func setOverlayForeground(_ foreground: Bool) {
+        overlayForeground = foreground
+        if foreground { reconcileOverlay() }
+        else { renderer.stop() }
+    }
+
+    /// Invoked independently of renderer completion by the foreground view task.
+    func reconcileOverlay() {
+        guard overlayForeground else { return }
+        if overlayURL.isEmpty { renderer.disable() }
+        else if WebOverlayRenderer.validatedURL(overlayURL) != nil {
+            renderer.ensureRunning(overlayURL)
+        } else {
+            renderer.disable()
+            urlMessage = "The saved overlay URL is invalid. Enter an HTTPS URL."
+        }
     }
 
     func openPreview() async {
@@ -349,7 +383,6 @@ final class MediaSession {
         runtimeErrorTask = nil
         audioInterruptionTask?.cancel()
         audioInterruptionTask = nil
-        renderer.stop()
         await mixer.stopRunning()
         await mixer.removeOutput(preview)
         try? await mixer.attachVideo(nil)
