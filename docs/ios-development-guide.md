@@ -1210,3 +1210,60 @@ transient `.inactive` scenes (such as Control Center) would clear the overlay wh
 recording continued. Fixed by suspending only on `.background`, preserving
 `.inactive`, and reconciling on `.active`. Focused re-review of this fix, device
 harness corrections and docs found no remaining material code issues.
+
+## F2 Google authorization setup (2026-11-07)
+
+The app pins Google's supported [GoogleSignIn iOS SDK 10.1.0](https://github.com/google/GoogleSignIn-iOS/releases/tag/10.1.0)
+and uses its system-browser sign-in, callback and Keychain-managed credentials.
+Local preview/recording needs no Google account. Connecting does not upload media.
+No real Google client is included in source; an absent/mismatched client leaves
+YouTube disconnected with a setup explanation.
+
+After completing the Google Cloud/API/consent steps in section 3:
+
+1. In Google Auth Platform → Clients, create an **iOS** client with bundle identifier
+   `com.smith3v.stream14`. Use the app's normal Apple signing team if requested.
+   There is no backend/client secret. Enable YouTube Data API v3, include the
+   `https://www.googleapis.com/auth/youtube.force-ssl` scope in consent configuration,
+   and add the intended Google account under Audience → Test users while Testing.
+2. Copy the public iOS client ID, which ends in `.apps.googleusercontent.com`.
+   Create ignored `Config/Local.xcconfig` beside `Config/Google.xcconfig`:
+
+   ```xcconfig
+   GOOGLE_CLIENT_ID = YOUR_IOS_CLIENT_ID.apps.googleusercontent.com
+   GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.YOUR_IOS_CLIENT_ID
+   ```
+
+   Replace both placeholders with the same actual client prefix. These IDs are
+   public configuration; never paste a user token, stream key or client secret.
+   `Config/AppInfo.plist` expands the client ID and matching URL scheme. The
+   configuration loader rejects missing or mismatched values before invoking SDK.
+3. Build and normally sign the app, then choose **Connect YouTube**. The system
+   browser should show Google account choice and consent, then return to stream14.
+   Grant the requested YouTube permission. A successful F2 status says Google is
+   authorized; it does not yet prove the actual YouTube channel (F3 owns that).
+4. Test Cancel, Switch Google account, Sign out on this iPhone, Restore saved
+   connection after relaunch, and confirmed Revoke Google access. Local recordings
+   and overlay settings must survive. Sign-out alone is not server revocation;
+   a failed revoke is reported honestly. The app never resumes camera capture or
+   uploads because a Google session was restored.
+5. Google Testing users and TestFlight testers are separate lists. YouTube-scope
+   testing grants normally need reauthorization after seven days. Before external
+   distribution review current [Google verification requirements](https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance),
+   [branding](https://developers.google.com/identity/branding-guidelines), SDK privacy
+   manifests and the App Store Connect aggregate privacy disclosures. No external
+   consent verification, Google branding approval or signed-phone callback is
+   established by compiling this change.
+
+F2 API handoff: `YouTubeAuthorization.freshAccessToken(expectedGeneration:)`
+returns a short-lived in-memory token only for the current authorized account.
+Capture `generation` before API work and discard results if it changes. Cancellation
+of an API read preserves authorization; actual refresh failure clears readiness.
+`connect`, `restore`, `signOut` and `disconnect` invalidate old channel/event state
+through the generation. Later broadcast coordination must pass `broadcastActive`
+for account actions and disable account UI until end; F2 has no broadcast state.
+
+The owner reported on 2026-11-07 that Google setup is not complete. Supported
+browser callback, signed-device Keychain restoration, actual channel authorization,
+revocation and multi-account/Brand Account behavior remain pending. Unit tests use
+in-memory fixtures and never call Google or send camera media.

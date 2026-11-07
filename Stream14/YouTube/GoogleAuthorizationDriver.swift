@@ -12,18 +12,16 @@ import UIKit
     }
 
     func connect(presenting: UIViewController) async throws -> GoogleAuthorizationAccount {
-        // No hint forces the supported account-selection flow after local sign-out.
+        // Clear the SDK session and let Google present its supported account-selection flow.
         sdk.signOut()
         return try await withCheckedThrowingContinuation { continuation in
             sdk.signIn(withPresenting: presenting, hint: nil,
                        additionalScopes: [YouTubeAuthorization.requiredScope]) { result, error in
-                Task { @MainActor in
-                    if let error { continuation.resume(throwing: Self.safeError(error)); return }
-                    guard let user = result?.user else {
-                        continuation.resume(throwing: YouTubeAuthorizationError.unavailable); return
-                    }
-                    continuation.resume(returning: Self.account(user))
+                if let error { continuation.resume(throwing: Self.safeError(error)); return }
+                guard let user = result?.user else {
+                    continuation.resume(throwing: YouTubeAuthorizationError.unavailable); return
                 }
+                continuation.resume(returning: Self.account(user))
             }
         }
     }
@@ -32,11 +30,9 @@ import UIKit
         guard sdk.hasPreviousSignIn() else { throw YouTubeAuthorizationError.noPreviousSignIn }
         return try await withCheckedThrowingContinuation { continuation in
             sdk.restorePreviousSignIn { user, error in
-                Task { @MainActor in
-                    if let error { continuation.resume(throwing: Self.safeError(error)); return }
-                    guard let user else { continuation.resume(throwing: YouTubeAuthorizationError.unavailable); return }
-                    continuation.resume(returning: Self.account(user))
-                }
+                if let error { continuation.resume(throwing: Self.safeError(error)); return }
+                guard let user else { continuation.resume(throwing: YouTubeAuthorizationError.unavailable); return }
+                continuation.resume(returning: Self.account(user))
             }
         }
     }
@@ -45,18 +41,18 @@ import UIKit
         guard let user = sdk.currentUser, user.userID == accountID else {
             throw YouTubeAuthorizationError.authorizationRequired
         }
-        return try await withCheckedThrowingContinuation { continuation in
-            user.refreshTokensIfNeeded { [weak self] refreshed, error in
-                Task { @MainActor in
-                    guard error == nil, let refreshed,
-                          refreshed.userID == accountID, self?.sdk.currentUser?.userID == accountID,
-                          Set(refreshed.grantedScopes ?? []).contains(YouTubeAuthorization.requiredScope) else {
-                        continuation.resume(throwing: YouTubeAuthorizationError.authorizationRequired); return
-                    }
-                    continuation.resume(returning: refreshed.accessToken.tokenString)
+        let token: String = try await withCheckedThrowingContinuation { continuation in
+            user.refreshTokensIfNeeded { refreshed, error in
+                // Map SDK objects synchronously to Sendable values on its documented main queue.
+                guard error == nil, let refreshed, refreshed.userID == accountID,
+                      Set(refreshed.grantedScopes ?? []).contains(YouTubeAuthorization.requiredScope) else {
+                    continuation.resume(throwing: YouTubeAuthorizationError.authorizationRequired); return
                 }
+                continuation.resume(returning: refreshed.accessToken.tokenString)
             }
         }
+        guard sdk.currentUser?.userID == accountID else { throw YouTubeAuthorizationError.cancelled }
+        return token
     }
 
     func signOut() { sdk.signOut() }
@@ -73,16 +69,16 @@ import UIKit
         return sdk.handle(url)
     }
 
-    private static func account(_ user: GIDGoogleUser) -> GoogleAuthorizationAccount {
+    nonisolated private static func account(_ user: GIDGoogleUser) -> GoogleAuthorizationAccount {
         GoogleAuthorizationAccount(id: user.userID ?? "", grantedScopes: Set(user.grantedScopes ?? []))
     }
 
-    private static func safeError(_ error: any Error) -> YouTubeAuthorizationError {
+    nonisolated private static func safeError(_ error: any Error) -> YouTubeAuthorizationError {
         let ns = error as NSError
         guard ns.domain == kGIDSignInErrorDomain else { return .unavailable }
         switch ns.code {
-        case GIDSignInErrorCode.canceled.rawValue: return .cancelled
-        case GIDSignInErrorCode.hasNoAuthInKeychain.rawValue: return .noPreviousSignIn
+        case GIDSignInError.canceled.rawValue: return .cancelled
+        case GIDSignInError.hasNoAuthInKeychain.rawValue: return .noPreviousSignIn
         default: return .unavailable
         }
     }

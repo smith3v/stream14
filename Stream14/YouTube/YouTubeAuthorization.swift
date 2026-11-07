@@ -118,6 +118,9 @@ enum YouTubeAuthorizationError: Error, Equatable {
             }
             return token
         } catch {
+            if Task.isCancelled || error is CancellationError || error as? YouTubeAuthorizationError == .cancelled {
+                throw YouTubeAuthorizationError.cancelled
+            }
             if expectedGeneration == generation {
                 invalidate()
                 driver.signOut()
@@ -145,7 +148,7 @@ enum YouTubeAuthorizationError: Error, Equatable {
             driver?.signOut()
             throw YouTubeAuthorizationError.cancelled
         }
-        guard result.grantedScopes.contains(Self.requiredScope) else {
+        guard !result.id.isEmpty, result.grantedScopes.contains(Self.requiredScope) else {
             throw YouTubeAuthorizationError.missingScope
         }
         account = result
