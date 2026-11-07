@@ -890,3 +890,23 @@ and inspected the edit lists. It found no remaining material findings. Markdown
 relative-link/fence checks and git diff --check pass. Existing local signing
 settings remain excluded. The PR is prepared for the owner's merge; no merge,
 issue closure or new recording is performed by this verification update.
+
+## Full app F1: public dual-output API audit (2026-11-07)
+
+HaishinKit's [latest stable release](https://github.com/HaishinKit/HaishinKit.swift/releases/tag/2.3.0) remains the pinned 2.3.0 revision `aa2149df822f2e965adf2410a106db959b2e1962`. No package version change is needed. Source inspection establishes the following boundary:
+
+- [`MediaMixerOutput`](https://github.com/HaishinKit/HaishinKit.swift/blob/2.3.0/HaishinKit/Sources/Mixer/MediaMixerOutput.swift) delivers composed uncompressed video and mixed PCM audio. Existing LocalRecorder owns its H.264/AAC encode and MP4 writer independently of any connection.
+- [`OutgoingStream`](https://github.com/HaishinKit/HaishinKit.swift/blob/2.3.0/HaishinKit/Sources/Stream/OutgoingStream.swift), its audio/video codecs and compressed async output streams are `package` visibility. App code cannot start or observe this encoder as an independent public output.
+- [`RTMPStream.publish`](https://github.com/HaishinKit/HaishinKit.swift/blob/2.3.0/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift) starts outgoing codecs only after server publish acknowledgement; `close` stops them. `StreamOutput` observers receive raw input in `append`, not outgoing compressed packets. Attaching a writer observer therefore does not create an independently running shared encoder.
+- Public `RTMPStream.append(CMSampleBuffer)` has a compressed-video branch that packages H.264 directly. Public `append(AVAudioBuffer, when: AVAudioTime)` packages `AVAudioCompressedBuffer` directly. These are usable ingress APIs for a future app-owned single encoder after the existing mixer, without replacing capture/composition. AAC CMSampleBuffer alone is **not** the public RTMP audio path: packet data/descriptions and AVAudioTime must be supplied as AVAudioCompressedBuffer. No such live adapter is claimed by this audit.
+- Apple's `AVAssetWriterInput(mediaType:outputSettings:sourceFormatHint:)` accepts appropriate already-compressed samples with nil settings; MP4 requires nonnil source hints. AAC priming/trailing trim attachments need correct handling. Installed iOS 27.2 SDK header documents these constraints; see [Apple's initializer](https://developer.apple.com/documentation/avfoundation/avassetwriterinput/init(mediatype:outputsettings:sourceformathint:)).
+
+### Decision and gates
+
+Retain the working production LocalRecorder path. Do not adopt a second production encoder. The simplest library-native dual-output candidate adds RTMPStream's separate encode after the same mixer; its thermal/memory/cadence impact and asymmetric failure behavior require a physical 13 mini run and an explicit owner decision before adoption. An app-owned VideoToolbox/AVAudioConverter encoder feeding compressed file/RTMP inputs could preserve one encode, but adds codec lifetime, AAC packetization/priming, common timing, keyframe/reconnect and bounded fan-out ownership; actual live evidence and review are required before choosing it. An upstream public outgoing-codec/fan-out API would reduce app ownership but is unavailable in pinned/latest stable and must not be assumed.
+
+RTMPHaishinKit is linked only by the hosted test target for the experiment. Its MIT license is already included in notices; the product depends on HaishinKit and Logboard and adds no OpenSSL/SRT/RTC linked product. Existing package-resolution pins for other package products remain unchanged. `RTMPSocket` uses Network.framework `.tls` with default trust handling for RTMPS; no bypass is introduced. Current stable source uses Swift tools 6.0; compilation/testing remains evidence to record below.
+
+The library's `setVideoInputBufferCounts(3)` bounds its raw video AsyncStream only. Its direct MediaMixerOutput conformance creates one Task per callback; codec output AsyncStreams and socket output buffering are not publicly bounded by that setting. The candidate therefore cannot establish production bounded queues. F6 must supply and verify admission/backpressure separately; a slow uploader must not control LocalRecorder.
+
+F1 physical acceptance remains **pending**: no private RTMPS destination, connected/unlocked test phone or simultaneous upload evidence is available. No disconnect/reconnect file inspection, writer-failure/upload independence, physical A/V markers, thermal/memory series or original remote/local comparison has passed. F6 must not infer this gate passed from source inspection or Simulator tests.
