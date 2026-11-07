@@ -2,7 +2,7 @@
 
 **Goal:** Keep routine connected-iPhone verification within a five-minute session by coalescing current camera/profile checks into one opt-in test.
 
-**Architecture:** One serialized hosted physical test uses two short sequential MediaSession recordings, one for each fixed profile, with a covered attached local WebKit fixture. It uses the reviewed local recorder path, retains every original and avoids the owner's saved URL/configuration. An existing Debug-only isolated-media-host hook also suppresses the app's unrelated saved-overlay reconciliation for this test.
+**Architecture:** One serialized hosted physical test uses two short sequential MediaSession recordings, one for each fixed profile, with a covered attached local WebKit fixture. It uses the reviewed local recorder path, retains every original and avoids the owner's saved URL/configuration. An existing Debug-only isolated-media-host hook suppresses the app's unrelated saved-overlay reconciliation; its short-smoke host also uses an empty in-memory URL and blocks accidental host capture/configuration writes.
 
 **Tech Stack:** Swift 6, Swift Testing, UIKit/WebKit, HaishinKit, AVFoundation, native Xcode.
 
@@ -16,7 +16,7 @@
 
 **Prompt:** Add Stream14Tests/ShortPhoneSmokeTests.swift. Require pre-authorized camera/microphone and a physical device; default/Simulator runs skip honestly. Use STREAM14_SHORT_DEVICE_SMOKE=1. No Google, sockets, websites, Keychain reads/writes or deletion. Each profile gets a local changing-alpha fixture, an initial red composed marker changed to green, mute/hide/unhide controls, frozen-profile rejection, a checked original H.264/AAC file, and decoded marker checks. Close the first session before the second. Use bounded polling plus a one-minute test limit; the Xcode runner gets a 90-second execution watchdog. Normal native operations are not assumed to be preemptible; the parent operator owns the overall five-minute wall-clock deadline.
 
-Extend only the existing Debug isolated-media-host condition in SetupView.swift so it also recognizes this flag; normal and Release behavior stay unchanged.
+In Stream14App.swift, the Debug short-smoke branch creates authorization with a nil driver/configured false so a signed candidate with a real public client cannot instantiate the SDK singleton or restore credentials. Selection construction performs no requests. Extend the existing Debug isolated-media-host condition in SetupView.swift and select an empty-URL, nonpersisting, capture-disabled host session only for this flag; normal and Release behavior stay unchanged. The actual test session has its own already-authorized capture boundary.
 
 ### Task 3: Validate and hand off
 
