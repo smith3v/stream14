@@ -51,7 +51,11 @@ to preferences, files, an app backend or overlay JavaScript. A fresh access toke
 is held in memory only for authorized API use. Sign out removes this iPhone's SDK
 session; Revoke Google access additionally requests revocation from Google. If
 revocation fails, the app says so and you can review access in your Google Account.
-These actions keep local recordings and overlay settings.
+These actions clear the app's in-memory YouTube channel/event information and keep
+local recordings and overlay settings. When you explicitly refresh scheduled events,
+the app sends authorized read requests directly to YouTube and holds channel/event
+metadata in memory for selection. It does not save raw API responses or ingestion
+keys, and selecting an event alone does not publish or change it.
 
 GoogleSignIn 10.1.0's bundled privacy manifest declares Google-side account/contact,
 coarse location, user/device identifiers and usage/other data for app functionality
@@ -68,7 +72,8 @@ stream14 has no developer-operated collection backend, advertising, analytics or
 third-party crash-reporting SDK. The app does not track you across apps or websites.
 It uses HaishinKit and Logboard locally for media processing and local diagnostic
 logging. The app privacy manifest declares elapsed-time calculations for overlay
-freshness and app-container file metadata for safe deletion; neither is used for
+freshness, app-container file metadata for safe deletion, and app-only UserDefaults
+for the selected nonsecret session profile. These are not used for
 fingerprinting or sent to the developer by stream14.
 
 Apple operates TestFlight and may provide beta feedback and crash information under

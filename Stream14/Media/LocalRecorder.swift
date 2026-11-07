@@ -40,19 +40,12 @@ final class LocalRecorder: MediaMixerOutput, Sendable {
         (failures, failureContinuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
 
-    func start(_ url: URL, injection: Injection = .none) throws {
+    func start(_ url: URL, injection: Injection = .none, profile: SessionProfile = .fullHD) throws {
         try state.withLock { state in
             guard state.writer == nil, injection != .initialization else { throw Failure.initialization }
             let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
-            let video = AVAssetWriterInput(mediaType: .video, outputSettings: [
-                AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 1920, AVVideoHeightKey: 1080,
-                AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: 14_000_000,
-                    AVVideoMaxKeyFrameIntervalDurationKey: 2, AVVideoExpectedSourceFrameRateKey: 30]
-            ])
-            let audio = AVAssetWriterInput(mediaType: .audio, outputSettings: [
-                AVFormatIDKey: Int(kAudioFormatMPEG4AAC), AVSampleRateKey: 44_100,
-                AVNumberOfChannelsKey: 2, AVEncoderBitRateKey: 128_000
-            ])
+            let video = AVAssetWriterInput(mediaType: .video, outputSettings: profile.videoSettings)
+            let audio = AVAssetWriterInput(mediaType: .audio, outputSettings: profile.audioSettings)
             video.expectsMediaDataInRealTime = true
             audio.expectsMediaDataInRealTime = true
             guard writer.canAdd(video), writer.canAdd(audio) else { throw Failure.initialization }

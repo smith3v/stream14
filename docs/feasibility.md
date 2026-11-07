@@ -898,7 +898,7 @@ HaishinKit's [latest stable release](https://github.com/HaishinKit/HaishinKit.sw
 - [`MediaMixerOutput`](https://github.com/HaishinKit/HaishinKit.swift/blob/2.3.0/HaishinKit/Sources/Mixer/MediaMixerOutput.swift) delivers composed uncompressed video and mixed PCM audio. Existing LocalRecorder owns its H.264/AAC encode and MP4 writer independently of any connection.
 - [`OutgoingStream`](https://github.com/HaishinKit/HaishinKit.swift/blob/2.3.0/HaishinKit/Sources/Stream/OutgoingStream.swift), its audio/video codecs and compressed async output streams are `package` visibility. App code cannot start or observe this encoder as an independent public output.
 - [`RTMPStream.publish`](https://github.com/HaishinKit/HaishinKit.swift/blob/2.3.0/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift) starts outgoing codecs only after server publish acknowledgement; `close` stops them. `StreamOutput` observers receive raw input in `append`, not outgoing compressed packets. Attaching a writer observer therefore does not create an independently running shared encoder.
-- Public `RTMPStream.append(CMSampleBuffer)` has a compressed-video branch that packages H.264 directly. Public `append(AVAudioBuffer, when: AVAudioTime)` packages `AVAudioCompressedBuffer` directly. These are usable ingress APIs for a future app-owned single encoder after the existing mixer, without replacing capture/composition. AAC CMSampleBuffer alone is **not** the public RTMP audio path: packet data/descriptions and AVAudioTime must be supplied as AVAudioCompressedBuffer. No such live adapter is claimed by this audit.
+- Public `RTMPStream.append(CMSampleBuffer)` has a compressed-video branch that packages H.264 directly. Public `append(AVAudioBuffer, when: AVAudioTime)` packages `AVAudioCompressedBuffer` directly. These are candidate public ingress APIs for a future app-owned single encoder after the existing mixer, without replacing capture/composition; source signatures alone do not verify successful media acceptance. AAC CMSampleBuffer alone is **not** the public RTMP audio path: packet data/descriptions and AVAudioTime must be supplied as AVAudioCompressedBuffer. No such live adapter is claimed by this audit.
 - Apple's `AVAssetWriterInput(mediaType:outputSettings:sourceFormatHint:)` accepts appropriate already-compressed samples with nil settings; MP4 requires nonnil source hints. AAC priming/trailing trim attachments need correct handling. Installed iOS 27.2 SDK header documents these constraints; see [Apple's initializer](https://developer.apple.com/documentation/avfoundation/avassetwriterinput/init(mediatype:outputsettings:sourceformathint:)).
 
 ### Decision and gates
@@ -933,8 +933,12 @@ Two focused hosted tests passed on the dedicated iPhone 13 mini Simulator in
 - Disconnected RTMP raw observation received 30 uncompressed video callbacks, no
   compressed observer samples, while the independently owned local H.264/AAC MP4
   finalized with video/audio tracks. No connection was opened.
-- Actual encoded file samples exercised both public compressed ingress overloads
-  without a destination. An MP4 writer with nil audio/video output settings and
+- Actual encoded file samples called both public compressed ingress overloads
+  without a destination. This establishes **compile/call compatibility only**:
+  `append` returns Void and catches/logs errors. The passing run logged
+  `invalidSequence` from RTMPStream.swift lines 744/781 on initial zero/nonpositive
+  timestamps. Idle state and missing observer callbacks do not prove media-format
+  acceptance. Independently, an MP4 writer with nil audio/video output settings and
   source hints finalized successfully; original/passthrough H.264 and AAC packet
   bytes and presentation timestamps compared equal. AVAssetReader can regroup AAC
   packets across sample buffers, so comparison normalizes packet descriptions and
@@ -948,3 +952,15 @@ compares actual codec packets. The private physical-only path compiles and is
 explicitly disabled without operator opt-in/configuration; no camera media has
 been published, no original recording deleted, and F1 external acceptance stays
 pending as described above.
+
+Independent review corrected the initial compressed-ingress evidence claim:
+[`RTMPTimestamp.update`](https://github.com/HaishinKit/HaishinKit.swift/blob/2.3.0/RTMPHaishinKit/Sources/RTMP/RTMPTimestamp.swift)
+initializes `updatedAt` to zero and rejects any value that is not strictly larger.
+A future compressed adapter must use a shared positive capture timeline (including
+its first samples), maintain strict per-track order, and explicitly verify
+first-origin handling after every publish/reconnect. The library independently
+maps each track's first accepted timestamp to zero; merely biasing timestamps
+positive does not prove preservation of the original initial A/V offset.
+No successful live compressed-ingress acceptance or reconnect timing proof is
+established by the current disconnected calls. The offline MP4 packet-byte and
+presentation-time comparison remains independent valid passthrough evidence.

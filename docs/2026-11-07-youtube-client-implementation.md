@@ -22,4 +22,47 @@
 
 ## Resume checkpoint
 
-Worktree `/private/tmp/stream14-epic13-f3`, branch `codex/issue-16-youtube-client`, initial stacked baseline `524c582` (F2 plus F1). Root coordinates later F4 merge and PR chain. The original owner checkout and its local signing settings remain untouched. Owner Google setup and signed-phone acceptance are not yet available. Simulator execution requires a root-coordinated lease.
+Worktree `/private/tmp/stream14-epic13-f3`, branch `codex/issue-16-youtube-client`, initial stacked baseline `524c582` (F2 plus F1). Root coordinates later F4 merge and PR chain. The original owner checkout and its local signing settings remain untouched. The Google Cloud/API/iOS client/testing audience are now prepared; actual signed-phone OAuth, API-returned channel identity and test-event acceptance remain pending. Simulator execution requires a root-coordinated lease.
+
+
+## Implemented boundary and validation
+
+`Stream14App` owns both authorization and one `YouTubeEventSelection`; future F5/F7
+can consume that same owner. `YouTubeClient` is a concrete Sendable read client,
+with a small injected send/token/current/sleep boundary for deterministic tests.
+Its ephemeral URLSession disables cache, cookies and redirects. Models/decoding
+are explicitly nonisolated under this project's default MainActor isolation.
+No credentials, raw response data, ingestion keys or metadata are persisted.
+
+Official endpoint/resource/error contracts are linked in the canonical specification.
+Upcoming reads use mutually exclusive broadcastStatus/id/mine filters correctly,
+all pages up to an explicit 100-page fail-closed safety guard, cycle detection,
+owned-channel validation and by-ID recheck. Retry budget is two transient reads
+plus at most one supported SDK refresh-if-needed/401 retry; Retry-After over ten
+seconds returns a safe waiting message. No remote mutation or publishing exists.
+
+Initial unsigned generic-iOS Release passed at
+`/private/tmp/stream14-f3-release-2.log`; the first attempt's model-isolation compiler
+failure is retained in `/private/tmp/stream14-f3-release.log`. Simulator
+build-for-testing passed. Focused fixture/authorization/configuration tests passed
+26 tests/3 suites at `/private/tmp/stream14-f3-tests.xcresult` and `.log`.
+No Google or physical-device activity occurred. Final F4 stack integration,
+affected checks and independent review are pending at this checkpoint.
+
+Reproducible commands (new result paths on reruns):
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath /private/tmp/stream14-f3-release \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /private/tmp/stream14-f3-simulator \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/YouTubeClientTests \
+  -only-testing:Stream14Tests/YouTubeAuthorizationTests \
+  -only-testing:Stream14Tests/AppConfigurationTests \
+  -resultBundlePath /private/tmp/stream14-f3-tests.xcresult test
+```

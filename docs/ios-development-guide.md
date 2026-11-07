@@ -1289,8 +1289,8 @@ xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
 ```
 
 The deterministic checks create short synthetic files, prove independent local
-writing with a disconnected raw RTMP observer, exercise public compressed H.264
-and AAC input overloads without a destination, and compare packet bytes/timestamps
+writing with a disconnected raw RTMP observer, check compile/call compatibility
+of public compressed H.264/AAC overloads without a destination, and compare packet bytes/timestamps
 through MP4 compressed passthrough. Removing these disposable generated fixtures
 is test cleanup; physical originals are never automatically removed.
 
@@ -1340,6 +1340,110 @@ Simulator run at `/tmp/stream14-f1-tests-5.xcresult` passes both deterministic t
 the physical publishing test is skipped. Its log is `/tmp/stream14-f1-tests-5.log`.
 Initial failed compile/comparison bundles are retained; the passing comparator
 normalizes AAC packet grouping and ignores zero-sample trim markers. The resulting
-proof is API/passthrough fit and disconnected local ownership, not physical
-broadcast qualification. Shared encoding while disconnected/reconnecting remains
+proof is offline MP4 passthrough and disconnected local ownership, not successful
+RTMP compressed-format acceptance or physical broadcast qualification. Shared encoding while disconnected/reconnecting remains
 unimplemented and must not be inferred from the offline remux test.
+
+The disconnected compressed calls establish compile/call compatibility only.
+The passing run logs `invalidSequence` for initial zero/nonpositive timestamps:
+RTMP append returns Void and catches/logs timestamp errors. A future live adapter
+must supply a common positive capture timeline, enforce per-track order and verify
+first-origin/A/V behavior after publish/reconnect; separate track-origin resets
+mean a positive bias alone does not prove initial A/V offset preservation. Neither
+idle state nor absent observer callbacks establish successful media acceptance.
+
+## Full-app F4: profiles and microphone/camera controls (2026-11-07)
+
+Choose the Session profile button before Open camera: 1080p30 at a requested
+14 Mbps, or 720p30 at 8 Mbps. Both use the same fixed landscape composition and
+H.264/AAC original MP4 path. Close camera to change profile; profile preference is
+saved without touching the Keychain overlay URL. The rear-lens dialog retains
+supported Ultra Wide/Wide/Telephoto choices for that profile. Preview and recording
+allow microphone mute and a zoom slider, which applies on release. Zoom is relative
+to the selected physical lens; the lens selector still supplies the owner's 0.5×
+Ultra Wide view. Input shows the actual system microphone route. The level display
+is an approximate peak of shared mixed audio, so it shows silence when muted.
+
+Verified public source boundaries at pinned HaishinKit 2.3.0:
+
+- `AudioMixerSettings.isMuted`, `MediaMixer.setAudioMixerSettings(_:)` and mixed
+  `MediaMixerOutput.audioTrackId == UInt8.max` apply mute before output fan-out.
+- `MediaMixer.configuration(video:configuration:)` permits throwing device zoom
+  configuration on its actor. No AVCaptureDevice crosses into UI ownership.
+- `.sdr` composition uses Rec.709 Core Image context and video-range NV12; the
+  writer requests Rec.709 tags. AVAssetWriter average bitrate is not proof of CBR.
+
+Reproduce the native checks from the F4 worktree, choosing a valid Simulator ID
+and fresh result path on another Mac. Build logs/results stay private local files:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath /tmp/stream14-f4-build \
+  -clonedSourcePackagesDirPath /tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -derivedDataPath /tmp/stream14-f4-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution -only-testing:Stream14Tests/SessionProfileTests \
+  -resultBundlePath /tmp/stream14-f4-profiles.xcresult test
+```
+
+Repeat focused regression suites with `-only-testing:Stream14Tests/LocalRecorderTests`,
+`WebOverlayRendererTests`, `WebOverlayCompositionTests`, `RearCameraLensTests`,
+`OverlayHealthTests` and `AppConfigurationTests`. Actual command/result paths and
+review status are recorded in the [stage handoff](2026-11-07-session-controls-implementation.md).
+Physical tests remain opt-in, wait for the owner to connect/unlock the 13 mini,
+retain originals, and never exceed 15 minutes for a development experiment.
+
+Pending physical F4 acceptance: record short changing alpha-overlay samples in
+both profiles and landscape orientations; confirm camera/writer dimensions,
+H.264/AAC, orientation, visible mute/unmute and audible silence/recovery, zoom,
+level/route/interruption behavior, profile/lens lock during recording, original
+playback/export, and ten-second overlay hide/recovery at 720p. Inspect originals;
+requested settings, callback counts and a Simulator are not substitute evidence.
+No new TestFlight build or long qualification run is established by F4.
+
+## F3 channel and scheduled-event checks (2026-11-07)
+
+After Google authorization succeeds, use **Refresh** in Scheduled YouTube event.
+The app displays the actual API-returned channel, then reads every upcoming-event
+page. Confirm the channel title/identifier before selecting a row; the Google email
+is not the channel identity. If the wrong channel/Brand Account is returned, reconnect
+using the intended channel. Schedule a dedicated encoder event in YouTube Studio,
+preferably unlisted, with auto-stop disabled. Refresh again. The row shows local
+date/time, visibility and any reason it cannot be selected. Missing/unknown essential
+metadata cannot silently become an eligible event. An enabled auto-start setting
+is disclosed after selection. There is no Go Live/media upload action in this stage.
+
+Account changes clear channel/event state. Refresh clears a disappeared or now
+ineligible selection. The selected event must be read again by ID before later
+binding/start work; an old selection is not proof of current eligibility. API metadata
+is memory-only, with no raw-response archive. Do not put access tokens, response
+bodies, ingestion details or screenshots of secrets into reports.
+
+The owner-controlled Google Cloud/API/iOS client/testing audience are prepared.
+Actual signed-phone sign-in, callback, channel/Brand Account identity, event listing
+and selection remain pending; Console setup and fixture tests do not establish them.
+
+Reproduce the focused fixture and authorization checks from the F3 worktree:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /private/tmp/stream14-f3-simulator \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/YouTubeClientTests \
+  -only-testing:Stream14Tests/YouTubeAuthorizationTests \
+  -only-testing:Stream14Tests/AppConfigurationTests \
+  -resultBundlePath /private/tmp/stream14-f3-tests.xcresult test
+```
+
+Choose a new result-bundle path for another run. The recorded run passed **26 tests
+in three suites** (13 F3, 11 authorization and two configuration tests), log
+`/private/tmp/stream14-f3-tests.log`. Fixtures under Stream14Tests/Fixtures/YouTube
+contain only invented channel/event data and a clearly fake stream name/address.
+No actual Google request, media publishing, phone recording or deletion occurred.
+The [F3 implementation handoff](2026-11-07-youtube-client-implementation.md) records
+build/integration/review status separately from live-owner acceptance.

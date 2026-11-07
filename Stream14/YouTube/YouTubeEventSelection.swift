@@ -59,7 +59,7 @@ import Observation
             message = events.isEmpty ? "No upcoming events. Schedule an encoder event in YouTube Studio with auto-stop disabled, then refresh." :
                 "Choose an upcoming event. Selecting it does not publish media."
         } catch is CancellationError {
-            if accepts(request, generation) { message = "YouTube refresh cancelled." }
+            if request == operation, generation == authorization.generation { message = "YouTube refresh cancelled." }
         } catch {
             guard accepts(request, generation) else { return }
             fail(error)
@@ -84,6 +84,7 @@ import Observation
         guard let channel, let selected else { throw YouTubeReadError.missingEvent }
         let generation = authorization.generation
         let request = operation
+        var explainedIneligibility = false
         do {
             let current = try await client.broadcast(id: selected.id, channelID: channel.id, generation: generation)
             guard accepts(request, generation) else { throw CancellationError() }
@@ -91,6 +92,7 @@ import Observation
                 selectedID = nil
                 storedEvents = storedEvents.map { $0.id == current.id ? current : $0 }
                 message = reason
+                explainedIneligibility = true
                 throw YouTubeReadError.missingEvent
             }
             storedEvents = storedEvents.map { $0.id == current.id ? current : $0 }
@@ -98,7 +100,7 @@ import Observation
         } catch {
             if accepts(request, generation), !(error is CancellationError) {
                 selectedID = nil
-                if error as? YouTubeReadError != .missingEvent { fail(error) }
+                if !explainedIneligibility { fail(error) }
             }
             throw error
         }
