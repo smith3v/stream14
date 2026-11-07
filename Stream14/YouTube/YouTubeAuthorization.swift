@@ -1,0 +1,166 @@
+import Foundation
+import Observation
+import UIKit
+
+struct GoogleAuthorizationConfiguration: Equatable {
+    let clientID: String
+    let callbackScheme: String
+
+    init?(info: [String: Any]) {
+        guard let id = info["GIDClientID"] as? String,
+              id.hasSuffix(".apps.googleusercontent.com"),
+              !id.contains("$"), !id.contains(where: \.isWhitespace),
+              let prefix = id.split(separator: ".").first, !prefix.isEmpty else { return nil }
+        let callback = "com.googleusercontent.apps." + prefix
+        let types = info["CFBundleURLTypes"] as? [[String: Any]] ?? []
+        guard types.contains(where: { ($0["CFBundleURLSchemes"] as? [String] ?? []).contains(callback) }) else { return nil }
+        clientID = id
+        callbackScheme = callback
+    }
+}
+
+struct GoogleAuthorizationAccount: Equatable, Sendable {
+    let id: String
+    let grantedScopes: Set<String>
+}
+
+// Only this test seam hides the SDK; no app-owned credential storage is introduced.
+@MainActor protocol GoogleAuthorizationDriving {
+    func connect(presenting: UIViewController) async throws -> GoogleAuthorizationAccount
+    func restore() async throws -> GoogleAuthorizationAccount
+    func accessToken(accountID: String) async throws -> String
+    func signOut()
+    func disconnect() async throws
+    func handle(_ url: URL) -> Bool
+}
+
+enum YouTubeAuthorizationError: Error, Equatable {
+    case cancelled, noPreviousSignIn, missingScope, authorizationRequired, unavailable
+}
+
+@MainActor @Observable final class YouTubeAuthorization {
+    static let requiredScope = "https://www.googleapis.com/auth/youtube.force-ssl"
+    private(set) var account: GoogleAuthorizationAccount?
+    private(set) var generation: UInt64 = 0
+    private(set) var isWorking = false
+    private(set) var message: String
+    let isConfigured: Bool
+    @ObservationIgnored private let driver: (any GoogleAuthorizationDriving)?
+
+    init(driver: (any GoogleAuthorizationDriving)?, configured: Bool) {
+        self.driver = driver
+        isConfigured = configured
+        message = configured ? "YouTube is disconnected. Local recording is available." :
+            "YouTube setup is needed. Configure the Google iOS client; local recording is available."
+    }
+
+    convenience init(bundle: Bundle = .main) {
+        let config = GoogleAuthorizationConfiguration(info: bundle.infoDictionary ?? [:])
+        self.init(driver: config.map { GoogleAuthorizationDriver(configuration: $0) }, configured: config != nil)
+    }
+
+    var isAuthorized: Bool { account != nil && !isWorking }
+
+    func connect(presenting: UIViewController, broadcastActive: Bool = false) async {
+        guard begin(broadcastActive: broadcastActive), let driver else { return }
+        let operation = generation
+        defer { isWorking = false }
+        do {
+            let result = try await driver.connect(presenting: presenting)
+            try accept(result, operation: operation)
+        } catch { finish(error, operation: operation) }
+    }
+
+    func restore(broadcastActive: Bool = false) async {
+        guard begin(broadcastActive: broadcastActive), let driver else { return }
+        let operation = generation
+        defer { isWorking = false }
+        do {
+            let result = try await driver.restore()
+            try accept(result, operation: operation)
+        } catch { finish(error, operation: operation) }
+    }
+
+    func signOut(broadcastActive: Bool = false) {
+        guard !broadcastActive else { message = "End the broadcast before changing YouTube accounts."; return }
+        // Invalidate even a pending result, but keep SDK operations serialized until its callback.
+        invalidate()
+        driver?.signOut()
+        message = "Signed out on this iPhone. Google access has not been revoked."
+    }
+
+    func disconnect(broadcastActive: Bool = false) async {
+        guard begin(broadcastActive: broadcastActive), let driver else { return }
+        let operation = generation
+        defer { isWorking = false }
+        do {
+            try await driver.disconnect()
+            guard operation == generation else { return }
+            driver.signOut()
+            message = "Google access revoked and this iPhone signed out."
+        } catch {
+            guard operation == generation else { return }
+            // A failed revoke must not be reported as revoked. Keep local state clear.
+            driver.signOut()
+            message = "Signed out locally. Google access could not be revoked; check your Google Account permissions and retry connecting if needed."
+        }
+    }
+
+    /// F3 supplies this generation with each request and discards responses after a change.
+    func freshAccessToken(expectedGeneration: UInt64) async throws -> String {
+        guard !isWorking, expectedGeneration == generation, let account, let driver else {
+            throw YouTubeAuthorizationError.authorizationRequired
+        }
+        do {
+            let token = try await driver.accessToken(accountID: account.id)
+            guard expectedGeneration == generation, self.account?.id == account.id, !Task.isCancelled else {
+                throw YouTubeAuthorizationError.cancelled
+            }
+            return token
+        } catch {
+            if expectedGeneration == generation {
+                invalidate()
+                driver.signOut()
+                message = "YouTube authorization expired or could not be refreshed. Connect again."
+            }
+            throw YouTubeAuthorizationError.authorizationRequired
+        }
+    }
+
+    @discardableResult func handle(_ url: URL) -> Bool { driver?.handle(url) ?? false }
+
+    private func begin(broadcastActive: Bool) -> Bool {
+        guard !broadcastActive else { message = "End the broadcast before changing YouTube accounts."; return false }
+        guard isConfigured, driver != nil, !isWorking else { return false }
+        invalidate()
+        isWorking = true
+        message = "Connecting YouTube…"
+        return true
+    }
+
+    private func invalidate() { generation &+= 1; account = nil }
+
+    private func accept(_ result: GoogleAuthorizationAccount, operation: UInt64) throws {
+        guard operation == generation, !Task.isCancelled else {
+            driver?.signOut()
+            throw YouTubeAuthorizationError.cancelled
+        }
+        guard result.grantedScopes.contains(Self.requiredScope) else {
+            throw YouTubeAuthorizationError.missingScope
+        }
+        account = result
+        message = "Google authorized. YouTube channel identity will be checked before selecting an event."
+    }
+
+    private func finish(_ error: any Error, operation: UInt64) {
+        guard operation == generation else { driver?.signOut(); return }
+        driver?.signOut()
+        account = nil
+        switch error as? YouTubeAuthorizationError {
+        case .cancelled: message = "YouTube connection cancelled. Local recording is available."
+        case .noPreviousSignIn: message = "No saved Google authorization. Connect YouTube to continue."
+        case .missingScope: message = "YouTube permission was not granted. Connect again and allow YouTube access."
+        default: message = "YouTube authorization failed. Check Google setup and your connection, then try again."
+        }
+    }
+}
