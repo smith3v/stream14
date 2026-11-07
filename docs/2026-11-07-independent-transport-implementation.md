@@ -132,3 +132,24 @@ Retained failed prototype bundles are `/private/tmp/stream14-f6-prototype.xcresu
 container/priming timestamp normalization assumption and the destructive effect of
 synthetic cancelWriting. The final marker test is not substituted for those
 failures or for any physical transport acceptance.
+
+### Final compile checkpoint
+
+The merged-stack physical iPhone SDK build-for-testing passed at
+`/private/tmp/stream14-f6-device-build-tests.log`, using the native shared scheme,
+`generic/platform=iOS`, the same three focused selectors and
+`CODE_SIGNING_ALLOWED=NO`. This compiles the prototype and existing conditional
+physical-test code; no unsigned product was installed and no phone/camera/network
+run occurred. The app dependency still resolves unmodified upstream HaishinKit.
+This is distinct from building the unadopted patched library as the intended iOS
+product, which remains pending before adoption.
+
+The owner reduced routine connected-phone checks to a five-minute budget. The
+consolidated phone-plan branch owns that revised smoke schedule; this stage does
+not start any physical experiment. Longer F1/F6 acceptance scenarios remain
+coverage backlog requiring a separately agreed slot, with the development cap
+still applicable unless the owner explicitly agrees otherwise.
+
+Independent native-prototype review found no material findings; the focused
+package-patch re-review is being coordinated by the root after both race fixes.
+The root handles reviewed chained PR publication and subsequent ledger updates.
