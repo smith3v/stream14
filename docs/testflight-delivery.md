@@ -1,6 +1,11 @@
 # TestFlight delivery record — MVP and updates
 
-Updated: 2026-11-05. **Version 0.1 (1) was installed and used through TestFlight. The owner
+Updated: 2026-11-07. **Version 0.2 (3) is Testing in Owner MVP**, with compliance
+completed and release-specific What to Test notes saved. See the
+[0.2 release record](2026-11-07-testflight-0.2.md). Installation of this update has
+not been observed. Historical MVP evidence follows.
+
+**Version 0.1 (1) was installed and used through TestFlight. The owner
 exported and reviewed an approximately 35-minute recording; objective file
 verification and qualification limits are recorded in feasibility.** Prerequisite PRs #10 and #11 merged; issue #5 closed with explicit
 start/end sync and TestFlight qualification carryover.
@@ -11,7 +16,16 @@ Actual build 2 installation has not been observed. See the
 [issue #30 release record](2026-11-05-recording-ui-testflight.md). The historical
 0.1 (1) owner review below remains unchanged.
 
-## Current state and attention boundaries
+## Version convention
+
+The owner requested **0.2 (3)** after merging PR #36 and accepting the development
+app on the phone. See the [0.2 release record](2026-11-07-testflight-0.2.md) for
+completed packaging/distribution evidence. Each TestFlight release of newly merged
+main changes increments the minor version; replacement uploads within that release
+increment only the globally increasing build number. Version/build are committed
+in both app configurations; preserve private signing selections outside Git.
+
+## Original MVP delivery state and attention boundaries
 
 | Item | Status |
 | --- | --- |
