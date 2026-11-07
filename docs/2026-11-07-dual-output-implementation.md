@@ -14,7 +14,7 @@
 
 ### Task 2: Add test-only experiments
 
-**Prompt:** Add `Stream14Tests/DualOutputFeasibilityTests.swift`, link only RTMPHaishinKit in the hosted test target, and leave production frameworks unchanged. Verify that an idle stream observer receives raw input while a local file completes; remux real H.264/AAC packets with nil output settings/source hints and compare bytes/timestamps. Add a separately enabled private physical candidate using the existing MediaSession and changing alpha fixture; retain originals and redact failures/configuration. Never connect by ordinary tests.
+**Prompt:** Add `Stream14Tests/DualOutputFeasibilityTests.swift`, link only RTMPHaishinKit in the hosted test target, and leave production frameworks unchanged. Verify that an idle stream observer receives raw input while a local file completes; remux real H.264/AAC packets with nil output settings/source hints and compare bytes/timestamps. Record disconnected compressed calls as compile/call compatibility only; Void append catches/logs errors and cannot prove format acceptance. Add a separately enabled private physical candidate using the existing MediaSession and changing alpha fixture; retain originals and redact failures/configuration. Never connect by ordinary tests.
 
 ### Task 3: Validate and hand off
 
