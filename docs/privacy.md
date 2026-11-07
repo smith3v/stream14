@@ -33,7 +33,7 @@ permission requests.
 The complete configured URL is saved in this iPhone's device-only Keychain and is
 accessible to the app while unlocked. WebKit uses a nonpersistent website data
 store. No native credentials or media access are exposed to webpage JavaScript.
-Clearing the URL and choosing Load removes the saved URL and disables the overlay.
+Clearing the URL and choosing Apply URL removes the saved URL and disables the overlay.
 
 ## Developer collection and Apple beta services
 
@@ -41,7 +41,8 @@ stream14 has no developer-operated collection backend, advertising, analytics or
 third-party crash-reporting SDK. The app does not track you across apps or websites.
 It uses HaishinKit and Logboard locally for media processing and local diagnostic
 logging. The app privacy manifest declares elapsed-time calculations for overlay
-freshness and app-container file metadata for safe deletion; neither is used for
+freshness, app-container file metadata for safe deletion, and app-only UserDefaults
+for the selected nonsecret session profile. These are not used for
 fingerprinting or sent to the developer by stream14.
 
 Apple operates TestFlight and may provide beta feedback and crash information under

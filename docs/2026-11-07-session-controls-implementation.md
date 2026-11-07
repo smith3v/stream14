@@ -19,3 +19,11 @@
 ### Task 3: Verification and review
 
 **Prompt:** Run an unsigned Release build and hosted focused tests with the shared Stream14 scheme, private derived data `/tmp/stream14-f4-build` and packages `/tmp/stream14-issue3-packages`. Coordinate Simulator destination with root. Run `git diff --check`. Update canonical specification and the development guide with exact results and pending physical profile/mute/zoom/route checks. Give root the full diff against origin/main for an independent agent review; address material findings and rerun affected checks, commit and prepare a focused PR in the owner-authorized chain. No merge or automatic publication.
+
+### Persistence privacy declaration
+
+The only new preference is the profile enum in app-only UserDefaults. The app
+manifest declares `NSPrivacyAccessedAPICategoryUserDefaults` reason `CA92.1` for
+this use; no app group, system preferences or third-party preferences are accessed.
+Checked against [Apple's required reasons reference](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitypereasons)
+on 2026-11-07.

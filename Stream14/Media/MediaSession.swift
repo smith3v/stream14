@@ -16,7 +16,19 @@ final class MediaSession {
     let mixer = MediaMixer(captureSessionMode: .single)
     let preview = MTHKView(frame: .zero)
 
-    let renderer = WebOverlayRenderer()
+    let renderer: WebOverlayRenderer
+    private(set) var profile: SessionProfile
+    var canSelectProfile: Bool { phase == .idle && !busy && !stopRequested }
+    private let authorizeCapture: @MainActor () async -> Bool
+    private let persistProfile: @MainActor (SessionProfile) -> Void
+    private(set) var microphoneMuted = false
+    private(set) var microphoneLevel = 0.0
+    private(set) var audioRoute = "Microphone not active"
+    private(set) var cameraZoom = CameraZoom()
+    var canAdjustMedia: Bool { !busy && !stopRequested && (phase == .preview || phase == .recording) }
+    private let microphoneMeter = MicrophoneMeter()
+    private var routeTask: Task<Void, Never>?
+
     private(set) var savedSamples: [ExperimentSample] = []
     private(set) var urlMessage = ""
     private(set) var overlayURL = ""
@@ -49,11 +61,54 @@ final class MediaSession {
     var isRecording: Bool { phase == .recording }
 
     init(readOverlayURL: @MainActor () throws -> String = OverlayURLStore.read,
-         saveOverlayURL: @escaping @MainActor (String) throws -> Void = OverlayURLStore.save) {
+         saveOverlayURL: @escaping @MainActor (String) throws -> Void = OverlayURLStore.save,
+         profile: SessionProfile = .fullHD,
+         persistProfile: @escaping @MainActor (SessionProfile) -> Void = {
+             UserDefaults.standard.set($0.rawValue, forKey: SessionProfile.preferenceKey)
+         },
+         authorizeCapture: @escaping @MainActor () async -> Bool = {
+             guard await AVCaptureDevice.requestAccess(for: .video) else { return false }
+             return await AVCaptureDevice.requestAccess(for: .audio)
+         }) {
+        self.profile = profile
+        self.persistProfile = persistProfile
+        self.authorizeCapture = authorizeCapture
+        renderer = WebOverlayRenderer(profile: profile)
         self.saveOverlayURL = saveOverlayURL
         do { overlayURL = try readOverlayURL() }
         catch { urlMessage = "Could not read the saved URL. Enter it again while the device is unlocked." }
         refreshSamples()
+    }
+
+    func selectProfile(_ profile: SessionProfile) {
+        guard canSelectProfile, profile != self.profile else { return }
+        self.profile = profile
+        persistProfile(profile)
+        availableLenses = []
+        renderer.setProfile(profile)
+        reconcileOverlay()
+    }
+
+    func setMicrophoneMuted(_ muted: Bool) async {
+        guard canAdjustMedia else { return }
+        busy = true
+        defer { finishOperation() }
+        await mixer.setAudioMixerSettings(profile.audioSettings(muted: muted))
+        microphoneMuted = muted
+        if muted { microphoneLevel = 0 }
+    }
+
+    func setCameraZoom(_ value: Double) async {
+        guard canAdjustMedia else { return }
+        busy = true
+        defer { finishOperation() }
+        do { cameraZoom = try await mixer.configureZoom(value) }
+        catch { message = "Camera zoom could not change. Capture continues with the current zoom." }
+    }
+
+    private func updateAudioRoute() {
+        let inputs = AVAudioSession.sharedInstance().currentRoute.inputs
+        audioRoute = inputs.isEmpty ? "Microphone unavailable" : inputs.map(\.portName).joined(separator: ", ")
     }
 
     func refreshSamples() {
@@ -128,15 +183,15 @@ final class MediaSession {
         interrupted = false
         defer { finishOperation() }
         do {
-            guard await AVCaptureDevice.requestAccess(for: .video),
-                  await AVCaptureDevice.requestAccess(for: .audio) else {
+            guard await authorizeCapture() else {
                 throw ExperimentError.permissions
             }
             guard !stopRequested else { phase = .idle; return }
             let audioSession = AVAudioSession.sharedInstance()
             try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker])
             guard try await audioSession.activate(options: []) else { throw ExperimentError.devices }
-            availableLenses = await Task.detached { RearCameraLens.available() }.value
+            let profile = self.profile
+            availableLenses = await Task.detached { RearCameraLens.available(profile: profile) }.value
             guard availableLenses.contains(selectedLens) else {
                 selectedLens = availableLenses.contains(.wide) ? .wide : (availableLenses.first ?? .wide)
                 throw RearCameraLens.ConfigurationError.unavailable
@@ -144,17 +199,26 @@ final class MediaSession {
             await mixer.setSessionPreset(.inputPriority)
             await mixer.setVideoOrientation(.landscapeRight)
             await mixer.setVideoMixerSettings(VideoMixerSettings(mode: .offscreen))
-            await mixer.setAudioMixerSettings(AudioMixerSettings(sampleRate: 44_100, channels: 2))
+            try await mixer.setDynamicRangeMode(.sdr)
+            await mixer.setAudioMixerSettings(profile.audioSettings(muted: microphoneMuted))
             guard let microphone = AVCaptureDevice.default(for: .audio) else { throw ExperimentError.devices }
             try await attachLens(selectedLens)
             try await mixer.attachAudio(microphone)
-            try await mixer.setFrameRate(30)
+            try await mixer.setFrameRate(profile.frameRate)
             let overlay: WebOverlayLayer
             if let existing = self.overlay { overlay = existing }
             else { overlay = await WebOverlayLayer(); self.overlay = overlay }
-            try await overlay.install(on: mixer)
+            try await overlay.install(on: mixer, profile: profile)
             preview.videoGravity = .resizeAspect
             await mixer.addOutput(preview)
+            await mixer.addOutput(microphoneMeter)
+            updateAudioRoute()
+            routeTask = Task { [weak self] in
+                for await _ in NotificationCenter.default.notifications(named: AVAudioSession.routeChangeNotification) {
+                    guard !Task.isCancelled else { return }
+                    self?.updateAudioRoute()
+                }
+            }
             // Register interruption streams before capture begins.
             let interruptions = await mixer.isInterputted
             interruptionTask = Task { [weak self] in
@@ -188,23 +252,25 @@ final class MediaSession {
             overlayTask = Task { [weak self] in
                 while !Task.isCancelled {
                     guard let self else { return }
+                    self.microphoneLevel = self.microphoneMuted ? 0 : self.microphoneMeter.level
                     await overlay.update(image: self.renderer.image, visible: self.renderer.visible)
                     do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
                 }
             }
             phase = .preview
-            message = "Preview ready · landscape 1080p30. Check the picture and overlay before recording."
+            message = "Preview ready · landscape \(profile.rawValue). Check the picture and overlay before recording."
         } catch {
             failure = true
             message = error is RearCameraLens.ConfigurationError ?
-                "The selected lens is unavailable for 1080p30. Open the camera again to retry with an available lens." :
+                "The selected lens is unavailable for \(profile.rawValue). Open the camera again to retry with an available lens." :
                 ((error as? ExperimentError)?.description ?? "Camera/audio setup failed. Open the camera again to retry.")
             stopRequested = true
         }
     }
 
     private func attachLens(_ lens: RearCameraLens) async throws {
-        try await mixer.attachRearCamera(lens)
+        try await mixer.attachRearCamera(lens, profile: profile)
+        cameraZoom = try await mixer.configureZoom(1)
     }
 
     enum LensChangeInjection { case none, configuration, restoration, interruption }
@@ -224,7 +290,7 @@ final class MediaSession {
             }
             if injection == .interruption { requestStop(interruption: true) }
             selectedLens = lens
-            message = "Preview ready · \(lens.label) · landscape 1080p30."
+            message = "Preview ready · \(lens.label) · landscape \(profile.rawValue)."
         } catch {
             do {
                 if injection == .restoration { throw RearCameraLens.ConfigurationError.unavailable }
@@ -277,7 +343,7 @@ final class MediaSession {
                     self?.requestStop()
                 }
             }
-            try recorder.start(directory.appendingPathComponent(sample.fileName), injection: injection)
+            try recorder.start(directory.appendingPathComponent(sample.fileName), injection: injection, profile: profile)
             await mixer.addOutput(recorder)
             previousIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
             UIApplication.shared.isIdleTimerDisabled = true
@@ -385,6 +451,11 @@ final class MediaSession {
         audioInterruptionTask = nil
         await mixer.stopRunning()
         await mixer.removeOutput(preview)
+        await mixer.removeOutput(microphoneMeter)
+        routeTask?.cancel()
+        routeTask = nil
+        microphoneLevel = 0
+        audioRoute = "Microphone not active"
         try? await mixer.attachVideo(nil)
         try? await mixer.attachAudio(nil)
         _ = try? await AVAudioSession.sharedInstance().deactivate(options: [.notifyOthersOnDeactivation])

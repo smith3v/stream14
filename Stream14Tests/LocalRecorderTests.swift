@@ -5,9 +5,9 @@ import Testing
 
 @Suite(.serialized)
 struct LocalRecorderTests {
-    static func video(_ index: Int) throws -> CMSampleBuffer {
+    static func video(_ index: Int, profile: SessionProfile = .fullHD) throws -> CMSampleBuffer {
         var optionalPixel: CVPixelBuffer?
-        #expect(CVPixelBufferCreate(nil, 1920, 1080, kCVPixelFormatType_32BGRA,
+        #expect(CVPixelBufferCreate(nil, profile.width, profile.height, kCVPixelFormatType_32BGRA,
             [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &optionalPixel) == kCVReturnSuccess)
         let pixel = try #require(optionalPixel)
         CVPixelBufferLockBaseAddress(pixel, [])
@@ -66,6 +66,30 @@ struct LocalRecorderTests {
         #expect(throws: (any Error).self) {
             try recorder.start(directory.appendingPathComponent("missing/recording.mp4"))
         }
+    }
+
+    @Test func lowerProfileWritesOriginal720pH264AAC() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp4")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let recorder = LocalRecorder()
+        try recorder.start(url, profile: .hd)
+        for index in 0..<20 {
+            recorder.append(try Self.video(index, profile: .hd))
+            recorder.append(try Self.audio(index))
+            try await Task.sleep(for: .milliseconds(34))
+        }
+        _ = try await recorder.finish()
+        let asset = AVURLAsset(url: url)
+        let videos = try await asset.loadTracks(withMediaType: .video)
+        let audios = try await asset.loadTracks(withMediaType: .audio)
+        let video = try #require(videos.first)
+        let audio = try #require(audios.first)
+        #expect(try await video.load(.naturalSize) == SessionProfile.hd.size)
+        #expect(try await video.load(.preferredTransform) == .identity)
+        let videoFormats = try await video.load(.formatDescriptions)
+        let audioFormats = try await audio.load(.formatDescriptions)
+        #expect(videoFormats.first.map { CMFormatDescriptionGetMediaSubType($0) } == kCMVideoCodecType_H264)
+        #expect(audioFormats.first.map { CMFormatDescriptionGetMediaSubType($0) } == kAudioFormatMPEG4AAC)
     }
 
     @Test func missingCadenceIntervalsAndLegacyMetrics() async throws {
