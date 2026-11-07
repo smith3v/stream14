@@ -47,3 +47,13 @@ The owner will connect and unlock the test iPhone when convenient. Paired-device
 2. Inspect `git status`, `git worktree list` and current remote refs before editing; preserve unrelated work.
 3. Resume the first implementation-ready stage with a fresh agent. Do not close issues whose external acceptance remains unmet.
 4. Commit meaningful checkpoints and update this ledger with PR, validation and outstanding requirements before a usage pause.
+
+## Coordinator checkpoint — first PR open
+
+- F1 head `dbb1e28`, reviewed PR [#40](https://github.com/smith3v/stream14/pull/40) targets main. Independent review corrected an RTMP-acceptance overclaim; focused re-review found no remaining material findings. Physical publishing is still unverified.
+- F2 authored head `9fd23a5` passed independent review; its branch `codex/issue-15-youtube-authorization` at `/private/tmp/stream14-epic13-f2` now includes F1 through merge commits. The only conflict retained both appended guide sections. Combined checks at `/private/tmp/stream14-f2-stack-tests.xcresult` report 16 tests: 15 executed checks passed and one physical test skipped. Focused stack review at `51dbdc3` found no material integration issues; its PR will target F1.
+- F4 implementation `615ea08` at `/private/tmp/stream14-epic13-f4` passed unsigned Release, six focused + eighteen regression hosted tests and two existing accessibility UI tests. Final profile UI checks and F2 integration are in progress; independent review remains pending.
+- Fresh F3 agent is implementing at `/private/tmp/stream14-epic13-f3`, branch `codex/issue-16-youtube-client`, initially from the F2 stack. It must merge reviewed F4 before opening the next chained PR.
+- No branches have been merged into main. The original checkout and private signing changes remain untouched. Google setup, phone readiness and a private RTMPS destination remain owner-dependent.
+
+After a usage interruption, inspect these worktrees and actual latest commits before repeating checks. Continue the existing stage agent or assign a fresh agent for the next stage; do not discard unfinished work.
