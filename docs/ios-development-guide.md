@@ -1379,12 +1379,12 @@ and fresh result path on another Mac. Build logs/results stay private local file
 ```sh
 xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath /tmp/stream14-f4-build \
-  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -clonedSourcePackagesDirPath /tmp/stream14-f2-packages \
   -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
   -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
   -derivedDataPath /tmp/stream14-f4-simulator \
-  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -clonedSourcePackagesDirPath /tmp/stream14-f2-packages \
   -disableAutomaticPackageResolution -only-testing:Stream14Tests/SessionProfileTests \
   -resultBundlePath /tmp/stream14-f4-profiles.xcresult test
 ```

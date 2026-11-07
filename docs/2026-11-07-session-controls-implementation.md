@@ -63,7 +63,7 @@ Validation so far (Xcode 27.2, iOS SDK/Simulator 27.2):
 | Native unsigned Release, final implementation | Passed, `/tmp/stream14-f4-release-final.log` |
 | Build-for-testing, final bundle/resources | Passed, `/tmp/stream14-f4-build-tests-final.log` |
 | Six focused SessionProfileTests | Passed, `/tmp/stream14-f4-profiles.xcresult`, log `/tmp/stream14-f4-profiles.log` |
-| 18 regression tests in six suites | Passed, `/tmp/stream14-f4-regression.xcresult`, log `/tmp/stream14-f4-regression.log` |
+| Regression suites: 16 executed, two physical/reference opt-ins skipped | Passed, `/tmp/stream14-f4-regression.xcresult`, log `/tmp/stream14-f4-regression.log` |
 | Privacy plist and whitespace | `plutil -lint Stream14/PrivacyInfo.xcprivacy` and `git diff --check` passed |
 
 The focused suite verifies both attached CSS/raster dimensions with alpha, profile
@@ -85,5 +85,44 @@ Two existing setup UI tests also passed in `/tmp/stream14-f4-layout.xcresult`:
 portrait setup and largest-text landscape accessibility audits. Exported screenshots
 under `/tmp/stream14-f4-layout-images` were visually inspected. The portrait profile
 button is clear; the largest-text screenshot covers the introduction before scrolling,
-so it does not itself verify the profile button at that size. A focused profile
-selection/persistence/scroll check is being added before final handoff.
+so it does not itself verify the profile button at that size. The focused profile
+selection/persistence/scroll check now passes as recorded below.
+
+### Final stacked implementation checks
+
+F4 now includes the reviewed F1/F2 predecessor through merge `9152d05`, whose
+second parent is F2 `51dbdc3`. The F4 delta is reviewed against
+`codex/issue-15-youtube-authorization`; also inspect the full diff against
+`origin/main` for integration. The private F1 candidate explicitly chooses
+`.fullHD` because its fixtures and RTMP settings are fixed at 1080p. It cannot
+inherit the operator's persisted 720p preference. App profile settings remain
+independent of Google setup/authentication.
+
+The merged Release build passed with `/tmp/stream14-f4-stack-release.log` and
+merged build-for-testing passed with `/tmp/stream14-f4-stack-build-tests.log`.
+After merging Google dependencies, reproduce with
+`-clonedSourcePackagesDirPath /tmp/stream14-f2-packages` instead of the earlier
+local-only cache. This changes no package pin beyond the F2 predecessor.
+
+A focused UI test now selects 720p, verifies it after app relaunch, scrolls to the
+profile button at the largest accessibility text size in both landscape
+orientations, verifies at least 44-point height, runs accessibility audits and
+restores 1080p. Passed in `/tmp/stream14-f4-stack-profile-ui-3.xcresult`; log
+`/tmp/stream14-f4-stack-profile-ui-3.log`. Both exported screenshots in
+`/tmp/stream14-f4-profile-layout-images` were visually inspected: the entire profile
+control/text is visible without clipping. Earlier failures are retained: the first
+asserted an accessibility value before SwiftUI propagated it, and the second used
+full-screen flicks that alternated past the target. Predicate expectations and
+bounded drags fix the test; no production behavior changed to accommodate it.
+
+No phone recording, Google consent/callback, YouTube event or transport acceptance
+is established by these checks. Those gates remain open even though the code is
+ready for a reviewed PR. No root-checkout owner setup file or private configuration
+is imported by F4.
+
+Final merged hosted run `/tmp/stream14-f4-stack-focused.xcresult` passed with
+19 executed tests across profile, authorization and media-feasibility suites;
+one private publishing test was skipped (Swift Testing reports 20 including that
+skip). Initial regression summary likewise reports 18 including two opt-in skips:
+16 executed. Six focused F4 tests and three UI tests executed successfully. These
+skips remain pending evidence rather than passed physical gates.
