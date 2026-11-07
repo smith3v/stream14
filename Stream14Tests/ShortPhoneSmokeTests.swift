@@ -9,10 +9,10 @@ import UIKit
 @Suite(.serialized)
 struct ShortPhoneSmokeTests {
     nonisolated private static var shouldRun: Bool {
-        #if targetEnvironment(simulator)
-        false
-        #else
+        #if DEBUG && !targetEnvironment(simulator)
         ProcessInfo.processInfo.environment["STREAM14_SHORT_DEVICE_SMOKE"] == "1"
+        #else
+        false
         #endif
     }
 
@@ -77,6 +77,8 @@ struct ShortPhoneSmokeTests {
             #expect(host.window != nil && !host.isHidden && host.alpha == 1)
 
             await session.openPreview()
+            try Task.checkCancellation()
+            guard ContinuousClock().now < deadline else { throw SmokeFailure.deadline }
             let ready = session.canRecord
             try #require(ready)
             let originalProfile = session.profile
@@ -135,9 +137,10 @@ struct ShortPhoneSmokeTests {
                                 condition: () -> Bool) async throws {
         let clock = ContinuousClock()
         let localDeadline = min(deadline, clock.now.advanced(by: .seconds(seconds)))
-        while !condition() {
+        while true {
             try Task.checkCancellation()
             guard clock.now < localDeadline else { throw SmokeFailure.deadline }
+            if condition() { return }
             try await Task.sleep(for: .milliseconds(100))
         }
     }

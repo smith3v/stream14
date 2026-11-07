@@ -14,7 +14,7 @@
 
 ### Task 2: Implement narrow coverage
 
-**Prompt:** Add Stream14Tests/ShortPhoneSmokeTests.swift. Require pre-authorized camera/microphone and a physical device; default/Simulator runs skip honestly. Use STREAM14_SHORT_DEVICE_SMOKE=1. No Google, sockets, websites, Keychain reads/writes or deletion. Each profile gets a local changing-alpha fixture, an initial red composed marker changed to green, mute/hide/unhide controls, frozen-profile rejection, a checked original H.264/AAC file, and decoded marker checks. Close the first session before the second. Use bounded polling plus a one-minute test limit; the Xcode runner gets a 90-second execution watchdog. Normal native operations are not assumed to be preemptible; the parent operator owns the overall five-minute wall-clock deadline.
+**Prompt:** Add Stream14Tests/ShortPhoneSmokeTests.swift. Require Debug, pre-authorized camera/microphone and a physical iPhone 13 mini; default, Simulator and Release runs skip honestly. Release is unsupported for this harness because host isolation is Debug-only; its ordinary app initialization is not isolated. Use STREAM14_SHORT_DEVICE_SMOKE=1. No Google, sockets, websites, Keychain reads/writes or deletion. Each profile gets a local changing-alpha fixture, an initial red composed marker changed to green, mute/hide/unhide controls, frozen-profile rejection, a checked original H.264/AAC file, and decoded marker checks. Close the first session before the second. Use bounded polling plus a one-minute test limit; the Xcode runner gets a 90-second execution watchdog. Normal native operations are not assumed to be preemptible; the parent operator owns the overall five-minute wall-clock deadline.
 
 In Stream14App.swift, the Debug short-smoke branch creates authorization with a nil driver/configured false so a signed candidate with a real public client cannot instantiate the SDK singleton or restore credentials. Selection construction performs no requests. Extend the existing Debug isolated-media-host condition in SetupView.swift and select an empty-URL, nonpersisting, capture-disabled host session only for this flag; normal and Release behavior stay unchanged. The actual test session has its own already-authorized capture boundary.
 
@@ -28,7 +28,7 @@ Run from the selected integrated worktree with normal local signing. First build
 
 ~~~sh
 TEST_RUNNER_STREAM14_SHORT_DEVICE_SMOKE=1 xcodebuild \
-  -project Stream14.xcodeproj -scheme Stream14 \
+  -project Stream14.xcodeproj -scheme Stream14 -configuration Debug \
   -destination "platform=iOS,id=$STREAM14_DEVICE_ID" \
   -derivedDataPath "$STREAM14_EVIDENCE/DerivedData" \
   -clonedSourcePackagesDirPath /private/tmp/stream14-f2-packages \
