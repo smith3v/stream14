@@ -14,9 +14,9 @@ Preserve the original checkout and its private signing/concurrent setup edits. A
 | --- | --- | --- | --- |
 | F1 / #14 | Reviewed [PR #40](https://github.com/smith3v/stream14/pull/40), head `dbb1e28` | `codex/issue-14-media-feasibility` / `f1` | Physical dual output, selected production encoding/bounded transport path |
 | F2 / #15 | Reviewed [PR #41](https://github.com/smith3v/stream14/pull/41), includes F1 | `codex/issue-15-youtube-authorization` / `f2` | Signed-phone Google callback, Keychain, scope/revoke and actual channel |
-| F3 / #16 | Implemented and independently reviewed at `5e0f3e4`; F4 integrated | `codex/issue-16-youtube-client` / `f3` | PR publication and actual authorized event read |
+| F3 / #16 | Reviewed [PR #43](https://github.com/smith3v/stream14/pull/43), F4 integrated | `codex/issue-16-youtube-client` / `f3` | Actual authorized event read |
 | F4 / #17 | Reviewed [PR #42](https://github.com/smith3v/stream14/pull/42), F1/F2 integrated | `codex/issue-17-session-controls` / `f4` | Physical profile/mute/zoom/route/media checks |
-| F5 / #18 | Fresh agent implementing safe mutation journal and reconciliation; plan `c3e7edc` | `codex/issue-18-safe-ingestion` / `f5` | Fixture/API review and real dedicated-event acceptance |
+| F5 / #18 | Implemented at `4ed574e`; focused independent re-review passed; phone-plan prerequisite integrated | `codex/issue-18-safe-ingestion` / `f5` | PR publication and real dedicated-event acceptance via later F7/integration entry |
 | F6 / #19 | Fresh agent auditing/prototyping single shared encoder and actual bounded-send feasibility; no production adoption | `codex/issue-19-independent-transport` / `f6` | F1 gates; library nested tasks/unbounded socket queue cannot be bounded by an app queue alone |
 | F7 / #20 | Not started | — | F2–F6 prerequisites |
 | F8 / #21 | Not started | — | F7 prerequisite |
@@ -27,7 +27,7 @@ Preserve the original checkout and its private signing/concurrent setup edits. A
 | F13 / #26 | Not started | — | Integrated reviewed candidate, service setup and signed delivery |
 | F14 / #27 | Not started | — | Delivered candidate, separately agreed qualification and owner acceptance |
 
-Current chain: F1 → F2 → F4 → F3 → F5 → F6, then lifecycle stages. None has merged into main. Stage numbering follows dependency lanes, not PR creation order. Worktree paths use prefix `/private/tmp/stream14-epic13-` plus the suffix above. Inspect actual refs/status before resuming.
+Current chain: F1/#40 → F2/#41 → F4/#42 → F3/#43 → phone plan/#44 → F5 → F6, then lifecycle stages. None has merged into main. Stage numbering follows dependency lanes, not PR creation order. Worktree paths use prefix `/private/tmp/stream14-epic13-` plus the suffix above. Inspect actual refs/status before resuming.
 
 ## Validation and review evidence
 
@@ -64,3 +64,11 @@ Current SSH-agent signing is unavailable. Publishing via an explicit HTTPS URL a
 ## Connected-phone batching request
 
 The owner will connect the phone later and requested that all connected-device tests be recorded for one coordinated session. The [connected-iPhone test plan](2026-11-07-connected-iphone-test-plan.md) now lists current commands, manual/service-gated checks, future F6–F14 acceptance and separately agreed long runs, with status/evidence templates. No phone tests have been started. This documentation PR is inserted after F3/#43; F5 must merge it before its own chained PR.
+
+## Coordinator checkpoint — phone checklist published and F5 reviewed
+
+The consolidated [50-check connected-iPhone plan](2026-11-07-connected-iphone-test-plan.md) is reviewed [PR #44](https://github.com/smith3v/stream14/pull/44), stacked on #43. Independent review added distinct Wi-Fi/cellular path-switch and actual instrumentation-overhead checks; focused re-review at `7edbbce` found no material findings. Links/fences/shell-template syntax and diff checks pass; no app/phone commands were executed for the doc change. Owner confirmed phone availability is later; all physical rows remain pending.
+
+F5 independent review found a completed single-slot mutation intent blocked later events. Fix `4ed574e` uses a per-channel/event journal and adds sequential/relaunch/manual-resolution coverage while preserving unknown-create duplicate guards. Focused re-review found no new material findings. All 46 hosted checks execute successfully with no skips, final unsigned Release passes, and the phone-plan merge `7f4af87` changes documentation only. F5 exposes a component for later confirmed Go Live, not a ready phone-facing binding UI.
+
+F6 is continuing synthetic encoder/timestamp/failure-preservation work and an isolated bounded-send library patch. The local package patch has 32 deterministic checks passing under a reduced validation manifest; this is not full iOS product/dependency adoption or physical transport qualification. Keep actual failing/progress evidence distinct from final acceptance.
