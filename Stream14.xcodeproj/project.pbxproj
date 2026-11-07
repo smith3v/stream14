@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		B50000000000000000000001 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = B50000000000000000000002 /* GoogleSignIn */; };
 		B30000000000000000000001 /* HaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000002 /* HaishinKit */; };
+		B40000000000000000000001 /* RTMPHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = B40000000000000000000002 /* RTMPHaishinKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +68,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B40000000000000000000001 /* RTMPHaishinKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -145,6 +147,7 @@
 			);
 			name = Stream14Tests;
 			packageProductDependencies = (
+				B40000000000000000000002 /* RTMPHaishinKit */,
 			);
 			productName = Stream14Tests;
 			productReference = A10000000000000000000022 /* Stream14Tests.xctest */;
@@ -532,6 +535,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B30000000000000000000003 /* XCRemoteSwiftPackageReference "HaishinKit.swift" */;
 			productName = HaishinKit;
+		};
+		B40000000000000000000002 /* RTMPHaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B30000000000000000000003 /* XCRemoteSwiftPackageReference "HaishinKit.swift" */;
+			productName = RTMPHaishinKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

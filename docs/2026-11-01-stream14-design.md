@@ -681,6 +681,18 @@ system Files picker can include iCloud destinations. Explain that a file kept on
 inside the app is lost if the app is deleted. Do not call this local copy a disaster
 recovery backup until the operator exports it elsewhere.
 
+F1 audit (2026-11-07): pinned/latest HaishinKit 2.3.0 does not publicly
+expose independently running outgoing compressed samples: its outgoing codecs
+are package-only and start/stop with publish/close. A StreamOutput observer sees
+raw input, so it cannot feed a passthrough local writer. Public compressed H.264
+CMSampleBuffer and AAC AVAudioCompressedBuffer RTMP ingress exist; a future
+app-owned shared encoder could use them while preserving HaishinKit capture and
+composition. That adapter's live timing/priming/reconnect behavior remains unproven.
+The [F1 feasibility audit](feasibility.md#full-app-f1-public-dual-output-api-audit-2026-11-07)
+compares this with library-native separate encoding. Production keeps its existing
+single local encode until physical evidence and explicit architecture review select
+a dual-output path. Test-only RTMP experiments do not authorize production adoption.
+
 ## 7. Architecture, ownership, and interfaces
 
 Use one Xcode iOS app target plus focused unit and UI test targets. Keep small
@@ -736,6 +748,13 @@ labels/filenames. Serialize media ownership, bound queues, and handle backpressu
 separately for file and transport. If dropping network backlog is necessary, recover
 on a keyframe rather than accumulating an unbounded delay. Main-actor image updates
 must not race a compositor that is reading the previous image.
+
+The F1 test-only candidate attaches another output to the same mixer. Its library
+video queue setting does not bound per-callback Tasks, compressed-output streams
+or socket backlog, and therefore is not a production backpressure solution. Also,
+the local-MVP MediaSession currently stops capture on writer failure; F6/F9 must
+change that coordinator behavior before claiming upload survives local failure.
+These are documented pending gates, not qualified independence.
 
 Track independent recording, transport, overlay, and YouTube states. In particular,
 transport connected is not equivalent to live, and recording failed is not equivalent
