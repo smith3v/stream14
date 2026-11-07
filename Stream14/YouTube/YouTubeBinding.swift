@@ -93,7 +93,7 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         case .dedicationUnknown: "The app could not establish that this stream is dedicated. Check the event and stream in YouTube Studio."
         case .invalidDestination: "YouTube did not return a supported secure ingestion destination. Check the stream in YouTube Studio."
         case .intentUnavailable: "The pending YouTube request could not be saved or read. No new stream will be created; resolve local storage before retrying."
-        case .pendingOtherContext: "A stream request is pending for another event or profile. Resolve its binding in YouTube Studio before creating another."
+        case .pendingOtherContext: "This event has a pending request with another media profile. Resolve its binding in YouTube Studio before changing that profile."
         case .unresolvedInsert: "A stream creation request has an unknown outcome. Inspect streams in YouTube Studio and bind the intended stream manually; the app will not create another blindly."
         case .bindingConflict: "The event is now bound to a different stream. The app will not replace it. Check YouTube Studio and refresh."
         case .bindingUnconfirmed: "The binding could not be confirmed. Retry to read the event and reuse the same known stream; no new stream will be created."
@@ -139,12 +139,21 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         let channel = try await client.authorizedChannel(generation: generation)
         guard channel.id == channelID else { throw YouTubeReadError.wrongChannel }
         var event = try await eligible(eventID, channelID, generation)
-        let saved = try loadIntent()
+        let saved = try loadIntent(channelID: channelID, eventID: eventID)
         if let streamID = event.contentDetails?.boundStreamId, !streamID.isEmpty {
             if let saved, saved.matches(channelID: channelID, broadcastID: eventID, profile: profile),
                let created = saved.createdStreamID, created != streamID { throw YouTubeBindingError.bindingConflict }
-            return try await prepared(event: event, streamID: streamID, channelID: channelID, profile: profile,
-                                      generation: generation, appCreated: saved?.createdStreamID == streamID)
+            let result = try await prepared(event: event, streamID: streamID, channelID: channelID, profile: profile,
+                                           generation: generation, appCreated: saved?.createdStreamID == streamID)
+            if var saved, saved.matches(channelID: channelID, broadcastID: eventID, profile: profile) {
+                // Studio may have resolved an ambiguous insertion by binding an
+                // existing stream. Keep the original guard/IDs, but record that
+                // the event's current binding has now been verified.
+                saved.phase = .prepared
+                try save(saved)
+                try await client.checkBindingGeneration(generation)
+            }
+            return result
         }
         var intent = saved ?? PendingBroadcastIntent(channelID: channelID, broadcastID: eventID, profile: profile)
         guard intent.matches(channelID: channelID, broadcastID: eventID, profile: profile) else { throw YouTubeBindingError.pendingOtherContext }
@@ -152,7 +161,8 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
             guard intent.phase == .notCreated else { throw YouTubeBindingError.unresolvedInsert }
             // Claim synchronously immediately before dispatch. A second workflow
             // instance cannot reuse an earlier nil/notCreated snapshot to insert.
-            if let latest = try loadIntent(), latest.operationID != intent.operationID || latest.phase != .notCreated {
+            if let latest = try loadIntent(channelID: channelID, eventID: eventID),
+               latest.operationID != intent.operationID || latest.phase != .notCreated {
                 throw YouTubeBindingError.unresolvedInsert
             }
             intent.phase = .inserting
@@ -241,8 +251,8 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         }
     }
 
-    private func loadIntent() throws -> PendingBroadcastIntent? {
-        do { return try store.load() } catch { throw YouTubeBindingError.intentUnavailable }
+    private func loadIntent(channelID: String, eventID: String) throws -> PendingBroadcastIntent? {
+        do { return try store.load(channelID: channelID, broadcastID: eventID) } catch { throw YouTubeBindingError.intentUnavailable }
     }
     private func save(_ intent: PendingBroadcastIntent) throws {
         do { try store.save(intent) } catch { throw YouTubeBindingError.intentUnavailable }

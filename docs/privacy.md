@@ -57,6 +57,15 @@ the app sends authorized read requests directly to YouTube and holds channel/eve
 metadata in memory for selection. It does not save raw API responses or ingestion
 keys, and selecting an event alone does not publish or change it.
 
+The broadcast-preparation component keeps a small local request journal
+containing channel, event and any created stream identifiers, the chosen media
+profile and request phase. This prevents duplicate stream creation after a network
+error or app restart. The journal is excluded from backups and contains no Google
+token, ingestion address or stream key. Signing out hides account-dependent state
+but retains this duplicate-prevention record; an unresolved creation requires
+checking YouTube Studio before another stream can be created. Preparation is used
+only from the later confirmed Go Live flow, not from listing or selecting events.
+
 GoogleSignIn 10.1.0's bundled privacy manifest declares Google-side account/contact,
 coarse location, user/device identifiers and usage/other data for app functionality
 and some analytics purposes, with tracking declared false. The SDK's included

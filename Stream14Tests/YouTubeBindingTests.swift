@@ -168,7 +168,7 @@ import Testing
         #expect(await server.inserts == 1)
     }
 
-    @Test func profileContextAndOtherPendingEventCannotCreateAnotherResource() async throws {
+    @Test func aPendingRequestForThisEventKeepsItsOriginalProfile() async throws {
         let server = BindingFixtureServer(bound: nil, bindMode: .timeoutBefore)
         let (binding, store, _) = try makeBinding(server)
         await #expect(throws: YouTubeBindingError.bindingUnconfirmed) { try await prepare(binding) }
@@ -176,6 +176,50 @@ import Testing
             try await binding.prepareConfirmed(eventID: "fixture-event", channelID: "fixture-channel", profile: .hd, generation: 1)
         }
         #expect(try store.load()?.profile == SessionProfile.fullHD.rawValue)
+        #expect(await server.inserts == 1)
+    }
+
+    @Test func aLaterEventCanCreateItsOwnStreamAfterSuccessAndRelaunch() async throws {
+        let firstServer = BindingFixtureServer(bound: nil)
+        let (first, store, _) = try makeBinding(firstServer)
+        _ = try await prepare(first)
+        let secondServer = BindingFixtureServer(bound: nil, eventID: "fixture-event-b")
+        let relaunched = YouTubeBinding(client: makeClient(secondServer), store: store)
+        let prepared = try await relaunched.prepareConfirmed(eventID: "fixture-event-b", channelID: "fixture-channel", profile: .fullHD, generation: 1)
+        #expect(prepared.streamID == "created-stream-b")
+        #expect(try store.load(channelID: "fixture-channel", broadcastID: "fixture-event")?.createdStreamID == "created-stream")
+        #expect(try store.load(channelID: "fixture-channel", broadcastID: "fixture-event-b")?.createdStreamID == "created-stream-b")
+        #expect(await firstServer.inserts == 1)
+        #expect(await secondServer.inserts == 1)
+        _ = try await relaunched.prepareConfirmed(eventID: "fixture-event-b", channelID: "fixture-channel", profile: .fullHD, generation: 1)
+        #expect(await secondServer.inserts == 1)
+    }
+
+    @Test func anotherEventDoesNotEraseAnAmbiguousInsertGuard() async throws {
+        let firstServer = BindingFixtureServer(bound: nil, insertMode: .timeoutAfter)
+        let (first, store, _) = try makeBinding(firstServer)
+        await #expect(throws: YouTubeBindingError.unresolvedInsert) { try await prepare(first) }
+        let secondServer = BindingFixtureServer(bound: nil, eventID: "fixture-event-b")
+        let second = YouTubeBinding(client: makeClient(secondServer), store: store)
+        _ = try await second.prepareConfirmed(eventID: "fixture-event-b", channelID: "fixture-channel", profile: .fullHD, generation: 1)
+        let resumedFirst = YouTubeBinding(client: makeClient(firstServer), store: store)
+        await #expect(throws: YouTubeBindingError.unresolvedInsert) { try await prepare(resumedFirst) }
+        #expect(try store.load(channelID: "fixture-channel", broadcastID: "fixture-event")?.phase == .unresolvedInsert)
+        #expect(await firstServer.inserts == 1)
+        #expect(await secondServer.inserts == 1)
+    }
+
+    @Test func aStudioResolvedBindingUpdatesItsJournalWithoutClaimingAnUnknownCreatedID() async throws {
+        let server = BindingFixtureServer(bound: nil, insertMode: .timeoutAfter)
+        let (first, store, _) = try makeBinding(server)
+        await #expect(throws: YouTubeBindingError.unresolvedInsert) { try await prepare(first) }
+        await server.setBound("existing-stream")
+        let resumed = YouTubeBinding(client: makeClient(server), store: store)
+        #expect(try await prepare(resumed).streamID == "existing-stream")
+        #expect(try store.load()?.phase == .prepared)
+        #expect(try store.load()?.createdStreamID == nil)
+        await server.setBound(nil)
+        await #expect(throws: YouTubeBindingError.unresolvedInsert) { try await prepare(resumed) }
         #expect(await server.inserts == 1)
     }
 
@@ -275,6 +319,7 @@ private actor BindingFixtureServer {
     var binds = 0
     var createdResources = 0
     private var bound: String?
+    private let eventID: String
     private let scenario: String
     private var insertMode: InsertMode
     private var bindMode: BindMode
@@ -283,10 +328,12 @@ private actor BindingFixtureServer {
     private var insertWaiter: CheckedContinuation<Void, Never>?
     private var releaseWaiter: CheckedContinuation<Void, Never>?
     init(bound: String?, scenario: String = "normal", insertMode: InsertMode = .success, bindMode: BindMode = .success,
-         holdInsert: Bool = false, delayReads: Bool = false) {
+         holdInsert: Bool = false, delayReads: Bool = false, eventID: String = "fixture-event") {
         self.bound = bound; self.scenario = scenario; self.insertMode = insertMode; self.bindMode = bindMode
-        self.holdInsert = holdInsert; self.delayReads = delayReads
+        self.holdInsert = holdInsert; self.delayReads = delayReads; self.eventID = eventID
     }
+    private var createdID: String { eventID == "fixture-event" ? "created-stream" : "created-stream-b" }
+    func setBound(_ value: String?) { bound = value }
     func setBindMode(_ value: BindMode) { bindMode = value }
     func setInsertMode(_ value: InsertMode) { insertMode = value }
     func waitForInsert() async {
@@ -321,7 +368,7 @@ private actor BindingFixtureServer {
             case .rejected:
                 status = 403
                 object = ["error": ["message": "fixture-private-upstream-detail", "errors": [["reason": "insufficientPermissions"]]]]
-            case .success: createdResources += 1; object = stream(id: "created-stream")
+            case .success: createdResources += 1; object = stream(id: createdID)
             }
         } else if path.hasSuffix("liveStreams") {
             object = ["items": [stream(id: query["id"] ?? "missing")]]
@@ -343,9 +390,10 @@ private actor BindingFixtureServer {
     private func response(_ request: URLRequest, _ status: Int) -> HTTPURLResponse {
         HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: nil)!
     }
-    private func event(id: String = "fixture-event", state: String = "ready", bound: String? = nil) -> [String: Any] {
+    private func event(id: String? = nil, state: String = "ready", bound: String? = nil) -> [String: Any] {
+        let id = id ?? eventID
         var details: [String: Any] = ["enableAutoStart": false, "enableAutoStop": scenario == "autoStop"]
-        if let binding = id == "fixture-event" ? self.bound : bound { details["boundStreamId"] = binding }
+        if let binding = id == eventID ? self.bound : bound { details["boundStreamId"] = binding }
         return ["id": id, "snippet": ["channelId": scenario == "wrongChannel" ? "different-channel" : "fixture-channel",
                 "title": "Fixture Match", "scheduledStartTime": "2026-11-10T12:00:00Z", "isDefaultBroadcast": false],
                 "status": ["lifeCycleStatus": state, "privacyStatus": "unlisted"], "contentDetails": details]
@@ -358,7 +406,7 @@ private actor BindingFixtureServer {
                     "frameRate": scenario == "incompatible" ? "30fps" : "variable", "ingestionInfo": info],
             "status": ["streamStatus": scenario == "active" ? "active" : "ready",
                        "healthStatus": ["status": scenario == "health" ? "bad" : "noData"]]]
-        if scenario != "missingReuse" { value["contentDetails"] = ["isReusable": id != "created-stream"] }
+        if scenario != "missingReuse" { value["contentDetails"] = ["isReusable": id != createdID] }
         return value
     }
 }

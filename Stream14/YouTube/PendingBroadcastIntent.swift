@@ -34,17 +34,36 @@ nonisolated struct PendingBroadcastIntent: Codable, Equatable, Sendable {
         self.write = write
     }
 
-    func load() throws -> PendingBroadcastIntent? {
+    func load(channelID: String? = nil, broadcastID: String? = nil) throws -> PendingBroadcastIntent? {
+        let intents = try journal()
+        guard let channelID, let broadcastID else { return intents.last }
+        return intents.first { $0.channelID == channelID && $0.broadcastID == broadcastID }
+    }
+
+    private func journal() throws -> [PendingBroadcastIntent] {
         let url = try location()
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
         let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .isSymbolicLinkKey])
         guard values.isRegularFile == true, values.isSymbolicLink != true,
-              let size = values.fileSize, size <= 8_192 else { throw YouTubeBindingError.intentUnavailable }
-        return try JSONDecoder().decode(PendingBroadcastIntent.self, from: Data(contentsOf: url))
+              let size = values.fileSize, size <= 1_048_576 else { throw YouTubeBindingError.intentUnavailable }
+        let data = try Data(contentsOf: url)
+        // Preserve the early, undistributed single-intent checkpoint on upgrade.
+        let intents: [PendingBroadcastIntent]
+        if let entries = try? JSONDecoder().decode([PendingBroadcastIntent].self, from: data) { intents = entries }
+        else { intents = [try JSONDecoder().decode(PendingBroadcastIntent.self, from: data)] }
+        let contexts = intents.map { [$0.channelID, $0.broadcastID] }
+        guard Set(contexts).count == intents.count else { throw YouTubeBindingError.intentUnavailable }
+        return intents
     }
 
     func save(_ intent: PendingBroadcastIntent) throws {
-        try write(JSONEncoder().encode(intent), location())
+        var intents = try journal()
+        if let index = intents.firstIndex(where: { $0.channelID == intent.channelID && $0.broadcastID == intent.broadcastID }) {
+            intents[index] = intent
+        } else { intents.append(intent) }
+        let encoded = try JSONEncoder().encode(intents)
+        guard encoded.count <= 1_048_576 else { throw YouTubeBindingError.intentUnavailable }
+        try write(encoded, location())
     }
 
     private func location() throws -> URL {
