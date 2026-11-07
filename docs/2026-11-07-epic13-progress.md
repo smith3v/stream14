@@ -12,10 +12,10 @@ Preserve the original checkout's uncommitted Xcode signing settings. Use isolate
 
 | Stage / issue | Implementation status | Branch / worktree | Evidence / remaining gate |
 | --- | --- | --- | --- |
-| F1 / #14 | API audit complete; test-only experiment in progress | `codex/issue-14-media-feasibility`, `/private/tmp/stream14-epic13-f1` | Latest/pinned 2.3.0 inspected; production encoding choice and physical dual-output acceptance pending |
-| F2 / #15 | Parallel agent work planned | Root coordinator tracks branch | Google owner configuration absent; real browser/callback verification pending |
+| F1 / #14 | API audit and test-only experiment implemented; independent review pending | `codex/issue-14-media-feasibility`, `/private/tmp/stream14-epic13-f1` | Checkpoint `51da480`; Release and device/Simulator test builds pass; two hosted checks pass, one physical test skipped; production encoding choice and physical acceptance pending |
+| F2 / #15 | Implemented and independently reviewed; PR pending | `codex/issue-15-youtube-authorization`, `/private/tmp/stream14-epic13-f2`, `9fd23a5` | 13 hosted tests and Release pass; independent review found no material findings at `9fd23a5`; Google owner configuration/browser callback evidence pending |
 | F3 / #16 | Not started | — | F2 prerequisite |
-| F4 / #17 | Parallel agent work planned | Root coordinator tracks branch | Physical controls/profile evidence pending |
+| F4 / #17 | Implementation in progress | `codex/issue-17-session-controls`, `/private/tmp/stream14-epic13-f4`, plan `c2cb946` | Production edits uncommitted at this update; Release/build-for-testing pass, Simulator execution/physical controls evidence pending |
 | F5 / #18 | Not started | — | F3 prerequisite |
 | F6 / #19 | Not started | — | F1/F4; must not treat feasibility gate as passed |
 | F7 / #20 | Not started | — | F2/F3/F4/F5/F6 prerequisites |
@@ -26,6 +26,15 @@ Preserve the original checkout's uncommitted Xcode signing settings. Use isolate
 | F12 / #25 | Not started | — | F6/F8/F9/F11 prerequisites |
 | F13 / #26 | Not started | — | Reviewed integrated candidate and service setup |
 | F14 / #27 | Not started | — | Delivered candidate, device qualification and owner acceptance |
+
+The planned PR chain is F1 → F2 → F4 → F3 → F5 → F6 → remaining dependent stages. The root coordinator owns merging each reviewed predecessor into the next stage, PR creation and recording review outcomes. A usage-limit interruption on 2026-11-07 preserved all worktrees and checkpoints; F1 resumed from `51da480` without modifying the original checkout.
+
+## F1 validation and exact resume
+
+- Unsigned Release app build passed: `/tmp/stream14-f1-release.log`. App target graph remains HaishinKit/Logboard, with RTMP linked only by hosted tests.
+- Final focused Simulator result: `/tmp/stream14-f1-tests-5.xcresult` and `/tmp/stream14-f1-tests-5.log`; two deterministic checks pass, physical publishing test skipped. Earlier failing bundles are retained. AAC packet payload/timestamps are compared after normalizing reader-dependent packet grouping; zero-sample trim markers are not media packets.
+- Final device-SDK build-for-testing passed at `/tmp/stream14-f1-device-test-build-3.log`, including physical-only start/record-identity assertions. No signed installation or physical experiment occurred.
+- Required next work: independent actual-file review of F1 full diff against `origin/main` is in progress; record/fix findings, then open the first PR. Do not close #14 or claim F6 feasibility acceptance. See [F1 plan](2026-11-07-dual-output-implementation.md) and [guide](ios-development-guide.md#full-app-f1-dual-output-feasibility-checks-2026-11-07).
 
 ## Owner-dependent work
 

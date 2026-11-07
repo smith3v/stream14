@@ -905,8 +905,46 @@ HaishinKit's [latest stable release](https://github.com/HaishinKit/HaishinKit.sw
 
 Retain the working production LocalRecorder path. Do not adopt a second production encoder. The simplest library-native dual-output candidate adds RTMPStream's separate encode after the same mixer; its thermal/memory/cadence impact and asymmetric failure behavior require a physical 13 mini run and an explicit owner decision before adoption. An app-owned VideoToolbox/AVAudioConverter encoder feeding compressed file/RTMP inputs could preserve one encode, but adds codec lifetime, AAC packetization/priming, common timing, keyframe/reconnect and bounded fan-out ownership; actual live evidence and review are required before choosing it. An upstream public outgoing-codec/fan-out API would reduce app ownership but is unavailable in pinned/latest stable and must not be assumed.
 
-RTMPHaishinKit is linked only by the hosted test target for the experiment. Its MIT license is already included in notices; the product depends on HaishinKit and Logboard and adds no OpenSSL/SRT/RTC linked product. Existing package-resolution pins for other package products remain unchanged. `RTMPSocket` uses Network.framework `.tls` with default trust handling for RTMPS; no bypass is introduced. Current stable source uses Swift tools 6.0; compilation/testing remains evidence to record below.
+RTMPHaishinKit is linked only by the hosted test target for the experiment. Its BSD-3-Clause license is already included in notices; the product depends on HaishinKit and Logboard and adds no OpenSSL/SRT/RTC linked product. Existing package-resolution pins for other package products remain unchanged. `RTMPSocket` uses Network.framework `.tls` with default trust handling for RTMPS; no bypass is introduced. Current stable source uses Swift tools 6.0; compilation/testing remains evidence to record below.
 
 The library's `setVideoInputBufferCounts(3)` bounds its raw video AsyncStream only. Its direct MediaMixerOutput conformance creates one Task per callback; codec output AsyncStreams and socket output buffering are not publicly bounded by that setting. The candidate therefore cannot establish production bounded queues. F6 must supply and verify admission/backpressure separately; a slow uploader must not control LocalRecorder.
 
 F1 physical acceptance remains **pending**: no private RTMPS destination, connected/unlocked test phone or simultaneous upload evidence is available. No disconnect/reconnect file inspection, writer-failure/upload independence, physical A/V markers, thermal/memory series or original remote/local comparison has passed. F6 must not infer this gate passed from source inspection or Simulator tests.
+
+The local-MVP `MediaSession.record` failure observer currently invokes
+`requestStop`, closing capture as well as the file. Attaching an independent
+RTMPStream alone cannot satisfy writer-failure/upload continuity. F6/F9 must
+separate that coordinator decision and qualify it; the F1 opt-in candidate does
+not claim to have passed this acceptance case.
+
+### F1 deterministic evidence
+
+Xcode 27.2 (27B52), Swift 6, iOS SDK/Simulator 27.2: unsigned Release app build
+passed at `/tmp/stream14-f1-release.log`; app build target graph still contains only
+HaishinKit and Logboard products. The hosted test target alone adds RTMPHaishinKit.
+The physical SDK build-for-testing also passed without signing or installation.
+No package pins changed. Existing AVAssetWriter and new test-only AVAssetReader
+legacy API deprecation warnings are visible; no unchecked concurrency annotation
+was added.
+
+Two focused hosted tests passed on the dedicated iPhone 13 mini Simulator in
+`/tmp/stream14-f1-tests-5.xcresult` (the opt-in physical test was skipped):
+
+- Disconnected RTMP raw observation received 30 uncompressed video callbacks, no
+  compressed observer samples, while the independently owned local H.264/AAC MP4
+  finalized with video/audio tracks. No connection was opened.
+- Actual encoded file samples exercised both public compressed ingress overloads
+  without a destination. An MP4 writer with nil audio/video output settings and
+  source hints finalized successfully; original/passthrough H.264 and AAC packet
+  bytes and presentation timestamps compared equal. AVAssetReader can regroup AAC
+  packets across sample buffers, so comparison normalizes packet descriptions and
+  ignores zero-sample trim markers. This does not prove a live shared encoder, AAC
+  priming correctness after reconnect, receiver delivery or physical A/V sync.
+
+Earlier failing bundles are retained: initial source compilation used an upstream
+package-only format helper, and the first passthrough comparator incorrectly
+assumed stable AAC sample-buffer grouping. The final test uses public APIs and
+compares actual codec packets. The private physical-only path compiles and is
+explicitly disabled without operator opt-in/configuration; no camera media has
+been published, no original recording deleted, and F1 external acceptance stays
+pending as described above.

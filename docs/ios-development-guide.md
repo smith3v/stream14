@@ -1210,3 +1210,79 @@ transient `.inactive` scenes (such as Control Center) would clear the overlay wh
 recording continued. Fixed by suspending only on `.background`, preserving
 `.inactive`, and reconciling on `.active`. Focused re-review of this fix, device
 harness corrections and docs found no remaining material code issues.
+
+## Full app F1 dual-output feasibility checks (2026-11-07)
+
+The [F1 plan](2026-11-07-dual-output-implementation.md) and
+[API audit](feasibility.md#full-app-f1-public-dual-output-api-audit-2026-11-07)
+record the public boundary and pending architecture/physical gates. The app target
+still links only HaishinKit; RTMPHaishinKit is linked by Stream14Tests only.
+Ordinary tests do not publish or open a transport connection.
+
+Run the focused synthetic checks with a fresh result path:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /tmp/stream14-f1-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/DualOutputFeasibilityTests \
+  -resultBundlePath /tmp/stream14-f1-check.xcresult test
+```
+
+The deterministic checks create short synthetic files, prove independent local
+writing with a disconnected raw RTMP observer, exercise public compressed H.264
+and AAC input overloads without a destination, and compare packet bytes/timestamps
+through MP4 compressed passthrough. Removing these disposable generated fixtures
+is test cleanup; physical originals are never automatically removed.
+
+### Optional private physical candidate
+
+This experiment captures and **publishes camera/microphone media**. Run it only
+after the owner explicitly chooses the private test event/destination and connects
+and unlocks the iPhone 13 mini. It uses two encoders solely to measure the smallest
+library-native candidate; it is not enabled in production and does not select the
+production architecture. Verify the event is unlisted/private and the operator is
+ready before any run.
+
+Configure test process variables privately: `STREAM14_DUAL_OUTPUT=1`,
+`STREAM14_PRIVATE_RTMPS_URL` (RTMPS application URL without credentials/query/fragment),
+`STREAM14_PRIVATE_STREAM_KEY`, and optionally `STREAM14_DUAL_OUTPUT_SECONDS`
+(default 30 seconds; clamped to 12–600 seconds, leaving setup/reconnect margin below
+the fifteen-minute development cap). Xcode CLI forwarding uses corresponding
+`TEST_RUNNER_` names; do not type secret values into a shared command, chat, screenshot
+or committed scheme. Use a private local environment/configuration mechanism.
+The test disables upstream RTMP logging and substitutes generic safe errors.
+Treat the resulting xctestrun, xcresult and build/test logs as private: configuration
+artifacts may contain environment values even when application logs are redacted.
+Do not attach these artifacts to public PRs/issues; export sanitized summaries only.
+
+Use the guide's existing normal signing, test-runner branding and physical-device
+destination workflow, choosing only
+`Stream14Tests/DualOutputFeasibilityTests/privateDeviceDualOutputCandidate`.
+Do not use unsigned products for installation. The test opens the existing media
+session, adds a changing alpha fixture and local recording, publishes with the
+public `connect`/`publish` API, closes/reconnects RTMPS once while checking recording
+continues, and retains original MP4/status metadata in the normal recording list.
+Connection failure finalizes/retains the recording before reporting a safe error.
+
+Inspect both the original local file and private remote capture: changing overlay,
+orientation, tracks/profile, no app controls, cadence, reconnect continuity and
+start/end A/V markers. Collect the existing private physical-footprint/thermal
+measurement series and writer metrics. A publishing state callback alone does not
+prove receiver delivery. The candidate's library queue setting covers three raw
+video buffers only, not task/encoded/socket backlog. Writer-failure/upload
+independence and bounded queues remain F6/F9 implementation/measurement work;
+the existing MVP coordinator still stops capture on writer failure.
+No physical dual-output acceptance or production second-encoder approval is claimed.
+
+F1 validation: Xcode 27.2 (27B52)/iOS SDK and Simulator 27.2 unsigned Release,
+Simulator build-for-testing and device-SDK build-for-testing pass. The focused
+Simulator run at `/tmp/stream14-f1-tests-5.xcresult` passes both deterministic tests;
+the physical publishing test is skipped. Its log is `/tmp/stream14-f1-tests-5.log`.
+Initial failed compile/comparison bundles are retained; the passing comparator
+normalizes AAC packet grouping and ignores zero-sample trim markers. The resulting
+proof is API/passthrough fit and disconnected local ownership, not physical
+broadcast qualification. Shared encoding while disconnected/reconnecting remains
+unimplemented and must not be inferred from the offline remux test.
