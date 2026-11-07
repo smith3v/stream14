@@ -893,3 +893,34 @@ requirements must be rechecked when their milestone is implemented.
 [hk-readme]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/README.md
 [hk-package]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/Package.swift
 [hk-license]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/LICENSE.md
+
+## F2 authorization implementation decision — 2026-11-07
+
+The authorization stage pins GoogleSignIn 10.1.0 and links only its GoogleSignIn
+product. The native alternative is ASWebAuthenticationSession plus application-owned
+PKCE, OAuth token exchange/refresh/revocation and Keychain storage. The maintained
+SDK is selected to retain one credential owner and Google's supported flow. A
+broad Google API/Firebase SDK and a backend are unnecessary. Required linked
+products are AppAuth/AppAuthCore 3.0.0, GTMAppAuth 6.0.0,
+GTMSessionFetcherCore 5.3.1, AppCheckCore 12.0.0 and GoogleUtilities 8.1.5
+(Environment/UserDefaults/Logger and IsAppEncrypted). All new packages use Apache
+2.0 except IsAppEncrypted's reproduced MIT license. Package.resolved includes
+upstream resolved packages that are not linked (including existing HaishinKit
+transport packages); resolution is not evidence of linkage. No optional App Check
+configuration, analytics SDK or server token store is added.
+
+The concrete MainActor authorization owner serializes SDK account operations,
+validates the YouTube scope and changes an account generation before changes.
+Only Sendable account snapshots/token strings cross SDK callbacks; SDK objects
+are read synchronously on its documented main callback queue. The SDK alone owns
+Keychain credentials. Explicit restore never publishes or opens the camera.
+Cancellation/stale callbacks cannot restore signed-out readiness; API cancellation
+does not invalidate a valid session. Account actions provide an active-broadcast
+guard for the later coordinator. Local media/overlay state is independent.
+
+Missing/mismatched public iOS configuration disables connection while rehearsal
+works. SDK privacy declarations and Google-side processing are recorded in the
+[privacy policy](privacy.md); packaged notices preserve licenses. No actual owner
+Google setup, signed-phone callback, Brand Account/channel identity or revoke test
+has passed yet. See the [development guide](ios-development-guide.md#f2-google-authorization-setup-2026-11-07)
+for setup and pending evidence. F3 owns channel identity and event selection.
