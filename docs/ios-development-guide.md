@@ -173,6 +173,8 @@ User tokens and stream keys are secrets. Never put those secrets in Git or share
 them in screenshots. Use Keychain-backed runtime storage; use ignored local
 configuration for development-only values when needed.
 
+The [connected-iPhone test session plan](2026-11-07-connected-iphone-test-plan.md) consolidates the pending physical checks, exact existing opt-in commands, later-stage gates and per-run evidence sheet for one coordinated laptop/phone session. Run capture tests sequentially; long qualification remains separately agreed.
+
 ## 4. How we will build and test
 
 The root-level Stream14.xcodeproj is an ordinary SwiftUI/Swift 6 project with no
@@ -1379,12 +1381,12 @@ and fresh result path on another Mac. Build logs/results stay private local file
 ```sh
 xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
   -destination 'generic/platform=iOS' -derivedDataPath /tmp/stream14-f4-build \
-  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -clonedSourcePackagesDirPath /tmp/stream14-f2-packages \
   -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
   -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
   -derivedDataPath /tmp/stream14-f4-simulator \
-  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -clonedSourcePackagesDirPath /tmp/stream14-f2-packages \
   -disableAutomaticPackageResolution -only-testing:Stream14Tests/SessionProfileTests \
   -resultBundlePath /tmp/stream14-f4-profiles.xcresult test
 ```
@@ -1403,3 +1405,78 @@ level/route/interruption behavior, profile/lens lock during recording, original
 playback/export, and ten-second overlay hide/recovery at 720p. Inspect originals;
 requested settings, callback counts and a Simulator are not substitute evidence.
 No new TestFlight build or long qualification run is established by F4.
+
+## F3 channel and scheduled-event checks (2026-11-07)
+
+After Google authorization succeeds, use **Refresh** in Scheduled YouTube event.
+The app displays the actual API-returned channel, then reads every upcoming-event
+page. Confirm the channel title/identifier before selecting a row; the Google email
+is not the channel identity. If the wrong channel/Brand Account is returned, reconnect
+using the intended channel. Schedule a dedicated encoder event in YouTube Studio,
+preferably unlisted, with auto-stop disabled. Refresh again. The row shows local
+date/time, visibility and any reason it cannot be selected. Missing/unknown essential
+metadata cannot silently become an eligible event. An enabled auto-start setting
+is disclosed after selection. There is no Go Live/media upload action in this stage.
+
+Account changes clear channel/event state. Refresh clears a disappeared or now
+ineligible selection. The selected event must be read again by ID before later
+binding/start work; an old selection is not proof of current eligibility. API metadata
+is memory-only, with no raw-response archive. Do not put access tokens, response
+bodies, ingestion details or screenshots of secrets into reports.
+
+The owner-controlled Google Cloud/API/iOS client/testing audience are prepared.
+Actual signed-phone sign-in, callback, channel/Brand Account identity, event listing
+and selection remain pending; Console setup and fixture tests do not establish them.
+
+Reproduce the focused fixture and authorization checks from the F3 worktree:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /private/tmp/stream14-f3-simulator \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/YouTubeClientTests \
+  -only-testing:Stream14Tests/YouTubeAuthorizationTests \
+  -only-testing:Stream14Tests/AppConfigurationTests \
+  -resultBundlePath /private/tmp/stream14-f3-tests.xcresult test
+```
+
+Choose a new result-bundle path for another run. The recorded run passed **26 tests
+in three suites** (13 F3, 11 authorization and two configuration tests), log
+`/private/tmp/stream14-f3-tests.log`. Fixtures under Stream14Tests/Fixtures/YouTube
+contain only invented channel/event data and a clearly fake stream name/address.
+No actual Google request, media publishing, phone recording or deletion occurred.
+The [F3 implementation handoff](2026-11-07-youtube-client-implementation.md) records
+build/integration/review status separately from live-owner acceptance.
+
+After merging F4, the combined F3/auth/config/profile run passed 32 hosted tests at
+`/private/tmp/stream14-f3-merged-tests.xcresult`. Final Release passed in
+`/private/tmp/stream14-f3-release-final-2.log`. The first portrait audit found low
+contrast on an unavailable disabled Refresh label; Refresh is now shown only
+after authorization, with an explicit 44-point target. The final recheck passed
+13 F3 tests and both portrait/largest-text landscape setup accessibility tests at
+`/private/tmp/stream14-f3-ui-recheck.xcresult`. Private screenshots were inspected;
+authenticated event rows and physical VoiceOver remain pending. The initial failed
+UI result is retained, and no audit issue was suppressed.
+
+## F5 safe ingestion preparation (2026-11-07)
+
+The [F5 handoff](2026-11-07-safe-ingestion-implementation.md) documents a
+write-once/reconcile component for the later confirmed Go Live flow. Merely
+connecting, refreshing/selecting an event or opening local preview does not
+create or bind streams. Auto-stop must already be disabled in YouTube Studio;
+this component never silently changes event settings.
+
+Pending mutation IDs and phases are stored in a small backup-excluded local
+journal. An ambiguous creation is not repeated blindly after retry/relaunch.
+If the app reports an unknown creation outcome, inspect streams in Studio and
+resolve the intended binding there; do not repeatedly create new resources.
+A known created ID survives binding failures and is reused on reconciliation.
+No stream key or token is stored in that journal, and no remote resources or
+recordings are automatically deleted.
+
+Fixture tests use no real Google service or camera. Actual signed-account
+acceptance requires a dedicated unlisted event and explicit operator action;
+F5 has no standalone phone runner or Go Live UI yet. The later F7 integration
+must make those checks executable before a connected-phone test is scheduled.

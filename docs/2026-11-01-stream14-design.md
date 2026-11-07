@@ -580,6 +580,33 @@ supported, and use its returned RTMPS endpoint. Track the created ID immediately
 retrying a later bind does not repeatedly create resources. An ambiguous create
 response requires reconciliation or operator action, not blind repeated insertion.
 
+F5 implementation (2026-11-07): `YouTubeBinding.prepareConfirmed` is an explicit
+component for the later Go Live coordinator; listing, selection and preview do not
+invoke it. It checks the actual channel and selected event again, then checks all
+pages of `broadcastStatus=all,broadcastType=all` for other unfinished bindings.
+Existing reusable streams are not presumed shared: known ready/inactive, healthy,
+profile-compatible streams can be reused only after current dedication is established.
+Unknown lifecycle/health/reuse/compatibility information fails closed. Newly created
+streams request RTMP with paired variable resolution/frame rate and `isReusable=false`.
+
+An atomic, backup-excluded local journal stores only operation/channel/event/profile
+and known created-resource IDs plus phase, independently for each channel/event.
+Completing one event does not block another or discard an older unresolved create.
+The `inserting` phase is written before
+POST; a successful response ID is saved before cancellation/account-change rejection.
+Malformed/timeout/server-failure insert results become unresolved and never trigger
+another blind insert, including after relaunch. Definitive API rejection or credential
+preflight failure permits a later explicit retry. Known created IDs survive binding
+failure and are read before retrying; binds are sent once and reconciled by event ID.
+The workflow has one in-flight operation and a 45-second deadline with cancellation.
+No automatic remote deletion/unbinding or editorial/auto-start/auto-stop updates occur.
+When Studio resolves an ambiguous request by binding the event, verified readback
+marks that journal entry prepared without inventing a known app-created ID. If that
+event later becomes unbound, the prior unknown-create guard still prevents blind insertion.
+Raw responses and credentials are not persisted; credential values redact diagnostic
+descriptions/reflection. Physical signed-account/unlisted-event API acceptance remains
+pending; deterministic fixtures do not establish live service acceptance.
+
 Fetch `rtmpsIngestionAddress` and the stream name/key from YouTube; do not manufacture
 an insecure RTMP fallback. Use TLS certificate and hostname validation. RTMPS and
 the relevant ingestion fields are described in [YouTube's ingestion guide][rtmps].
@@ -920,9 +947,8 @@ guard for the later coordinator. Local media/overlay state is independent.
 
 Missing/mismatched public iOS configuration disables connection while rehearsal
 works. SDK privacy declarations and Google-side processing are recorded in the
-[privacy policy](privacy.md); packaged notices preserve licenses. No actual owner
-Google setup, signed-phone callback, Brand Account/channel identity or revoke test
-has passed yet. See the [development guide](ios-development-guide.md#f2-google-authorization-setup-2026-11-07)
+[privacy policy](privacy.md); packaged notices preserve licenses. No signed-phone callback, Brand Account/channel identity or revoke test
+has passed yet; console setup prepared later in F3 is not app-authorization evidence. See the [development guide](ios-development-guide.md#f2-google-authorization-setup-2026-11-07)
 for setup and pending evidence. F3 owns channel identity and event selection.
 
 ## Full app F4: fixed session profiles and shared controls (2026-11-07)
@@ -968,3 +994,54 @@ changes remain locked during recording/finalization. Original export and deliber
 confirmed deletion are unchanged. Physical controls, both profile recordings,
 route changes, both landscape orientations and long-run performance remain separate
 acceptance checks; Simulator evidence cannot establish them.
+
+## F3 read-only channel and event selection — 2026-11-07
+
+`YouTubeClient` uses native ephemeral URLSession/Codable with SDK-refreshed in-memory
+access tokens; it adds no dependency or backend. Requests do not use a disk cache,
+cookie store or automatic redirects, and normal HTTPS certificate validation remains
+in force. API response bodies, headers and ingestion keys are not logged or saved.
+The F3 stream model intentionally discards ingestion addresses/keys; F5 owns their
+later short-lived use. Channel/event metadata lives in memory and is cleared on
+account change, sign-out or detected revoked/insufficient authorization. Recordings
+and overlay configuration are independent.
+
+Verified official contracts are [channels.list](https://developers.google.com/youtube/v3/docs/channels/list),
+[liveBroadcasts.list](https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list),
+[the broadcast resource](https://developers.google.com/youtube/v3/live/docs/liveBroadcasts),
+[liveStreams.list](https://developers.google.com/youtube/v3/live/docs/liveStreams/list)
+and [live API errors](https://developers.google.com/youtube/v3/live/docs/errors).
+The client resolves `channels.list(mine=true)` rather than inferring a channel
+from Google identity. Multiple returned channels require reconnecting to the intended
+channel/Brand Account instead of silently choosing one. It reads each upcoming-event
+page with `broadcastStatus=upcoming`, `broadcastType=event`, `maxResults=50` and
+`snippet,status,contentDetails`; by-ID reads use `id` alone as their filter.
+Repeated pagination tokens or a 100-page safety limit fail explicitly without
+handing off a truncated selection. A moving YouTube list is not an atomic snapshot;
+selected events are read again by ID before use.
+
+Only idempotent reads retry: at most two transient retries plus one SDK-supported
+refresh-if-needed/401 retry (at most four requests for one page). Bounded exponential
+backoff respects numeric or HTTP-date Retry-After. A server delay over ten seconds
+returns a wait/retry message instead of sleeping indefinitely or shortening the delay.
+Disabled live streaming, missing channel/event/stream, wrong channel, insufficient
+scope, exhausted quota, rate limiting, transient service/network failure and invalid
+responses have distinct safe messages. Account-generation and cancellation checks
+surround async operations and decoding; late responses cannot restore old data.
+
+The app-owned `YouTubeEventSelection` supplies native explicit Refresh and event
+rows with actual channel identity, device-local date/time, visibility and eligibility.
+Unknown or missing state/visibility/time/auto-start/auto-stop information stays
+ineligible; auto-stop must be disabled in Studio. Auto-start is disclosed when an
+otherwise eligible event is selected. A disappeared/ineligible event clears selection,
+and changing selection during a by-ID recheck rejects the old result. Selecting,
+refreshing or opening a preview performs no API write and sends no camera media.
+F3 adds no Go Live action. F5/F7 must freeze the selection and recheck account/remote
+state around their own subsequent mutations.
+
+The focused Simulator run passed 26 deterministic tests across F3, authorization
+and app-configuration suites; it used only sanitized fixtures. The Google console
+project/client/API/testing audience are now prepared, but signed-device OAuth,
+actual API-returned channel identity and an upcoming unlisted test event remain
+external acceptance work. See the [F3 handoff](2026-11-07-youtube-client-implementation.md)
+for reproducible commands and remaining evidence.

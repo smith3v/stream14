@@ -304,7 +304,8 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(profile.frame.height, 44)
         profile.tap()
         app.buttons["720p30 · 8 Mbps"].tap()
-        XCTAssertEqual(profile.value as? String, "720p30 · 8 Mbps")
+        expectation(for: NSPredicate(format: "value == %@", "720p30 · 8 Mbps"), evaluatedWith: profile)
+        waitForExpectations(timeout: 5)
         XCTAssertFalse(app.buttons["recordSample"].exists)
         app.terminate()
         app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
@@ -315,12 +316,18 @@ final class SetupScreenTests: XCTestCase {
         for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight] {
             XCUIDevice.shared.orientation = orientation
             let scroll = app.scrollViews.firstMatch
-            for _ in 0..<12 {
-                let visible = scroll.frame.insetBy(dx: 0, dy: 8)
+            for _ in 0..<20 {
+                let top = app.navigationBars["stream14"].frame.maxY + 8
+                let visible = CGRect(x: scroll.frame.minX, y: top, width: scroll.frame.width,
+                                     height: scroll.frame.maxY - top - 8)
                 let frame = profile.frame
                 if visible.contains(frame), !frame.isEmpty, profile.isHittable { break }
-                if frame.midY < visible.midY { scroll.swipeDown() }
-                else { scroll.swipeUp() }
+                // Full-screen flicks overshoot compact controls at very large text.
+                // Bounded drags move toward the center without alternating past it.
+                let delta = max(-70, min(70, frame.midY - visible.midY))
+                let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.6))
+                let end = start.withOffset(CGVector(dx: 0, dy: -delta))
+                start.press(forDuration: 0.05, thenDragTo: end)
             }
             XCTAssertTrue(profile.isHittable)
             XCTAssertGreaterThanOrEqual(profile.frame.height, 44)
@@ -332,7 +339,8 @@ final class SetupScreenTests: XCTestCase {
         }
         profile.tap()
         app.buttons["1080p30 · 14 Mbps"].tap()
-        XCTAssertEqual(profile.value as? String, "1080p30 · 14 Mbps")
+        expectation(for: NSPredicate(format: "value == %@", "1080p30 · 14 Mbps"), evaluatedWith: profile)
+        waitForExpectations(timeout: 5)
     }
 
     func testLaunchShowsHonestSetupStatus() throws {

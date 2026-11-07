@@ -51,7 +51,20 @@ to preferences, files, an app backend or overlay JavaScript. A fresh access toke
 is held in memory only for authorized API use. Sign out removes this iPhone's SDK
 session; Revoke Google access additionally requests revocation from Google. If
 revocation fails, the app says so and you can review access in your Google Account.
-These actions keep local recordings and overlay settings.
+These actions clear the app's in-memory YouTube channel/event information and keep
+local recordings and overlay settings. When you explicitly refresh scheduled events,
+the app sends authorized read requests directly to YouTube and holds channel/event
+metadata in memory for selection. It does not save raw API responses or ingestion
+keys, and selecting an event alone does not publish or change it.
+
+The broadcast-preparation component keeps a small local request journal
+containing channel, event and any created stream identifiers, the chosen media
+profile and request phase. This prevents duplicate stream creation after a network
+error or app restart. The journal is excluded from backups and contains no Google
+token, ingestion address or stream key. Signing out hides account-dependent state
+but retains this duplicate-prevention record; an unresolved creation requires
+checking YouTube Studio before another stream can be created. Preparation is used
+only from the later confirmed Go Live flow, not from listing or selecting events.
 
 GoogleSignIn 10.1.0's bundled privacy manifest declares Google-side account/contact,
 coarse location, user/device identifiers and usage/other data for app functionality
