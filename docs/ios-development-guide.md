@@ -1351,3 +1351,55 @@ must supply a common positive capture timeline, enforce per-track order and veri
 first-origin/A/V behavior after publish/reconnect; separate track-origin resets
 mean a positive bias alone does not prove initial A/V offset preservation. Neither
 idle state nor absent observer callbacks establish successful media acceptance.
+
+## Full-app F4: profiles and microphone/camera controls (2026-11-07)
+
+Choose the Session profile button before Open camera: 1080p30 at a requested
+14 Mbps, or 720p30 at 8 Mbps. Both use the same fixed landscape composition and
+H.264/AAC original MP4 path. Close camera to change profile; profile preference is
+saved without touching the Keychain overlay URL. The rear-lens dialog retains
+supported Ultra Wide/Wide/Telephoto choices for that profile. Preview and recording
+allow microphone mute and a zoom slider, which applies on release. Zoom is relative
+to the selected physical lens; the lens selector still supplies the owner's 0.5×
+Ultra Wide view. Input shows the actual system microphone route. The level display
+is an approximate peak of shared mixed audio, so it shows silence when muted.
+
+Verified public source boundaries at pinned HaishinKit 2.3.0:
+
+- `AudioMixerSettings.isMuted`, `MediaMixer.setAudioMixerSettings(_:)` and mixed
+  `MediaMixerOutput.audioTrackId == UInt8.max` apply mute before output fan-out.
+- `MediaMixer.configuration(video:configuration:)` permits throwing device zoom
+  configuration on its actor. No AVCaptureDevice crosses into UI ownership.
+- `.sdr` composition uses Rec.709 Core Image context and video-range NV12; the
+  writer requests Rec.709 tags. AVAssetWriter average bitrate is not proof of CBR.
+
+Reproduce the native checks from the F4 worktree, choosing a valid Simulator ID
+and fresh result path on another Mac. Build logs/results stay private local files:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath /tmp/stream14-f4-build \
+  -clonedSourcePackagesDirPath /tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -derivedDataPath /tmp/stream14-f4-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution -only-testing:Stream14Tests/SessionProfileTests \
+  -resultBundlePath /tmp/stream14-f4-profiles.xcresult test
+```
+
+Repeat focused regression suites with `-only-testing:Stream14Tests/LocalRecorderTests`,
+`WebOverlayRendererTests`, `WebOverlayCompositionTests`, `RearCameraLensTests`,
+`OverlayHealthTests` and `AppConfigurationTests`. Actual command/result paths and
+review status are recorded in the [stage handoff](2026-11-07-session-controls-implementation.md).
+Physical tests remain opt-in, wait for the owner to connect/unlock the 13 mini,
+retain originals, and never exceed 15 minutes for a development experiment.
+
+Pending physical F4 acceptance: record short changing alpha-overlay samples in
+both profiles and landscape orientations; confirm camera/writer dimensions,
+H.264/AAC, orientation, visible mute/unmute and audible silence/recovery, zoom,
+level/route/interruption behavior, profile/lens lock during recording, original
+playback/export, and ten-second overlay hide/recovery at 720p. Inspect originals;
+requested settings, callback counts and a Simulator are not substitute evidence.
+No new TestFlight build or long qualification run is established by F4.

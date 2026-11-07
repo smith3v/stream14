@@ -4,13 +4,15 @@ import SwiftUI
 
 struct SetupView: View {
     let authorization: YouTubeAuthorization
-    @State private var experiment = MediaSession()
+    @State private var experiment = MediaSession(profile: SessionProfile.saved())
     @State private var pendingDeletion: ExperimentSample?
     @State private var playback: PlaybackSelection?
     @State private var showingNotices = false
     @State private var showingLensChoices = false
+    @State private var showingProfileChoices = false
     @State private var showingOverlayTest = false
     @State private var overlayURLDraft = ""
+    @State private var zoomDraft = 1.0
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -29,6 +31,7 @@ struct SetupView: View {
                         .accessibilityIdentifier("setupStatus")
                     Text("Record camera, microphone and a transparent web overlay. Keep the phone in landscape with the rear camera upright.")
                         .accessibilityIdentifier("setupExplanation")
+                    profileControls
                     if experiment.phase != .idle {
                         ExperimentPreview(view: experiment.preview)
                             .aspectRatio(16 / 9, contentMode: .fit)
@@ -61,6 +64,7 @@ struct SetupView: View {
                             }
                         }
                     }
+                    mediaControls
                     Text(experiment.renderer.status).font(.caption)
                         .accessibilityIdentifier("overlayStatus")
                     Toggle("Hide overlay manually", isOn: Binding(
@@ -88,7 +92,7 @@ struct SetupView: View {
                                 else { await experiment.record() }
                             }
                         }
-                        .disabled(!experiment.canRecord && !experiment.isRecording)
+                        .disabled(experiment.isRecording ? !experiment.canAdjustMedia : !experiment.canRecord)
                         .accessibilityIdentifier("recordSample")
                         Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
                             .disabled(experiment.phase == .stopping)
@@ -101,7 +105,7 @@ struct SetupView: View {
                     }
                     Text("Export to keep a copy outside the app. Deleting the app removes its local samples.")
                         .font(.footnote)
-                    Text("1080p30 · H.264/AAC · local MP4 · no media upload")
+                    Text("\(experiment.profile.rawValue) · H.264/AAC · local MP4 · no media upload")
                         .font(.footnote)
                     footerLayout { footerLinks }
                 }
@@ -180,6 +184,7 @@ struct SetupView: View {
                 }
                 experiment.setOverlayForeground(false)
             }
+            .onChange(of: experiment.cameraZoom.value) { _, value in zoomDraft = value }
             .onChange(of: scenePhase) { _, phase in
                 guard !runsOverlayRecoveryHarness else { return }
                 if phase == .active { experiment.setOverlayForeground(true) }
@@ -189,6 +194,66 @@ struct SetupView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder private var profileControls: some View {
+                    Button { showingProfileChoices = true } label: {
+                        Label(experiment.profile.label, systemImage: "video")
+                            .frame(minHeight: 44)
+                    }
+                    .disabled(!experiment.canSelectProfile)
+                    .accessibilityLabel("Session profile")
+                    .accessibilityValue(experiment.profile.label)
+                    .accessibilityIdentifier("sessionProfile")
+                    .confirmationDialog("Session profile", isPresented: $showingProfileChoices, titleVisibility: .visible) {
+                        ForEach(SessionProfile.allCases) { profile in
+                            Button(profile.label) { experiment.selectProfile(profile) }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    }
+                    if !experiment.canSelectProfile {
+                        Text("Close the camera to change the session profile.").font(.caption)
+                    }
+    }
+
+    @ViewBuilder private var mediaControls: some View {
+                    if experiment.phase == .preview || experiment.phase == .recording {
+                        Toggle("Mute microphone", isOn: Binding(
+                            get: { experiment.microphoneMuted },
+                            set: { value in Task { await experiment.setMicrophoneMuted(value) } }))
+                            .disabled(!experiment.canAdjustMedia)
+                            .accessibilityIdentifier("microphoneMute")
+                        ProgressView(value: experiment.microphoneLevel) {
+                            Text(experiment.microphoneMuted ? "Microphone muted" : "Microphone level")
+                        }
+                        .accessibilityValue(experiment.microphoneMuted ? "Muted" : "\(Int(experiment.microphoneLevel * 100)) percent")
+                        Text("Input: " + experiment.audioRoute).font(.caption)
+                        if experiment.cameraZoom.maximum > experiment.cameraZoom.minimum {
+                            Slider(value: $zoomDraft,
+                                   in: experiment.cameraZoom.minimum...experiment.cameraZoom.maximum,
+                                   onEditingChanged: { editing in
+                                if !editing { Task { await experiment.setCameraZoom(zoomDraft) } }
+                            }) { Text("Camera zoom") }
+                            .frame(minHeight: 44)
+                            .disabled(!experiment.canAdjustMedia)
+                            .accessibilityIdentifier("cameraZoom")
+                            .accessibilityValue("\(experiment.cameraZoom.value.formatted(.number.precision(.fractionLength(1)))) times")
+                            .accessibilityAdjustableAction(adjustZoom)
+                            Text("Zoom: \(experiment.cameraZoom.value.formatted(.number.precision(.fractionLength(1))))×")
+                                .font(.caption)
+                        }
+                    }
+    }
+
+    private func adjustZoom(_ direction: AccessibilityAdjustmentDirection) {
+        let step: Double
+        switch direction {
+        case .increment: step = 0.1
+        case .decrement: step = -0.1
+        @unknown default: return
+        }
+        let value = experiment.cameraZoom.value + step
+        Task { await experiment.setCameraZoom(value) }
     }
 
     /// The opt-in hosted media test supplies its own session/window. Do not run

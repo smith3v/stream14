@@ -294,6 +294,55 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(app.buttons["openExperiment"].exists)
     }
 
+    func testProfileSelectionPersistsAndRemainsAccessibleInLandscape() throws {
+        let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launch()
+        let profile = app.buttons["sessionProfile"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(profile.frame.height, 44)
+        profile.tap()
+        app.buttons["720p30 · 8 Mbps"].tap()
+        expectation(for: NSPredicate(format: "value == %@", "720p30 · 8 Mbps"), evaluatedWith: profile)
+        waitForExpectations(timeout: 5)
+        XCTAssertFalse(app.buttons["recordSample"].exists)
+        app.terminate()
+        app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        XCUIDevice.shared.orientation = .landscapeLeft
+        app.launch()
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
+        XCTAssertEqual(profile.value as? String, "720p30 · 8 Mbps")
+        for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight] {
+            XCUIDevice.shared.orientation = orientation
+            let scroll = app.scrollViews.firstMatch
+            for _ in 0..<20 {
+                let top = app.navigationBars["stream14"].frame.maxY + 8
+                let visible = CGRect(x: scroll.frame.minX, y: top, width: scroll.frame.width,
+                                     height: scroll.frame.maxY - top - 8)
+                let frame = profile.frame
+                if visible.contains(frame), !frame.isEmpty, profile.isHittable { break }
+                // Full-screen flicks overshoot compact controls at very large text.
+                // Bounded drags move toward the center without alternating past it.
+                let delta = max(-70, min(70, frame.midY - visible.midY))
+                let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.6))
+                let end = start.withOffset(CGVector(dx: 0, dy: -delta))
+                start.press(forDuration: 0.05, thenDragTo: end)
+            }
+            XCTAssertTrue(profile.isHittable)
+            XCTAssertGreaterThanOrEqual(profile.frame.height, 44)
+            let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            screenshot.name = "Profile largest text landscape \(orientation.rawValue)"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            try app.performAccessibilityAudit()
+        }
+        profile.tap()
+        app.buttons["1080p30 · 14 Mbps"].tap()
+        expectation(for: NSPredicate(format: "value == %@", "1080p30 · 14 Mbps"), evaluatedWith: profile)
+        waitForExpectations(timeout: 5)
+    }
+
     func testLaunchShowsHonestSetupStatus() throws {
         XCUIDevice.shared.orientation = .portrait
         defer { XCUIDevice.shared.orientation = .portrait }

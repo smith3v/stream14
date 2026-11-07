@@ -924,3 +924,47 @@ works. SDK privacy declarations and Google-side processing are recorded in the
 Google setup, signed-phone callback, Brand Account/channel identity or revoke test
 has passed yet. See the [development guide](ios-development-guide.md#f2-google-authorization-setup-2026-11-07)
 for setup and pending evidence. F3 owns channel identity and event selection.
+
+## Full app F4: fixed session profiles and shared controls (2026-11-07)
+
+F4 adds profile selection while capture is closed. `SessionProfile` is the concrete,
+immutable media contract for 1920×1080/14 Mbps or 1280×720/8 Mbps, both landscape
+30 fps, H.264, a two-second maximum keyframe interval, stereo AAC 44.1 kHz/128 kbps.
+The camera format filter, mixer screen/image layer, attached WebKit CSS viewport,
+snapshot normalization, preview composition and writer consume that same selected
+value. Changing profile retires old browser callbacks and raster, preserving manual
+hide intent and foreground URL recovery. Opening preview freezes the profile;
+close the camera before changing it. Only the nonsecret enum preference is persisted.
+The owner-authorized Ultra Wide/Wide/available Telephoto selection remains, now
+filtered against the selected profile; selecting a lens resets its device zoom.
+
+Camera HDR is disabled, HaishinKit uses `.sdr` and its pinned implementation uses
+a Rec.709 Core Image working/output space with video-range 8-bit NV12. The local
+writer requests Rec.709 color properties and average bitrate, not a verified CBR
+mode. Requested metadata/settings do not establish measured color accuracy, bitrate
+stability or a long-run performance gate. The starting bitrates, keyframe interval,
+stereo rate and color target match the current English [YouTube encoder guide](https://support.google.com/youtube/answer/2853702?hl=en),
+checked 2026-11-07. Future encoded transport must reuse the same profile constants;
+F4 does not add a network output or establish shared encoding.
+
+Microphone mute sets public `AudioMixerSettings.isMuted` on the existing mixer.
+Pinned HaishinKit 2.3.0 `AudioMixerBySingleTrack.track(_:didOutput:when:)` applies
+mute before its mixed `UInt8.max` output is distributed by MediaMixer, so recording
+and future consumers of that mixed boundary receive the same silence. Metering is
+an observer of that boundary, not a second audio path. Each callback samples at
+most 256 values per channel and stores one peak/time pair under `Mutex`; the
+existing 100 ms view-update loop reads it and expires stale readings after 500 ms.
+No per-buffer task or sample queue is introduced. The meter is an approximate
+linear peak indicator, not a calibrated loudness meter. The route caption follows
+AVAudioSession input-route changes. Background/interruption policy remains explicit
+stop; there is no background capture or automatic recording restart.
+
+Zoom uses the existing mixer's public throwing `configuration(video:configuration:)`
+to clamp finite requests to the active physical device's supported zoom range,
+with device locking on the media actor. The standard slider commits when released,
+so dragging cannot launch a task for every intermediate value. Media operations
+remain serialized; mute/zoom are available in preview/recording and profile/lens
+changes remain locked during recording/finalization. Original export and deliberate
+confirmed deletion are unchanged. Physical controls, both profile recordings,
+route changes, both landscape orientations and long-run performance remain separate
+acceptance checks; Simulator evidence cannot establish them.
