@@ -4,6 +4,7 @@ import SwiftUI
 
 struct SetupView: View {
     let authorization: YouTubeAuthorization
+    let youtubeEvents: YouTubeEventSelection
     @State private var experiment = MediaSession(profile: SessionProfile.saved())
     @State private var pendingDeletion: ExperimentSample?
     @State private var playback: PlaybackSelection?
@@ -98,6 +99,7 @@ struct SetupView: View {
                             .disabled(experiment.phase == .stopping)
                     }
                     YouTubeConnectionView(authorization: authorization)
+                    YouTubeEventsView(selection: youtubeEvents)
                     ForEach(experiment.savedSamples) { sample in
                         RecordingRow(sample: sample, canDelete: experiment.canDeleteSamples,
                                      play: { playback = PlaybackSelection(url: $0) },

@@ -1403,3 +1403,57 @@ level/route/interruption behavior, profile/lens lock during recording, original
 playback/export, and ten-second overlay hide/recovery at 720p. Inspect originals;
 requested settings, callback counts and a Simulator are not substitute evidence.
 No new TestFlight build or long qualification run is established by F4.
+
+## F3 channel and scheduled-event checks (2026-11-07)
+
+After Google authorization succeeds, use **Refresh** in Scheduled YouTube event.
+The app displays the actual API-returned channel, then reads every upcoming-event
+page. Confirm the channel title/identifier before selecting a row; the Google email
+is not the channel identity. If the wrong channel/Brand Account is returned, reconnect
+using the intended channel. Schedule a dedicated encoder event in YouTube Studio,
+preferably unlisted, with auto-stop disabled. Refresh again. The row shows local
+date/time, visibility and any reason it cannot be selected. Missing/unknown essential
+metadata cannot silently become an eligible event. An enabled auto-start setting
+is disclosed after selection. There is no Go Live/media upload action in this stage.
+
+Account changes clear channel/event state. Refresh clears a disappeared or now
+ineligible selection. The selected event must be read again by ID before later
+binding/start work; an old selection is not proof of current eligibility. API metadata
+is memory-only, with no raw-response archive. Do not put access tokens, response
+bodies, ingestion details or screenshots of secrets into reports.
+
+The owner-controlled Google Cloud/API/iOS client/testing audience are prepared.
+Actual signed-phone sign-in, callback, channel/Brand Account identity, event listing
+and selection remain pending; Console setup and fixture tests do not establish them.
+
+Reproduce the focused fixture and authorization checks from the F3 worktree:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /private/tmp/stream14-f3-simulator \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/YouTubeClientTests \
+  -only-testing:Stream14Tests/YouTubeAuthorizationTests \
+  -only-testing:Stream14Tests/AppConfigurationTests \
+  -resultBundlePath /private/tmp/stream14-f3-tests.xcresult test
+```
+
+Choose a new result-bundle path for another run. The recorded run passed **26 tests
+in three suites** (13 F3, 11 authorization and two configuration tests), log
+`/private/tmp/stream14-f3-tests.log`. Fixtures under Stream14Tests/Fixtures/YouTube
+contain only invented channel/event data and a clearly fake stream name/address.
+No actual Google request, media publishing, phone recording or deletion occurred.
+The [F3 implementation handoff](2026-11-07-youtube-client-implementation.md) records
+build/integration/review status separately from live-owner acceptance.
+
+After merging F4, the combined F3/auth/config/profile run passed 32 hosted tests at
+`/private/tmp/stream14-f3-merged-tests.xcresult`. Final Release passed in
+`/private/tmp/stream14-f3-release-final-2.log`. The first portrait audit found low
+contrast on an unavailable disabled Refresh label; Refresh is now shown only
+after authorization, with an explicit 44-point target. The final recheck passed
+13 F3 tests and both portrait/largest-text landscape setup accessibility tests at
+`/private/tmp/stream14-f3-ui-recheck.xcresult`. Private screenshots were inspected;
+authenticated event rows and physical VoiceOver remain pending. The initial failed
+UI result is retained, and no audit issue was suppressed.

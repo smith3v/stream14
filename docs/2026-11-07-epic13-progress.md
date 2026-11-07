@@ -14,9 +14,9 @@ Preserve the original checkout and its private signing/concurrent setup edits. A
 | --- | --- | --- | --- |
 | F1 / #14 | Reviewed [PR #40](https://github.com/smith3v/stream14/pull/40), head `dbb1e28` | `codex/issue-14-media-feasibility` / `f1` | Physical dual output, selected production encoding/bounded transport path |
 | F2 / #15 | Reviewed [PR #41](https://github.com/smith3v/stream14/pull/41), includes F1 | `codex/issue-15-youtube-authorization` / `f2` | Signed-phone Google callback, Keychain, scope/revoke and actual channel |
-| F3 / #16 | Fresh agent implementing REST client/event picker; initial native builds pass | `codex/issue-16-youtube-client` / `f3` | Fixture tests/review, F4 merge, actual authorized event read |
-| F4 / #17 | Implemented and independently reviewed; `615ea08` implementation, `c73605a` evidence; F1/F2 integrated | `codex/issue-17-session-controls` / `f4` | PR publication, physical profile/mute/zoom/route/media checks |
-| F5 / #18 | Not started | — | F3 prerequisite |
+| F3 / #16 | Implemented and independently reviewed at `5e0f3e4`; F4 integrated | `codex/issue-16-youtube-client` / `f3` | PR publication and actual authorized event read |
+| F4 / #17 | Reviewed [PR #42](https://github.com/smith3v/stream14/pull/42), F1/F2 integrated | `codex/issue-17-session-controls` / `f4` | Physical profile/mute/zoom/route/media checks |
+| F5 / #18 | Fresh agent implementing safe mutation journal and reconciliation; plan `c3e7edc` | `codex/issue-18-safe-ingestion` / `f5` | Fixture/API review and real dedicated-event acceptance |
 | F6 / #19 | Fresh agent auditing/prototyping single shared encoder and actual bounded-send feasibility; no production adoption | `codex/issue-19-independent-transport` / `f6` | F1 gates; library nested tasks/unbounded socket queue cannot be bounded by an app queue alone |
 | F7 / #20 | Not started | — | F2–F6 prerequisites |
 | F8 / #21 | Not started | — | F7 prerequisite |
@@ -50,3 +50,13 @@ No dedicated unlisted test event or private RTMPS destination/key is configured.
 2. Resume the existing stage agent after an interruption, or use a fresh agent for the next stage. Commit meaningful checkpoints early. Root coordinates the single Simulator lease; isolated native builds can run concurrently.
 3. Merge committed predecessor branches normally, retain both sides of documentation conflicts, run affected integration checks and independent review before handoff. Do not force-push or merge PRs automatically.
 4. Update this ledger/PR with exact executed/skipped test counts, actual evidence and pending external gates. Do not close an issue with unmet acceptance or treat synthetic/Simulator evidence as physical qualification.
+
+## Coordinator checkpoint — F3 reviewed and phone candidate prepared
+
+F3 independent actual-file review at `5e0f3e4` found no material findings. Native unsigned Release and 32 merged hosted tests pass; final 13 client tests plus two accessibility UI tests pass after hiding unavailable Refresh in the disconnected state. See `/private/tmp/stream14-f3-ui-recheck.xcresult` and the F3 handoff. The PR targets F4/#42.
+
+An isolated detached candidate at `/private/tmp/stream14-epic13-phone` uses ignored `Config/Local.xcconfig` with the owner-created public OAuth client/callback and private local signing selection. A normally signed Debug build succeeded and strict signature/compiled callback checks passed. App path: `/private/tmp/stream14-epic13-phone-build/Build/Products/Debug-iphoneos/Stream14.app`; private build log `/private/tmp/stream14-epic13-phone-build.log`. Nothing was installed or launched. The owner was asked asynchronously for phone readiness; continue independent work while waiting. If later source fixes are needed, update/rebuild this detached candidate before installing; never overwrite its local configuration or uninstall the owner's app/recordings as cleanup.
+
+F6's first synthetic encode/writer run failed with CoreMedia adapter-format/timing errors; native encoding itself ran, but no shared-writer success is claimed. The failed result is retained at `/private/tmp/stream14-f6-prototype.xcresult`. The stage agent is investigating and preparing an isolated bounded-send package patch, with no production dependency adoption.
+
+Current SSH-agent signing is unavailable. Publishing via an explicit HTTPS URL and the existing GitHub CLI credential helper works, without changing repository remotes or exposing tokens: `git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push https://github.com/smith3v/stream14.git <branch>:refs/heads/<branch>`. Do not force-push.
