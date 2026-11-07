@@ -1068,10 +1068,23 @@ screenshots are inspected for removal of the strip and retained content.
 
 Independent source review found no material implementation issues. The paired
 physical phone was disconnected; covered-host rendering with camera preview,
-recording/playback, spoken VoiceOver and owner visual acceptance on the 13 mini
-remain unverified for this change. No camera/microphone capture, private recording
+recording/playback and spoken VoiceOver remain unverified by those automated
+checks. Subsequently the signed development app was installed in place and launched
+on the test phone, preserving its container; the owner reported “All good” on
+2026-11-07. This is owner development acceptance, separate from delivered-build
+TestFlight evidence. No camera/microphone capture, private recording
 deletion, TestFlight upload or long-run qualification was performed.
 
+
+### TestFlight version convention (2026-11-07)
+
+The release after merged #33/#34 is **0.2 (3)**, now Testing in Owner MVP. At each TestFlight release
+of newly merged main changes, increment the minor marketing version; replacement
+uploads within that release keep the marketing version and increment the build.
+Build numbers continue increasing across minor versions. Update both app project
+configurations and the hosted app-identity test together, verify the archive's actual
+Info.plist, and check App Store Connect for collisions. See the
+[0.2 release record](2026-11-07-testflight-0.2.md) for packaging/distribution evidence.
 
 ### Issue #38 overlay recovery and safe URL editing
 

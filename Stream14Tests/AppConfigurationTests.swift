@@ -6,8 +6,8 @@ struct AppConfigurationTests {
         let info = try #require(Bundle.main.infoDictionary)
 
         #expect(Bundle.main.bundleIdentifier == "com.smith3v.stream14")
-        #expect(info["CFBundleShortVersionString"] as? String == "0.1")
-        #expect(info["CFBundleVersion"] as? String == "1")
+        #expect(info["CFBundleShortVersionString"] as? String == "0.2")
+        #expect(info["CFBundleVersion"] as? String == "3")
         #expect(info["MinimumOSVersion"] as? String == "27.0")
         #expect(info["UIDeviceFamily"] as? [Int] == [1])
     }
