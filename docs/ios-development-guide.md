@@ -1289,8 +1289,8 @@ xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
 ```
 
 The deterministic checks create short synthetic files, prove independent local
-writing with a disconnected raw RTMP observer, exercise public compressed H.264
-and AAC input overloads without a destination, and compare packet bytes/timestamps
+writing with a disconnected raw RTMP observer, check compile/call compatibility
+of public compressed H.264/AAC overloads without a destination, and compare packet bytes/timestamps
 through MP4 compressed passthrough. Removing these disposable generated fixtures
 is test cleanup; physical originals are never automatically removed.
 
@@ -1340,9 +1340,17 @@ Simulator run at `/tmp/stream14-f1-tests-5.xcresult` passes both deterministic t
 the physical publishing test is skipped. Its log is `/tmp/stream14-f1-tests-5.log`.
 Initial failed compile/comparison bundles are retained; the passing comparator
 normalizes AAC packet grouping and ignores zero-sample trim markers. The resulting
-proof is API/passthrough fit and disconnected local ownership, not physical
-broadcast qualification. Shared encoding while disconnected/reconnecting remains
+proof is offline MP4 passthrough and disconnected local ownership, not successful
+RTMP compressed-format acceptance or physical broadcast qualification. Shared encoding while disconnected/reconnecting remains
 unimplemented and must not be inferred from the offline remux test.
+
+The disconnected compressed calls establish compile/call compatibility only.
+The passing run logs `invalidSequence` for initial zero/nonpositive timestamps:
+RTMP append returns Void and catches/logs timestamp errors. A future live adapter
+must supply a common positive capture timeline, enforce per-track order and verify
+first-origin/A/V behavior after publish/reconnect; separate track-origin resets
+mean a positive bias alone does not prove initial A/V offset preservation. Neither
+idle state nor absent observer callbacks establish successful media acceptance.
 
 ## Full-app F4: profiles and microphone/camera controls (2026-11-07)
 
