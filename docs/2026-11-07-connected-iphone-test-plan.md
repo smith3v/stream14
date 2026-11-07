@@ -1,8 +1,26 @@
 # Connected-iPhone test session plan
 
-Updated: 2026-11-07. Owner request: collect every check needing the test iPhone and laptop so they can be run in one coordinated session.
+Updated: 2026-11-07. Owner request: make routine connected-iPhone testing take about FIVE MINUTES, with the full inventory retained as a coverage backlog.
 
-This is a pending checklist, not evidence that the checks passed. Use the current integrated reviewed build when the session happens. The phone is not needed for further fixture-driven development. Current phone availability: owner will connect it later.
+Routine phone visits have a five-minute wall-clock budget, including installation, prompts, test execution and wrap-up. Do not turn this inventory into a one-hour session. Use the current integrated reviewed build; all checks remain pending until observed. The phone is not needed for fixture-driven development. Current availability: owner will connect it later.
+
+## Default: one five-minute smoke check
+
+Run build/package resolution, deterministic fixtures/fault/race tests, Simulator UI checks and evidence-tool preparation on the laptop BEFORE asking for the phone. Prepare normally signed/branded products in advance. These do not consume connected-phone time.
+
+| Wall-clock budget | Work |
+| --- | --- |
+| 0:00–0:45 | Install/launch the prepared build, verify version, handle permission/authorization readiness. If setup is blocked, record the blocker instead of extending the visit |
+| 0:45–2:15 | One short serialized harness: two approximately 6–8-second clips, 1080p and 720p, local changing alpha fixture, mute/hide/unhide/profile-lock checks and native original-file validation. This new opt-in harness is being implemented; do not invent a passing command before integration |
+| 2:15–3:15 | Brief actual-app check of changed controls/read-only channel/event state; do not repeat all accessibility cases or consent variants |
+| 3:15–4:15 | At most ONE relevant targeted manual case selected for this change. Otherwise inspect playback/Files export. A future real two-minute upload outage REPLACES other steps and needs its own budgeted variant; it is not added here |
+| 4:15–5:00 | Stop/finalize normally, retain/copy small originals, record the automated report and unmeasured criteria, reconcile remote state and restore settings |
+
+This is a risk-based smoke check, not all 50 physical cases in five minutes. Most failure permutations run deterministically on the laptop; physical checks verify camera/codec/WebKit/route/device behavior. Select additional physical coverage only when a change or specific gap justifies it. Do not schedule repeated visits solely to exhaust the inventory.
+
+First-time consent, trust/Developer Mode or permissions may consume the budget. Stop with BLOCKED/INCOMPLETE at five minutes and retain progress; do not hide setup outside the clock or promise first-time setup fits. Publishing still needs a prepared event and explicit operator action.
+
+The old multi-test camera harnesses below are targeted tools, not the default. Historical 600/900-second examples are not the routine. Longer development runs need explicit agreement; the existing 15-minute ceiling is a ceiling, not a target. The 30-minute/three-hour gates stay unverified and unscheduled unless separately agreed.
 
 ## What the owner needs to do
 
@@ -10,7 +28,7 @@ Connect the iPhone 13 mini by USB, unlock it, trust the Mac/enable Developer Mod
 
 For media checks, aim the phone at a private test scene and make visible/audible clap markers when prompted. For streaming checks, have a second device ready to observe the dedicated unlisted event. Do not use a real match or valuable scheduled event as a fixture.
 
-“All together” means one planned visit with sequential checks, not parallel capture tests or a single blanket test command. Some checks intentionally change permissions, foreground state, network or authorization. Run these in the order below, restoring state between them.
+“All together” means one prepared five-minute visit with a selected sequential smoke path, not every backlog row, parallel capture tests or a blanket command. Some checks intentionally change permissions, foreground state, network or authorization. Run these in the order below, restoring state between them.
 
 ## Readiness and time limits
 
@@ -25,12 +43,12 @@ For media checks, aim the phone at a private test scene and make visible/audible
 | Test event | Dedicated unlisted encoder event, auto-stop off; no event/key has been created or retrieved by this development run |
 | Receiver | Second-device playback/receiver recording for network tests; never use a public destination by accident |
 | Production transport/recovery/instrumentation | F6–F12 not complete; their rows below are future gates, not executable acceptance tests today |
-| Development recording cap | Each experiment, including its planned outage/reconnect phases, stays within 15 minutes. Use a 10-minute main harness run to leave room for its short follow-ons |
+| Routine duration | Five-minute wall-clock budget including setup/wrap-up. No automatic extension; an explicitly agreed development experiment still respects the 15-minute ceiling |
 | Long qualification | The 30-minute A2 run and three-hour A7 run require separate explicit agreement; they are not authorized by this batch plan |
 
 The current private F1 dual-output candidate uses TWO encoders, a fixed 1080p profile and only a one-second internal disconnect. It is an optional architecture experiment, not the selected production path, a two-minute outage test, or proof of bounded transport.
 
-## Session order and master checklist
+## Coverage backlog — select checks, not one exhaustive session
 
 Status key: Available = current code/manual flow can be exercised; Service-gated = requires owner setup and actual Google/receiver access; Future = implementation or a verified harness is still needed; Separate agreement = excluded from the ordinary batch. Every row starts PENDING. Mark PASS/FAIL/BLOCKED/SKIPPED with evidence after the actual run.
 
@@ -46,7 +64,7 @@ Status key: Available = current code/manual flow can be exercised; Service-gated
 
 ### Batch 2 — Google and read-only event selection
 
-Run ordinary sign-in/restore checks early. Leave revocation/account-reset checks until after any stream has ended.
+When selected for a targeted visit, run sign-in/restore early and revocation/account-reset after the stream ends; do not repeat every variant in the routine smoke check.
 
 | ID | Check | Expected result / evidence | Availability / trace |
 | --- | --- | --- | --- |
@@ -119,7 +137,7 @@ Run disruptions serially after normal recording/broadcast evidence. Restore the 
 
 Do not fill the phone to simulate disk-full. Use the reviewed fault injection. Do not kill/uninstall an app with valuable active recording. Crash tests use newly created expendable test sessions with explicit operator intent and preserve every original. If the remote event might still be live after interruption, reconcile/end it explicitly in the supported flow or Studio before leaving.
 
-## Exact existing connected-device automation
+## Existing targeted commands — not the default five-minute batch
 
 Run from the selected integrated worktree with ignored local signing configuration. Codex reads the private identifier from devicectl; no identifier/team/token belongs in Git or public evidence. Use a new run/result path on every attempt.
 
@@ -147,17 +165,17 @@ device_test() {
 }
 ~~~
 
-Inspect each exit status/result before the next call; stop on an unexpected failure. These calls are sequential, not a blanket unattended run. Ensure camera/microphone permission prompts are resolved and owner/private scene are ready before camera checks.
+Inspect each exit status/result before the next call; stop on an unexpected failure. Select at most one relevant short legacy command for a targeted visit; these examples are a catalogue, not a combined unattended script. Ensure camera/microphone permission prompts are resolved and owner/private scene are ready before camera checks.
 
 ~~~sh
 # Reference website only; no camera recording. Requires its current public fixture.
 TEST_RUNNER_STREAM14_REFERENCE_TEST=1 \
   device_test Stream14Tests/WebOverlayRendererTests/referencePageReloadEvidence reference
 
-# 10-minute reference recording, injected WebKit outage/manual-hide checks,
-# then short changing-fixture/repeated-recording/capture-error follow-ons.
+# Short legacy reference sample plus changing-fixture/repeated-recording follow-ons.
+# This setting does NOT cover the two-minute outage/manual-hide sequence.
 TEST_RUNNER_STREAM14_DEVICE_RECORDING=1 \
-TEST_RUNNER_STREAM14_RECORDING_SECONDS=600 \
+TEST_RUNNER_STREAM14_RECORDING_SECONDS=30 \
   device_test Stream14Tests/MediaDeviceTests/combinedDeviceRecording local-composition
 
 # Separate short writer faults and notification-path interruption checks.
@@ -173,7 +191,7 @@ TEST_RUNNER_STREAM14_DEVICE_UI=1 \
   device_test Stream14UITests/SetupScreenTests/testDeviceBackgroundFinalizesAndPlaybackOpens background-ui
 ~~~
 
-The combined harness's automatic outage blocks WebKit DOCUMENT requests, not upload or all phone radios. Its fixed 1080p profile does not exercise 720p. Manual hiding during recovery is exercised with the 600-second setting; the 30-second default does not cover this sequence. It records short follow-on files, so do not schedule the main loop at 900 seconds and assume total experiment duration stays below 15 minutes.
+The combined harness's longer outage path blocks WebKit DOCUMENT requests, not upload/all phone radios. Its fixed 1080p profile does not exercise 720p. At least 180 seconds enables its two-minute source outage; 600 seconds enables its old manual-hide/recovery branch. Those modes are NOT the five-minute default and must not launch automatically. The short setting and new two-profile smoke do not prove that long outage branch. Follow-on files and runner/setup time count toward the session budget.
 
 The existing F1 private candidate is a separate OPTIONAL architecture experiment. Only enable after the receiver/event and private destination are explicitly approved for that run. Supply TEST_RUNNER_STREAM14_PRIVATE_RTMPS_URL and TEST_RUNNER_STREAM14_PRIVATE_STREAM_KEY through the private local test environment, never a recorded command/history or committed file. Test environment copies, xctestrun, xcresult and logs can contain configuration and must stay private.
 
@@ -191,7 +209,7 @@ Other fixture-driven hosted tests and Simulator-only seeded deletion/recording-l
 
 ## Later TestFlight and longer qualification
 
-These remain on the same master checklist so they are not forgotten, but are not part of the first development batch.
+These are unverified requirements, not an extension of the five-minute visit. Short Q01/Q04 checks remain readiness-gated authorized work when they fit the same budget. Q02/Q03 and any run exceeding that budget need a separate explicit agreement; never extend automatically.
 
 | ID | Required run | Conditions / pass evidence | Availability |
 | --- | --- | --- | --- |
@@ -211,7 +229,7 @@ Copy this table for each executed row/group; leave no empty PASS without evidenc
 | Checklist IDs / status / date and operator | Pending / Pass / Fail / Blocked / Skipped, reason |
 | Source / installed version-build / route | Exact commit; Xcode or TestFlight |
 | Device / OS / profile / lens / audio route | Private device identifier outside Git |
-| Setup and duration | Power/mount/case/brightness/airflow/ambient/network; ≤15-minute development cap |
+| Setup and duration | Power/mount/case/brightness/airflow/ambient/network; five-minute routine total, or exact separately agreed exception |
 | Changes/faults and timings | Permission/overlay/network/foreground/mute/route/fault actions; actual measured times |
 | Original media and receiver evidence | UUID/path/hash; retained originals; no transcoding or deletion |
 | Metrics | Executed/skipped test count, drops/gaps, queue bounds/high-water, charged-memory method/limits, thermal state |
