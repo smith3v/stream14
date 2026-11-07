@@ -6,6 +6,86 @@ final class SetupScreenTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testDeviceRearLensSelector() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["STREAM14_DEVICE_LENS_UI"] == "1",
+                          "Opt-in private device camera recording check.")
+        let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launch()
+        func reveal(_ element: XCUIElement) {
+            let scroll = app.scrollViews.firstMatch
+            for _ in 0..<12 {
+                let visible = scroll.frame.insetBy(dx: 0, dy: 8)
+                let frame = element.frame
+                // XCTest can fail the test while querying an offscreen element's
+                // activation point after rotation. Scroll it fully into view first.
+                if visible.contains(frame), !frame.isEmpty, element.isHittable { return }
+                if frame.midY < visible.midY { scroll.swipeDown() }
+                else { scroll.swipeUp() }
+            }
+        }
+        XCTAssertFalse(app.buttons["cameraLensSelector"].exists)
+        let open = app.buttons["openExperiment"]
+        reveal(open)
+        XCTAssertTrue(open.isHittable)
+        open.tap()
+        let selector = app.buttons["cameraLensSelector"]
+        XCTAssertTrue(selector.waitForExistence(timeout: 15))
+        reveal(selector)
+        XCTAssertTrue(selector.isEnabled)
+        XCTAssertEqual(selector.value as? String, "1× · Wide")
+        selector.tap()
+        let ultraWide = app.buttons["0.5× · Ultra Wide"]
+        XCTAssertTrue(ultraWide.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Telephoto"].exists)
+        ultraWide.tap()
+        expectation(for: NSPredicate(format: "enabled == true AND value == %@", "0.5× · Ultra Wide"), evaluatedWith: selector)
+        waitForExpectations(timeout: 10)
+        for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight] {
+            XCUIDevice.shared.orientation = orientation
+            reveal(selector)
+            XCTAssertTrue(selector.isHittable)
+            XCTAssertGreaterThanOrEqual(selector.frame.height, 44)
+            XCTAssertLessThanOrEqual(selector.frame.height, 64)
+            XCTAssertLessThanOrEqual(selector.frame.width, 180)
+            let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            screenshot.name = "Ultra Wide selector \(orientation.rawValue)"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+        }
+        let record = app.buttons["recordSample"]
+        reveal(record)
+        XCTAssertTrue(record.isEnabled)
+        record.tap()
+        expectation(for: NSPredicate(format: "label CONTAINS %@", "Stop recording"), evaluatedWith: record)
+        waitForExpectations(timeout: 5)
+        XCTAssertFalse(selector.isEnabled)
+        sleep(3)
+        record.tap()
+        expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: selector)
+        waitForExpectations(timeout: 10)
+        let play = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "playRecording-")).firstMatch
+        reveal(play)
+        XCTAssertTrue(play.isHittable)
+        play.tap()
+        let done = app.buttons["Done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        done.tap()
+        let close = app.buttons["Close camera"]
+        reveal(close)
+        XCTAssertTrue(close.isHittable)
+        close.tap()
+        XCTAssertTrue(open.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["cameraLensSelector"].exists)
+        XCTAssertFalse(app.otherElements["cameraPreview"].exists)
+        reveal(open)
+        open.tap()
+        XCTAssertTrue(selector.waitForExistence(timeout: 15))
+        expectation(for: NSPredicate(format: "enabled == true AND value == %@", "0.5× · Ultra Wide"), evaluatedWith: selector)
+        waitForExpectations(timeout: 10)
+    }
+
     func testConfirmedDeletionRemovesOnlyItsFixture() throws {
         let fixtureID = ProcessInfo.processInfo.environment["STREAM14_DELETE_FIXTURE_ID"]
         try XCTSkipUnless(fixtureID != nil, "Seed an isolated Simulator recording fixture first.")
