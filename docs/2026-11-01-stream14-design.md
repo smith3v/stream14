@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Created: 2026-11-01. Updated: 2026-11-05. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
+Created: 2026-11-01. Updated: 2026-11-07. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -166,11 +166,48 @@ Any additional formal qualification requires a separately agreed run, start/end
 sync markers and a defined delivered-build memory measurement route. The current
 hosted development harness is not that TestFlight measurement route.
 
+### Rear-lens selection (issue #33, 2026-11-06)
+
+The owner requested phone-specific rear-camera choices, particularly the wider
+0.5× ultra-wide view, followed by testing on the paired iPhone 13 mini. This is an
+authorized scope extension to the wide-only starting default. Wide remains the
+launch default. After camera permission/open, a Camera button opens a native
+lens-choice dialog offering only discovered
+physical rear ultra-wide, wide and telephoto lenses with a compatible 1920×1080
+video-range NV12 format supporting 30 fps. Telephoto is named without inventing a
+phone-specific magnification. No device-model table or digital 0.5× zoom is used.
+
+Discovery runs off MainActor. The selected Sendable lens identity is passed to the
+existing HaishinKit MediaMixer actor; device lookup/configuration stays there.
+The session uses input-priority capture and selects the compatible format, SDR,
+1× device zoom and 30 fps explicitly. Configuration uses the throwing public
+`configuration(video:configuration:)` API after `attachVideo`: upstream 2.3.0's
+optional attach callback uses `try?` and cannot report configuration failures.
+Preview changes stop the mixer briefly, replace its one camera input, then restart
+it. Failure restores the prior lens; restoration failure stops capture honestly.
+The selected lens feeds the same composed preview/LocalRecorder output. This adds
+no camera session, encoder, dependency or network output. Changing a lens is locked
+while preparing, recording, finalizing or stopping; interruption still stops capture.
+Selection lasts for this app session, with Wide restored at a fresh app launch.
+Seamless changes during recording remain outside scope. The Camera button's label
+owns a minimum 44-point touch height and exposes the selected lens as its accessible
+value. Physical testing rejected a menu-style Picker's 34-point intrinsic target;
+the native button/dialog passed both landscape layouts, selection, record lock and
+playback checks on the 13 mini. On 2026-11-07 the owner confirmed the wider view
+and comfortable landscape controls. See the guide for exact results and remaining
+hardware/qualification limits.
+
+Device evidence and owner visual review are recorded in the development guide;
+unavailable hardware, long-run performance and future streaming remain separate
+qualification requirements. Existing MVP TestFlight evidence is not proof of this
+new development build.
+
 ### MVP scope and interface
 
-- Rear wide-angle camera, microphone, landscape 1920×1080 at 30 fps on iPhone 13 mini
+- Rear camera (Wide by default), microphone, landscape 1920×1080 at 30 fps on iPhone 13 mini
   with iOS 27. Use the main profile's starting encoding settings below. No 720p,
-  60 fps, HDR, camera switching, manual exposure, or advanced audio controls yet.
+  60 fps, HDR, lens changes during recording, manual exposure, or advanced audio controls yet.
+  Owner-authorized follow-up #33 adds rear-lens selection before recording; see above.
 - HaishinKit is the first choice to own acquisition, composition, encoding, and
   recording through its verified public APIs. The app owns WebKit snapshots and
   straightforward UI/orchestration. Do not start by building custom capture/encoding
@@ -265,7 +302,7 @@ change. It must preserve the configurable web-URL feature.
 | --- | --- |
 | App name / repository | stream14 / smith3v/stream14; display-name styling can change before distribution |
 | Platform | iPhone only, iOS 27.0 deployment target; no older-OS compatibility work initially |
-| Camera | One rear wide-angle camera; autofocus and automatic exposure; basic supported zoom control |
+| Camera | One selected compatible rear lens; Wide by default, Ultra Wide/Telephoto where available (#33); autofocus and automatic exposure; basic supported zoom control |
 | Audio | System-selected microphone route, initially qualified with the built-in microphone; mute and visible level meter |
 | Orientation | Landscape broadcast canvas, fixed for a session; setup and recordings screens can also work in portrait |
 | Main profile | 1920×1080, 30 fps, SDR Rec. 709, H.264 video and AAC audio |

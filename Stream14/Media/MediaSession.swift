@@ -11,6 +11,8 @@ final class MediaSession {
     private(set) var message = "Open the camera to prepare a local recording."
     private(set) var sampleURL: URL?
     private(set) var startedAt: Date?
+    private(set) var availableLenses: [RearCameraLens] = []
+    private(set) var selectedLens: RearCameraLens = .wide
     let mixer = MediaMixer(captureSessionMode: .single)
     let preview = MTHKView(frame: .zero)
 
@@ -36,7 +38,8 @@ final class MediaSession {
     private var previousIdleTimerDisabled: Bool?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
-    var canRecord: Bool { phase == .preview && !busy }
+    var canSelectLens: Bool { !busy && !stopRequested && (phase == .idle || phase == .preview) }
+    var canRecord: Bool { phase == .preview && !busy && !stopRequested }
     var canDeleteSamples: Bool { !busy && (phase == .idle || phase == .preview) }
     var recordingID: UUID? { recorder == nil ? nil : sample?.id }
     var recordingMetrics: LocalRecorder.Metrics? { recorder?.metrics }
@@ -99,13 +102,17 @@ final class MediaSession {
             let audioSession = AVAudioSession.sharedInstance()
             try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker])
             guard try await audioSession.activate(options: []) else { throw ExperimentError.devices }
-            await mixer.setSessionPreset(.hd1920x1080)
+            availableLenses = await Task.detached { RearCameraLens.available() }.value
+            guard availableLenses.contains(selectedLens) else {
+                selectedLens = availableLenses.contains(.wide) ? .wide : (availableLenses.first ?? .wide)
+                throw RearCameraLens.ConfigurationError.unavailable
+            }
+            await mixer.setSessionPreset(.inputPriority)
             await mixer.setVideoOrientation(.landscapeRight)
             await mixer.setVideoMixerSettings(VideoMixerSettings(mode: .offscreen))
             await mixer.setAudioMixerSettings(AudioMixerSettings(sampleRate: 44_100, channels: 2))
-            guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-                  let microphone = AVCaptureDevice.default(for: .audio) else { throw ExperimentError.devices }
-            try await mixer.attachVideo(camera) { unit in try unit.setFrameRate(30) }
+            guard let microphone = AVCaptureDevice.default(for: .audio) else { throw ExperimentError.devices }
+            try await attachLens(selectedLens)
             try await mixer.attachAudio(microphone)
             try await mixer.setFrameRate(30)
             let overlay: WebOverlayLayer
@@ -155,9 +162,48 @@ final class MediaSession {
             message = "Preview ready · landscape 1080p30. Check the picture and overlay before recording."
         } catch {
             failure = true
-            message = (error as? ExperimentError)?.description ?? "Camera/audio setup failed. Close and reopen the experiment to retry."
+            message = error is RearCameraLens.ConfigurationError ?
+                "The selected lens is unavailable for 1080p30. Open the camera again to retry with an available lens." :
+                ((error as? ExperimentError)?.description ?? "Camera/audio setup failed. Open the camera again to retry.")
             stopRequested = true
         }
+    }
+
+    private func attachLens(_ lens: RearCameraLens) async throws {
+        try await mixer.attachRearCamera(lens)
+    }
+
+    enum LensChangeInjection { case none, configuration, restoration, interruption }
+
+    func selectLens(_ lens: RearCameraLens, injection: LensChangeInjection = .none) async {
+        guard canSelectLens, availableLenses.contains(lens), lens != selectedLens else { return }
+        guard phase == .preview else { selectedLens = lens; return }
+        busy = true
+        phase = .preparing
+        let previous = selectedLens
+        defer { finishOperation() }
+        await mixer.stopRunning()
+        do {
+            try await attachLens(lens)
+            if injection == .configuration || injection == .restoration {
+                throw RearCameraLens.ConfigurationError.unavailable
+            }
+            if injection == .interruption { requestStop(interruption: true) }
+            selectedLens = lens
+            message = "Preview ready · \(lens.label) · landscape 1080p30."
+        } catch {
+            do {
+                if injection == .restoration { throw RearCameraLens.ConfigurationError.unavailable }
+                try await attachLens(previous)
+                message = "Could not use that lens. The previous camera has been restored."
+            } catch {
+                failure = true
+                message = "Camera change failed. Capture stopped; reopen the camera to retry."
+                stopRequested = true
+            }
+        }
+        if !stopRequested { await mixer.startRunning() }
+        phase = .preview
     }
 
     private func updateThermalState() {

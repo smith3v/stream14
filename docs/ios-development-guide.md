@@ -934,3 +934,71 @@ and baseline setup checks passed in `/tmp/stream14-issue30-ui.xcresult`, which a
 contains earlier superseded footer/test failures. Final independent review of the
 actual source and both branch diffs found no material issue. Physical acceptance
 above remains pending; no phone installation or recording was performed here.
+
+### Rear-camera lens selection, issue #33 (2026-11-06)
+
+Open **stream14 → Open camera**, then use the **Camera: 1× · Wide** button beside the preview.
+Choose **0.5× · Ultra Wide** for a wider view, or another compatible rear lens when
+present. The native lens-choice dialog reflects the phone's actual capture capabilities. Wide is the
+default on a fresh launch; the choice is retained while closing/reopening the
+camera in the same app session. Selection briefly pauses preview and is disabled
+during recording/finalization. A failed change restores the prior camera, or stops
+capture with guidance to reopen if recovery fails. There is no mid-recording lens
+switching or new output/encoder.
+
+The initial test target is the paired iPhone 13 mini/iOS 27.2, using a normally
+signed development build installed over the existing app without uninstalling or
+deleting recordings. This is development evidence, not a TestFlight upload or
+long-run qualification. The owner prepared the phone unlocked/in landscape and
+explicitly authorized short private camera/microphone tests.
+
+Reproduce with the shared Stream14 scheme (set `DEVICE_ID` and `APPLE_TEAM` locally
+as above; never commit real values). Use new result paths on repeat:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /tmp/stream14-issue33-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution \
+  -resultBundlePath /tmp/stream14-issue33-simulator-new.xcresult test
+
+TEST_RUNNER_STREAM14_DEVICE_LENSES=1 TEST_RUNNER_STREAM14_DEVICE_LENS_UI=1 \
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination "platform=iOS,id=$DEVICE_ID" \
+  -derivedDataPath /tmp/stream14-issue33-physical \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution -allowProvisioningUpdates \
+  DEVELOPMENT_TEAM="$APPLE_TEAM" -parallel-testing-enabled NO \
+  -only-testing:Stream14Tests/RearCameraLensTests \
+  -only-testing:Stream14UITests/SetupScreenTests/testDeviceRearLensSelector \
+  -resultBundlePath /tmp/stream14-issue33-device-new.xcresult test
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /tmp/stream14-issue33-release \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+```
+
+Select the entire Swift Testing suite for the hosted device check. Default tests
+skip private device capture; opt in only with the prepared, unlocked testing phone.
+The shared scheme brands/signs the separate purple UI runner before installation.
+No recording is automatically removed, including failed/pending files.
+
+Final development evidence (2026-11-07):
+
+- The default simulator suite passed in `/tmp/stream14-issue33-resume-simulator-final.xcresult`: 26 Swift Testing cases (including opt-in skips), three ordinary UI passes and six opt-in UI skips. The final unsigned Release build passed in `/tmp/stream14-issue33-resume-release-final.log`.
+- The iPhone 13 mini/iOS 27.2 hosted suite passed all three lens tests in `/tmp/stream14-issue33-device-final.xcresult`. Runtime choices were Ultra Wide and Wide, with no Telephoto. Actual 1920×1080/30 fps capture formats reported horizontal fields of view 106.97° and 69.47°. Short clips contained audio/video and decoded overlay pixels, and finalized as complete. Selection during recording was rejected. Injected configuration failure restored the prior lens and another recording completed; failed restoration stopped capture; interruption during a change required explicit reopen. This combined result's earlier UI failure is superseded by the final UI result below, not by the hosted pass.
+- The final native Camera button/dialog passed physical UI checks in `/tmp/stream14-issue33-resume-device-ui-2.xcresult`: Ultra Wide selection/value, actual touch target at least 44 points in both landscape orientations, recording lock, stop and playback sheet. Private screenshots were visually inspected. A menu-style Picker was replaced because its intrinsic target measured only 34.33 points despite an outer 44-point frame. The final button puts the minimum inside its label and exposes an explicit accessible name/value.
+- Independent full-diff and focused UI re-review found no remaining material issues after adding failure/interruption coverage. `git diff --check` passed. All original recordings remain in the app's private MediaExperiments directory; raw media and UUID associations remain in private test logs/results outside Git and issue/PR attachments.
+
+The tested development app was reopened on the phone for owner review. Compare
+Wide and Ultra Wide from the same fixed position, inspect preview and original
+recordings, and check comfortable operation in both landscape orientations.
+On 2026-11-07 the owner confirmed that Ultra Wide shows the wider scene from the
+same position and landscape controls work as expected. Spoken VoiceOver navigation
+remains pending. Telephoto hardware, other iPhones, long-run performance and actual broadcast output need
+separate evidence. Field-of-view metadata and structural file checks do not
+establish subjective picture quality or measured A/V alignment. No TestFlight
+upload is included in this change.
