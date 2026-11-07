@@ -1,0 +1,1 @@
+{"items":[{"id":"fixture-stream","snippet":{"channelId":"fixture-brand-channel","title":"Fixture encoder"},"cdn":{"ingestionType":"rtmp","resolution":"variable","frameRate":"variable","ingestionInfo":{"streamName":"fixture-not-a-real-key","rtmpsIngestionAddress":"rtmps://example.invalid/live"}},"status":{"streamStatus":"inactive"}}]}
