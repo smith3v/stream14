@@ -27,9 +27,18 @@ struct SharedEncodingPrototypeTests {
         for type in [AVMediaType.video, .audio] {
             let expected = try clip.packets(type)
             #expect(!expected.isEmpty)
-            #expect(try await packets(first.url, type) == expected)
-            #expect(try await packets(second.url, type) == expected)
+            let firstPackets = try await packets(first.url, type, audioPriming: clip.audioPriming)
+            let secondPackets = try await packets(second.url, type, audioPriming: clip.audioPriming)
+            #expect(firstPackets == secondPackets)
+            #expect(firstPackets.count == expected.count)
+            #expect(firstPackets.first?.pts == expected.first?.pts)
+            #expect(firstPackets.last?.pts == expected.last?.pts)
+            #expect(zip(firstPackets, expected).allSatisfy { $0.data == $1.data })
+            #expect(zip(firstPackets, expected).allSatisfy { $0.pts == $1.pts })
         }
+        let marker = try await markerTimes(first.url)
+        #expect(abs(marker.video - 0.5) < 0.005)
+        #expect(abs(marker.audio - marker.video) < 0.035)
     }
 
     @Test func stalledAdmissionAndFailedWriterDoNotStopOtherFile() async throws {
@@ -48,7 +57,7 @@ struct SharedEncodingPrototypeTests {
         for sample in clip.interleaved {
             try await healthy.append(sample)
             if index < 8 { try await failing.append(sample) }
-            if index == 8 { failing.cancel() }
+            if index == 8 { failing.injectFailure() }
             if sample.formatDescription?.mediaType == .video {
                 let packet = encoded[index]
                 if index == 15 { sender.reconnect() }
@@ -67,11 +76,14 @@ struct SharedEncodingPrototypeTests {
         #expect(sender.highWaterBytes <= byteLimit)
         #expect(sender.highWaterPackets <= 2)
         #expect(acceptedAfterWriterFailure > 0)
-        #expect(failing.writer.status == .cancelled)
+        #expect(failing.injectedFailure)
+        // Finish the retained partial native file, but keep the consumer's failed
+        // state. cancelWriting would delete it and is unsuitable for this failure.
+        try await failing.finish()
         #expect(FileManager.default.fileExists(atPath: failing.url.path))
         try await healthy.finish()
         #expect(try await packets(healthy.url, .video) == clip.packets(.video))
-        #expect(try await packets(healthy.url, .audio) == clip.packets(.audio))
+        #expect(try await packets(healthy.url, .audio, audioPriming: clip.audioPriming) == clip.packets(.audio))
         // This proves the test seam's independence, not HaishinKit socket bounds
         // or receiver delivery. The real library admission patch remains pending.
     }
@@ -91,6 +103,7 @@ private struct CodecPacket: Equatable {
 private struct NativeClip {
     let video: [CMSampleBuffer]
     let audio: [CMSampleBuffer]
+    let audioPriming: CMTime
     var interleaved: [CMSampleBuffer] {
         (video + audio).sorted { $0.presentationTimeStamp < $1.presentationTimeStamp }
     }
@@ -121,6 +134,9 @@ private struct NativeClip {
         for index in 0..<30 {
             let raw = try LocalRecorderTests.video(index, profile: .hd)
             let image = try #require(raw.imageBuffer)
+            CVPixelBufferLockBaseAddress(image, [])
+            memset(CVPixelBufferGetBaseAddress(image), index >= 15 ? 255 : 90, CVPixelBufferGetDataSize(image))
+            CVPixelBufferUnlockBaseAddress(image, [])
             // First packet and reconnect packet are explicit random-access frames.
             let properties = [kVTEncodeFrameOptionKey_ForceKeyFrame: index == 0 || index == 15] as CFDictionary
             let time = CMTime(value: Int64(30 + index), timescale: 30)
@@ -137,10 +153,10 @@ private struct NativeClip {
         let compressed = output.withLock { $0 }
         try #require(compressed.failures == 0 && compressed.samples.count == 30)
         let audio = try encodeAudio()
-        return Self(video: compressed.samples, audio: audio)
+        return Self(video: compressed.samples, audio: audio.samples, audioPriming: audio.priming)
     }
 
-    private static func encodeAudio() throws -> [CMSampleBuffer] {
+    private static func encodeAudio() throws -> (samples: [CMSampleBuffer], priming: CMTime) {
         let inputFormat = try #require(AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 2))
         let outputFormat = try #require(AVAudioFormat(settings: SessionProfile.hd.audioSettings))
         // Exactly one native converter. Finite generated PCM, not a realtime mic.
@@ -168,7 +184,8 @@ private struct NativeClip {
                 pcm.frameLength = AVAudioFrameCount(count)
                 for channel in 0..<2 {
                     for frame in 0..<count {
-                        pcm.floatChannelData![channel][frame] = Float(sin(Double(suppliedFrames + frame) * 2 * .pi * 440 / 44_100) * 0.1)
+                        pcm.floatChannelData![channel][frame] = suppliedFrames + frame < 22_050 ? 0 :
+                            Float(sin(Double(suppliedFrames + frame) * 2 * .pi * 440 / 44_100) * 0.1)
                     }
                 }
                 suppliedFrames += count
@@ -184,18 +201,55 @@ private struct NativeClip {
                 let owned = try #require(block)
                 try #require(CMBlockBufferReplaceDataBytes(with: buffer.data, blockBuffer: owned,
                     offsetIntoDestination: 0, dataLength: Int(buffer.byteLength)) == noErr)
+                var description: CMAudioFormatDescription?
+                let cookie = converter.magicCookie ?? Data()
+                let formatStatus = cookie.withUnsafeBytes {
+                    CMAudioFormatDescriptionCreate(allocator: nil, asbd: outputFormat.streamDescription,
+                        layoutSize: 0, layout: nil, magicCookieSize: $0.count, magicCookie: $0.baseAddress,
+                        extensions: nil, formatDescriptionOut: &description)
+                }
+                try #require(formatStatus == noErr)
+                let format = try #require(description)
                 var sample: CMSampleBuffer?
                 let pts = CMTime(value: 44_100 + packetIndex * 1024, timescale: 44_100)
                 try #require(CMAudioSampleBufferCreateReadyWithPacketDescriptions(allocator: nil,
-                    dataBuffer: owned, formatDescription: outputFormat.formatDescription,
+                    dataBuffer: owned, formatDescription: format,
                     sampleCount: Int(buffer.packetCount), presentationTimeStamp: pts,
                     packetDescriptions: buffer.packetDescriptions, sampleBufferOut: &sample) == noErr)
                 samples.append(try #require(sample))
                 packetIndex += Int64(buffer.packetCount)
             }
-            if status == .endOfStream { return samples }
+            if status == .endOfStream {
+                let leading = Int64(converter.primeInfo.leadingFrames)
+                return (try trimAudio(samples, leading: leading, sourceFrames: 44_100),
+                    CMTime(value: leading, timescale: 44_100))
+            }
         }
         throw PrototypeFailure.converterDidNotFinish
+    }
+
+    private static func trimAudio(_ samples: [CMSampleBuffer], leading: Int64, sourceFrames: Int64) throws -> [CMSampleBuffer] {
+        let trailing = max(0, Int64(samples.count) * 1024 - leading - sourceFrames)
+        return try samples.enumerated().map { index, sample in
+            let frame = Int64(index) * 1024
+            var timing = CMSampleTimingInfo(duration: CMTime(value: 1024, timescale: 44_100),
+                presentationTimeStamp: CMTime(value: 44_100 + frame - leading, timescale: 44_100),
+                decodeTimeStamp: .invalid)
+            var copy: CMSampleBuffer?
+            try #require(CMSampleBufferCreateCopyWithNewTiming(allocator: nil, sampleBuffer: sample,
+                sampleTimingEntryCount: 1, sampleTimingArray: &timing, sampleBufferOut: &copy) == noErr)
+            let result = try #require(copy)
+            let startTrim = min(1024, max(0, leading - frame))
+            CMSetAttachment(result, key: kCMSampleBufferAttachmentKey_TrimDurationAtStart,
+                value: CMTimeCopyAsDictionary(CMTime(value: startTrim, timescale: 44_100), allocator: nil),
+                attachmentMode: kCMAttachmentMode_ShouldPropagate)
+            if index == samples.count - 1 {
+                CMSetAttachment(result, key: kCMSampleBufferAttachmentKey_TrimDurationAtEnd,
+                    value: CMTimeCopyAsDictionary(CMTime(value: min(1024, trailing), timescale: 44_100), allocator: nil),
+                    attachmentMode: kCMAttachmentMode_ShouldPropagate)
+            }
+            return result
+        }
     }
 }
 
@@ -204,6 +258,7 @@ private final class PassthroughFile {
     let writer: AVAssetWriter
     private let video: AVAssetWriterInput
     private let audio: AVAssetWriterInput
+    private(set) var injectedFailure = false
 
     init(_ url: URL, clip: NativeClip) throws {
         self.url = url
@@ -219,6 +274,7 @@ private final class PassthroughFile {
     }
 
     func append(_ sample: CMSampleBuffer) async throws {
+        guard !injectedFailure else { throw PrototypeFailure.writerFailed }
         let input = sample.formatDescription?.mediaType == .video ? video : audio
         for _ in 0..<200 {
             guard writer.status == .writing else { throw PrototypeFailure.writerFailed }
@@ -230,7 +286,7 @@ private final class PassthroughFile {
         }
         throw PrototypeFailure.writerStalled
     }
-    func cancel() { writer.cancelWriting() }
+    func injectFailure() { injectedFailure = true }
     func finish() async throws {
         video.markAsFinished(); audio.markAsFinished()
         await writer.finishWriting()
@@ -322,7 +378,7 @@ private func codecPackets(_ sample: CMSampleBuffer) throws -> [CodecPacket] {
     }
 }
 
-private func packets(_ url: URL, _ type: AVMediaType) async throws -> [CodecPacket] {
+private func packets(_ url: URL, _ type: AVMediaType, audioPriming: CMTime = .zero) async throws -> [CodecPacket] {
     let asset = AVURLAsset(url: url)
     let track = try #require(try await asset.loadTracks(withMediaType: type).first)
     let reader = try AVAssetReader(asset: asset)
@@ -332,9 +388,54 @@ private func packets(_ url: URL, _ type: AVMediaType) async throws -> [CodecPack
     var result: [CodecPacket] = []
     while let sample = output.copyNextSampleBuffer() { result += try codecPackets(sample) }
     try #require(reader.status == .completed)
-    // MP4 begins at the same positive shared source origin but normalizes its
-    // presentation timeline to zero on read. Restore that one common offset.
-    return result.map { CodecPacket(data: $0.data, pts: $0.pts + CMTime(value: 1, timescale: 1)) }
+    // The writer normalizes the movie session to zero and its compressed AAC
+    // readback shifts packet PTS by the declared encoder priming. Restore both
+    // known offsets explicitly. Decoded midpoint markers independently check the
+    // playable A/V result; packet normalization alone is not proof of sync.
+    let correction = CMTime(value: 1, timescale: 1) - (type == .audio ? audioPriming : .zero)
+    return result.map { CodecPacket(data: $0.data, pts: $0.pts + correction) }
+}
+
+private func markerTimes(_ url: URL) async throws -> (video: Double, audio: Double) {
+    let asset = AVURLAsset(url: url)
+    var times: [AVMediaType: Double] = [:]
+    for type in [AVMediaType.video, .audio] {
+        let track = try #require(try await asset.loadTracks(withMediaType: type).first)
+        let reader = try AVAssetReader(asset: asset)
+        let settings: [String: Any] = type == .video ?
+            [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA] :
+            [AVFormatIDKey: Int(kAudioFormatLinearPCM), AVLinearPCMIsFloatKey: true,
+             AVLinearPCMBitDepthKey: 32, AVLinearPCMIsNonInterleaved: false]
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: settings)
+        reader.add(output)
+        try #require(reader.startReading())
+        while let sample = output.copyNextSampleBuffer() {
+            if type == .video, let image = sample.imageBuffer {
+                CVPixelBufferLockBaseAddress(image, .readOnly)
+                let bright = CVPixelBufferGetBaseAddress(image)!.assumingMemoryBound(to: UInt8.self).pointee > 200
+                CVPixelBufferUnlockBaseAddress(image, .readOnly)
+                if bright { times[type] = sample.presentationTimeStamp.seconds; break }
+            } else if type == .audio {
+                let format = try #require(sample.formatDescription)
+                let asbd = try #require(CMAudioFormatDescriptionGetStreamBasicDescription(format))
+                let channels = Int(asbd.pointee.mChannelsPerFrame)
+                let data = try bytes(sample)
+                let onset = data.withUnsafeBytes { raw -> Int? in
+                    for frame in 0..<(data.count / (channels * MemoryLayout<Float>.size)) {
+                        let level = raw.loadUnaligned(fromByteOffset: frame * channels * MemoryLayout<Float>.size, as: Float.self)
+                        if abs(level) > 0.02 { return frame }
+                    }
+                    return nil
+                }
+                if let onset {
+                    times[type] = sample.presentationTimeStamp.seconds + Double(onset) / asbd.pointee.mSampleRate
+                    break
+                }
+            }
+        }
+        reader.cancelReading()
+    }
+    return (try #require(times[.video]), try #require(times[.audio]))
 }
 
 private enum PrototypeFailure: Error { case converterDidNotFinish, writerFailed, writerStalled }

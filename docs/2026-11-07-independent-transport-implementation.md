@@ -40,3 +40,49 @@ Relevant exact source paths are `RTMPHaishinKit/Sources/RTMP/{RTMPStream,RTMPCon
 ## Owner setup at this checkpoint
 
 The root reports Google Cloud/API/iOS public client and owner tester setup now exists; real in-app authorization/scope and a dedicated unlisted event/RTMPS destination remain pending. Phone readiness is unconfirmed. No real client ID, credential, private endpoint, stream key or raw recording belongs in this document.
+
+## Checkpoints and concrete experiment
+
+- `3089be3`: initial source audit and gate plan.
+- `2c5233c`: compiled finite native encoder prototype; its initial runtime tests did not pass and were retained.
+- `710fd0b`: concrete unadopted [bounded-output patch](../Experiments/HaishinKit-2.3.0-bounded-output/README.md), original BSD-3-Clause license, reproducible validation manifest and explicit adoption limits. Applied source lives in `/private/tmp/stream14-f6-haishinkit`; this is never a shared package cache.
+
+`Stream14Tests/SharedEncodingPrototypeTests.swift` generates a one-second 720p
+brightness transition and stereo tone transition at the midpoint. Each clip uses
+one VTCompressionSession and one AVAudioConverter. Both compressed file consumers
+receive the same packet objects; packet comparison normalizes AAC grouping and
+explicitly records the encoder-priming/container timestamp adjustment. Decoded
+video and PCM midpoint detection is separate from that normalization. The encoder
+flushes one frame before submitting the next; this bounds in-flight prototype work
+but is not a realtime capture-performance design or measurement.
+
+The native AAC writer initially rejected samples without the required encoder-delay
+trim attachments. Actual converter magic cookies and leading/trailing trim metadata
+now accompany the native compressed packets. Subsequent file readback showed a
+2112-frame / 44100 Hz AAC packet-origin normalization; this is not evidence that a
+future RTMP sender preserves the same initial A/V origin. A playable-file marker
+check and the live transport timing problem must remain distinct.
+
+An additional synthetic fault experiment stalls its finite sender seam while one
+consumer is marked failed, then finalizes the retained partial file with that
+failure flag intact. `cancelWriting` is not used for this failure path: the observed
+native API removes its output file. The test-only failed flag is not a production
+recording manifest, and no actual disk-full, camera or receiver failure was run.
+Current production LocalRecorder/MediaSession failure behavior is unchanged.
+
+### Package candidate checks
+
+The actual full HaishinKit and RTMP source targets from the local patched clone
+compiled in the reduced manifest. `/private/tmp/stream14-f6-patch-tests-4.log`
+records 32 passing tests in 14 suites, including six new admission/lifecycle tests.
+The original full manifest was stopped while downloading unrelated binary products;
+it is not reported as a pass. The committed validation manifest parses with the
+documented optional local Logboard path. Reverse-apply checking confirms the patch
+artifact matches the isolated applied source. Independent review is pending.
+
+The proposed sender acknowledges local Network.framework processing, not receiver
+receipt. Its queue reserves finite bytes/messages before task retention, keeps the
+in-flight message charged even after close, and fails the entire connection on
+overflow. Its NSLock ownership argument and tests are recorded beside the patch.
+Actual patched-iOS product building, live socket cancellation, TLS/receiver output,
+initial A/V-origin semantics, reconnect and phone performance remain adoption gates.
