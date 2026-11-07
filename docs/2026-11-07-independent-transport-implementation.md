@@ -73,8 +73,8 @@ Current production LocalRecorder/MediaSession failure behavior is unchanged.
 ### Package candidate checks
 
 The actual full HaishinKit and RTMP source targets from the local patched clone
-compiled in the reduced manifest. `/private/tmp/stream14-f6-patch-tests-4.log`
-records 32 passing tests in 14 suites, including six new admission/lifecycle tests.
+compiled in the reduced manifest. `/private/tmp/stream14-f6-patch-tests-5.log`
+records 34 passing tests in 15 suites, including eight new admission/lifecycle/ordering tests.
 The original full manifest was stopped while downloading unrelated binary products;
 it is not reported as a pass. The committed validation manifest parses with the
 documented optional local Logboard path. Reverse-apply checking confirms the patch
@@ -86,3 +86,49 @@ in-flight message charged even after close, and fails the entire connection on
 overflow. Its NSLock ownership argument and tests are recorded beside the patch.
 Actual patched-iOS product building, live socket cancellation, TLS/receiver output,
 initial A/V-origin semantics, reconnect and phone performance remain adoption gates.
+
+### Native prototype and stack evidence
+
+The two synthetic hosted tests passed on the dedicated iPhone 13 mini/iOS 27.2
+Simulator at `/private/tmp/stream14-f6-prototype-4.xcresult` (log beside it). Both
+compressed file consumers preserved packet bytes and explicitly normalized
+encoder-priming timestamps. Independent decoded midpoint markers satisfied
+video position within 5 ms of 0.5 seconds and relative generated A/V onset within
+35 ms. This is an offline synthetic-file result, not camera/receiver/physical
+synchronization evidence.
+
+The reviewed F5 predecessor `ce00961` merged cleanly as `e2a3b66`. Combined
+prototype/LocalRecorder/AppConfiguration build-for-testing passes; eight hosted
+checks in three suites passed without skips at
+`/private/tmp/stream14-f6-stack-checks.xcresult` (log beside it). The application dependency pins and
+production media path remain unchanged.
+
+Independent package review found handshake/command ordering and reconnect-during-
+close races in the first candidate. Both were corrected with awaited common socket
+output and guarded cleanup lifecycle; deterministic regressions pass. The actual
+source and exported patch await focused re-review.
+
+Exact merged Simulator reproduction (choose a fresh result path):
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -derivedDataPath /private/tmp/stream14-f6-simulator \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/SharedEncodingPrototypeTests \
+  -only-testing:Stream14Tests/LocalRecorderTests \
+  -only-testing:Stream14Tests/AppConfigurationTests \
+  -resultBundlePath /private/tmp/stream14-f6-stack-repeat.xcresult test
+```
+
+The physical-SDK build-for-testing uses the same selectors with
+`-destination 'generic/platform=iOS'`, its own DerivedData and
+`CODE_SIGNING_ALLOWED=NO build-for-testing`; it is compile-only and cannot be
+installed unsigned. A signed on-phone synthetic run remains separately pending.
+
+Retained failed prototype bundles are `/private/tmp/stream14-f6-prototype.xcresult`,
+`-2.xcresult` and `-3.xcresult`. They exposed missing AAC trim metadata, then a
+container/priming timestamp normalization assumption and the destructive effect of
+synthetic cancelWriting. The final marker test is not substituted for those
+failures or for any physical transport acceptance.

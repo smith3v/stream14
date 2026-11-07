@@ -964,3 +964,36 @@ positive does not prove preservation of the original initial A/V offset.
 No successful live compressed-ingress acceptance or reconnect timing proof is
 established by the current disconnected calls. The offline MP4 packet-byte and
 presentation-time comparison remains independent valid passthrough evidence.
+
+## Full app F6: isolated single-encoder and output-admission preparation (2026-11-07)
+
+The [F6 experiment plan](2026-11-07-independent-transport-implementation.md) adds
+no production media-path or dependency change. A finite generated 720p clip uses
+one native H.264 compression session and one AAC converter. Its compressed packets
+feed two independently owned MP4 passthrough writers, preserving codec bytes and
+explicitly normalized encoder-priming timestamps. Independent decoded midpoint
+brightness/tone markers satisfy the test's 35 ms relative onset bound. Both new
+Simulator tests pass; the merged stack also passes the existing LocalRecorder and
+AppConfiguration checks (eight tests total). This proves a synthetic offline
+file adapter candidate, not camera composition, live RTMP ingress or physical sync.
+
+The initial native writer failure identified Apple's required compressed-AAC
+encoder-delay trim attachments. The adapter preserves the converter magic cookie,
+leading/trailing trim metadata and a positive common source timeline. AAC reader
+packet timestamps normalize by 2112 frames at 44.1 kHz; that adjustment and the
+separate decoded-marker check are explicit. Live AAC priming/origin behavior on
+reconnect remains unproven. A synthetic failed consumer finalizes a retained
+partial file with its failure flag intact; it does not call cancelWriting, which
+was observed to remove output. No actual storage exhaustion was tested.
+
+A [concrete local package patch](../Experiments/HaishinKit-2.3.0-bounded-output/README.md)
+is exported against exact upstream 2.3.0 with its BSD-3-Clause license and a
+reproduction manifest. It proposes acknowledged compressed sends and finite
+connection-wide admission before task retention, including in-flight byte charges
+and fail-closed overflow. Thirty-four deterministic tests pass under the reduced
+manifest. Independent review found and prompted fixes for handshake/command output
+ordering and reconnect-during-close races; focused re-review is pending. No fork
+has been published or pinned. Actual patched iOS product building, socket/TLS
+receiver behavior, shared initial A/V origin, keyframe-safe reconnect and physical
+13 mini memory/thermal/queue qualification remain gates. F1/F6 acceptance is open;
+production retains the existing local-only writer and capture/composition path.

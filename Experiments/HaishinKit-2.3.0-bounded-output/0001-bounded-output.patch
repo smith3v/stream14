@@ -1,5 +1,5 @@
 diff --git a/RTMPHaishinKit/Sources/RTMP/RTMPConnection.swift b/RTMPHaishinKit/Sources/RTMP/RTMPConnection.swift
-index 6e3cc329..ed5b7072 100644
+index 6e3cc329..6da45999 100644
 --- a/RTMPHaishinKit/Sources/RTMP/RTMPConnection.swift
 +++ b/RTMPHaishinKit/Sources/RTMP/RTMPConnection.swift
 @@ -196,6 +196,10 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
@@ -54,6 +54,15 @@ index 6e3cc329..ed5b7072 100644
          streams.removeAll()
      }
  
+@@ -311,7 +337,7 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+ 
+     /// Creates a two-way connection to an application on RTMP Server.
+     public func connect(_ command: String, arguments: (any Sendable)?...) async throws -> RTMPResponse {
+-        guard !connected else {
++        guard !connected, !isClosing, !outputAborting else {
+             throw Error.invalidState
+         }
+         guard let uri = URL(string: command), let scheme = uri.scheme, let host = uri.host, !host.isEmpty, Self.supportedProtocols.contains(scheme) else {
 @@ -320,6 +346,7 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
          self.uri = uri
          self.arguments = arguments
@@ -62,7 +71,17 @@ index 6e3cc329..ed5b7072 100644
          handshake.clear()
          chunks.removeAll()
          sequence = 0
-@@ -401,10 +428,13 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+@@ -343,8 +370,8 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+                     }
+                     do {
+                         readyState = .versionSent
+-                        await socket.send(handshake.c0c1packet)
+                         operations[Self.connectTransactionId] = continutation
++                        try await socket.sendAcknowledged([handshake.c0c1packet])
+                         for await data in await socket.recv() {
+                             try await listen(data)
+                         }
+@@ -401,18 +428,32 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
  
      /// Closes the connection from the server.
      public func close() async throws {
@@ -71,20 +90,37 @@ index 6e3cc329..ed5b7072 100644
              throw Error.invalidState
          }
  
+-        uri = nil
++        await finishClose { await self.closeStreams() }
++    }
++
++    private func closeStreams() async {
+         for stream in streams {
+-            if await stream.fcPublishName == nil {
+-                _ = try? await stream.close()
+-            } else {
+-                await stream.deleteStream()
+-            }
++            if await stream.fcPublishName == nil { _ = try? await stream.close() }
++            else { await stream.deleteStream() }
+         }
++    }
++
++    /// The actual close critical section. The cleanup boundary makes asynchronous
++    /// stream-close ordering testable without opening a socket. connect() must
++    /// reject reentry until this entire operation, including socket/state cleanup,
++    /// has finished.
++    func finishClose(cleanupStreams: @Sendable () async -> Void) async {
++        guard !isClosing else { return }
 +        isClosing = true
 +        defer { isClosing = false }
-         uri = nil
-         for stream in streams {
-             if await stream.fcPublishName == nil {
-@@ -413,6 +443,7 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
-                 await stream.deleteStream()
-             }
-         }
++        uri = nil
++        await cleanupStreams()
 +        outputQueue.close(.closed)
          await socket?.close()
          await networkMonitor?.stopRunning()
  
-@@ -432,14 +463,44 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+@@ -432,14 +473,45 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
  
      @discardableResult
      func doOutput(_ type: RTMPChunkType, chunkStreamId: RTMPChunkStreamId, message: some RTMPMessage) -> Int {
@@ -111,7 +147,8 @@ index 6e3cc329..ed5b7072 100644
 +    }
 +
 +    private func sendOutput(_ lease: RTMPOutputQueue.Lease) async throws {
-+        guard lease.generation == outputQueue.metrics.generation, let socket else {
++        guard lease.generation == outputQueue.metrics.generation,
++              readyState == .handshakeDone, let socket else {
 +            throw RTMPOutputQueue.Failure.closed
          }
 -        return message.payload.count
@@ -136,6 +173,16 @@ index 6e3cc329..ed5b7072 100644
      }
  
      func addStream(_ stream: RTMPStream) {
+@@ -453,7 +525,8 @@ public actor RTMPConnection: HaishinKit.NetworkConnection {
+             guard handshake.hasS0S1Packet else {
+                 return
+             }
+-            await socket?.send(handshake.c2packet())
++            guard let socket else { throw Error.invalidState }
++            try await socket.sendAcknowledged([handshake.c2packet()])
+             readyState = .ackSent
+             try await listen(.init())
+         case .ackSent:
 diff --git a/RTMPHaishinKit/Sources/RTMP/RTMPOutputQueue.swift b/RTMPHaishinKit/Sources/RTMP/RTMPOutputQueue.swift
 new file mode 100644
 index 00000000..24bea45a
@@ -343,7 +390,7 @@ index 00000000..24bea45a
 +
 +}
 diff --git a/RTMPHaishinKit/Sources/RTMP/RTMPSocket.swift b/RTMPHaishinKit/Sources/RTMP/RTMPSocket.swift
-index ddf1fc49..cf9cbbd1 100644
+index ddf1fc49..5d3cb09f 100644
 --- a/RTMPHaishinKit/Sources/RTMP/RTMPSocket.swift
 +++ b/RTMPHaishinKit/Sources/RTMP/RTMPSocket.swift
 @@ -10,6 +10,7 @@ final actor RTMPSocket {
@@ -354,23 +401,44 @@ index ddf1fc49..cf9cbbd1 100644
      }
  
      private var timeout: UInt64 = 15
-@@ -83,31 +84,36 @@ final actor RTMPSocket {
+@@ -27,18 +28,20 @@ final actor RTMPSocket {
+             oldValue?.forceCancel()
+         }
+     }
+-    private var outputs: AsyncStream<Data>.Continuation? {
+-        didSet {
+-            oldValue?.finish()
+-        }
+-    }
+     private var qualityOfService: DispatchQoS = .userInitiated
+     private var continuation: CheckedContinuation<Void, any Swift.Error>?
++    private var sendContentOverride: (@Sendable (Data) async throws -> Void)?
+     private lazy var networkQueue = DispatchQueue(label: "com.haishinkit.HaishinKit.RTMPSocket.network", qos: qualityOfService)
+ 
+     init() {
+     }
+ 
++    /// Internal network boundary for deterministic delayed-completion tests.
++    init(sendContent: @escaping @Sendable (Data) async throws -> Void) {
++        self.sendContentOverride = sendContent
++        connected = true
++    }
++
+     init(qualityOfService: DispatchQoS, securityLevel: StreamSocketSecurityLevel) {
+         self.qualityOfService = qualityOfService
+         switch securityLevel {
+@@ -83,31 +86,26 @@ final actor RTMPSocket {
          }
      }
  
-+    private static let maximumPendingBytes = 4 * 1024 * 1024
-+
-+    // Legacy handshake path only; bounded both in bytes and stream elements.
-     func send(_ data: Data) {
+-    func send(_ data: Data) {
 -        guard connected else {
 -            return
 -        }
-+        guard connected else { return }
-+        guard data.count <= Self.maximumPendingBytes - queueBytesOut else { close(); return }
-         queueBytesOut += data.count
+-        queueBytesOut += data.count
 -        outputs?.yield(data)
-+        if case .dropped = outputs?.yield(data) { close() }
-     }
+-    }
++    private static let maximumPendingBytes = 4 * 1024 * 1024
  
 -    func send(_ iterator: AnyIterator<Data>) {
 -        guard connected else {
@@ -381,15 +449,14 @@ index ddf1fc49..cf9cbbd1 100644
 -            outputs?.yield(data)
 -        }
 -    }
-+    func send(_ iterator: AnyIterator<Data>) { for data in iterator { send(data) } }
-+    func send(_ chunks: [Data]) { for data in chunks { send(data) } }
- 
+-
 -    func send(_ chunks: [Data]) {
 -        guard connected else {
 -            return
 -        }
-+    /// One connection pump awaits each chunk completion; this bypasses the legacy
-+    /// AsyncStream rather than moving a bounded app queue into an unbounded one.
++    /// Handshake and the one connection pump both await this same completion
++    /// path. There is no second AsyncStream consumer that can reorder C2 and the
++    /// connect command. Each chunk is processed before the next is submitted.
 +    func sendAcknowledged(_ chunks: [Data]) async throws {
          for data in chunks {
 +            guard connected else { throw Error.invalidState }
@@ -409,15 +476,38 @@ index ddf1fc49..cf9cbbd1 100644
          }
      }
  
-@@ -146,7 +152,7 @@ final actor RTMPSocket {
+@@ -136,7 +134,6 @@ final actor RTMPSocket {
+             self.continuation = nil
+         }
+         connected = false
+-        outputs = nil
+         connection = nil
+         continuation = nil
+     }
+@@ -146,15 +143,6 @@ final actor RTMPSocket {
          case .ready:
              logger.info("Connection is ready.")
              connected = true
 -            let (stream, continuation) = AsyncStream<Data>.makeStream()
-+            let (stream, continuation) = AsyncStream<Data>.makeStream(bufferingPolicy: .bufferingOldest(32))
-             Task {
-                 for await data in stream where connected {
-                     try await send(data)
+-            Task {
+-                for await data in stream where connected {
+-                    try await send(data)
+-                    totalBytesOut += data.count
+-                    queueBytesOut -= data.count
+-                }
+-            }
+-            self.outputs = continuation
+             self.continuation?.resume()
+             self.continuation = nil
+         case .waiting(let error):
+@@ -183,6 +171,7 @@ final actor RTMPSocket {
+     }
+ 
+     private func send(_ data: Data) async throws {
++        if let sendContentOverride { try await sendContentOverride(data); return }
+         return try await withCheckedThrowingContinuation { continuation in
+             guard let connection else {
+                 continuation.resume(throwing: Error.invalidState)
 diff --git a/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift b/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift
 index 79d38f07..1bd09651 100644
 --- a/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift
@@ -475,6 +565,99 @@ index 79d38f07..1bd09651 100644
      public func append(_ sampleBuffer: CMSampleBuffer) {
          switch sampleBuffer.formatDescription?.mediaType {
          case .video:
+diff --git a/RTMPHaishinKit/Tests/RTMP/RTMPOutputOrderingTests.swift b/RTMPHaishinKit/Tests/RTMP/RTMPOutputOrderingTests.swift
+new file mode 100644
+index 00000000..a76470e5
+--- /dev/null
++++ b/RTMPHaishinKit/Tests/RTMP/RTMPOutputOrderingTests.swift
+@@ -0,0 +1,87 @@
++import Foundation
++import Testing
++@testable import RTMPHaishinKit
++
++@Suite struct RTMPOutputOrderingTests {
++    private actor Pause {
++        nonisolated let entered: AsyncStream<Void>
++        private let signal: AsyncStream<Void>.Continuation
++        private var continuation: CheckedContinuation<Void, Never>?
++        init() { (entered, signal) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1)) }
++        func wait() async {
++            await withCheckedContinuation { continuation in
++                self.continuation = continuation
++                signal.yield(())
++            }
++        }
++        func release() { continuation?.resume(); continuation = nil }
++    }
++    private actor Wire {
++        private(set) var bytes: [UInt8] = []
++        func append(_ data: Data) { bytes.append(contentsOf: data) }
++    }
++
++    @Test func delayedHandshakeCompletionPrecedesQueuedConnectBytes() async throws {
++        let pause = Pause()
++        let wire = Wire()
++        let socket = RTMPSocket(sendContent: { data in
++            if data.first == 2 { await pause.wait() }
++            await wire.append(data)
++        })
++        struct Connect: RTMPMessage {
++            let type = RTMPMessageType.amf0Command
++            let streamId: UInt32 = 0
++            let timestamp: UInt32 = 0
++            let payload = Data([3])
++        }
++        let queue = RTMPOutputQueue(byteLimit: 1024, messageLimit: 4, chunkSize: 128)
++        var handshakeEntered = pause.entered.makeAsyncIterator()
++        // This is the connection's real handshake completion contract: C2 must
++        // finish processing before its caller can queue the connect command.
++        let sender = Task {
++            try await socket.sendAcknowledged([Data([2])])
++            queue.offer(.zero, chunkStreamId: .command, message: Connect())
++        }
++        _ = await handshakeEntered.next()
++        #expect(queue.metrics.retainedMessages == 0)
++        #expect(await wire.bytes.isEmpty)
++        await pause.release()
++        try await sender.value
++        let command = try #require(queue.take())
++        try await socket.sendAcknowledged([command.message.payload])
++        queue.acknowledge(command)
++        #expect(await wire.bytes == [2, 3])
++    }
++
++    @Test func reconnectIsRejectedThroughoutPendingCloseCleanup() async throws {
++        let connection = RTMPConnection()
++        let pause = Pause()
++        var closeEntered = pause.entered.makeAsyncIterator()
++        let close = Task { await connection.finishClose { await pause.wait() } }
++        _ = await closeEntered.next()
++        do {
++            _ = try await connection.connect("rtmps://127.0.0.1/unused")
++            Issue.record("Reconnect entered a pending close operation")
++        } catch {
++            guard case RTMPConnection.Error.invalidState = error else {
++                Issue.record("Reconnect did not fail at the cleanup guard")
++                await pause.release()
++                await close.value
++                return
++            }
++        }
++        await pause.release()
++        await close.value
++        #expect(await connection.connected == false)
++        #expect(await connection.uri == nil)
++        // A malformed URL distinguishes a released lifecycle guard from an
++        // attempted network connection, without creating any real socket.
++        do { _ = try await connection.connect("rtmps:/"); Issue.record("Malformed URL accepted") }
++        catch {
++            guard case RTMPConnection.Error.unsupportedCommand = error else {
++                Issue.record("Lifecycle guard remained closed after cleanup")
++                return
++            }
++        }
++    }
++}
 diff --git a/RTMPHaishinKit/Tests/RTMP/RTMPOutputQueueTests.swift b/RTMPHaishinKit/Tests/RTMP/RTMPOutputQueueTests.swift
 new file mode 100644
 index 00000000..63d5e026

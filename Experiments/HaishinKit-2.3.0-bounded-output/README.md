@@ -19,7 +19,7 @@ Admission reserves payload bytes plus conservative chunk-header overhead and cou
 queued **and in-flight** messages. Default limits are 4 MiB and 128 messages.
 Serialization can additionally retain one in-flight chunk expansion, bounded by
 that message's reservation; the logical byte limit is not a measured total process
-memory limit. The separate legacy handshake path is capped at 4 MiB / 32 elements.
+memory limit. Handshake C0C1/C2 use the same acknowledged socket path before RTMP commands; the old independent AsyncStream sender is removed. Socket admission has an additional 4 MiB cap.
 Overflow closes the complete transport generation; arbitrary RTMP chunks are never
 dropped while a connection continues.
 
@@ -83,8 +83,8 @@ swift test --package-path /private/tmp/your-new-validation-directory --skip rele
 The excluded upstream test tries a localhost RTMP server. No test here publishes
 camera/audio or connects to an external destination.
 
-Recorded final reduced-manifest run: `/private/tmp/stream14-f6-patch-tests-4.log`,
-**32 tests in 14 suites passed**, including six new queue tests. The original full
+Recorded final reduced-manifest run: `/private/tmp/stream14-f6-patch-tests-5.log`,
+**34 tests in 15 suites passed**, including eight new queue/ordering tests. A focused recheck after tightening the lifecycle-ready assertion also passed at `/private/tmp/stream14-f6-patch-ordering-recheck.log`. The original full
 manifest attempt was stopped while downloading unrelated binary artifacts; it is
 not a passed full-package validation. The app's package pins were never changed.
 
@@ -103,3 +103,16 @@ compatibility tests and exact pin/notices if later adopted. The current upstream
 release has no such API; the app must not call these methods until a separately
 reviewed dependency decision adopts a verified implementation. No runtime pipeline,
 recording lifecycle or distribution behavior changes in this experiment.
+
+## Independent review corrections
+
+The first review found two material races. The original candidate had separate
+handshake and queued-command socket writers, permitting connect bytes to overtake
+C2; both handshake messages now await the same completion path and the independent
+legacy sender is removed. A delayed-completion regression covers this contract.
+The second race admitted reconnect while old stream cleanup was awaiting; connect
+now rejects closing/aborting state until the entire cleanup finishes. A controlled
+actual close-critical-section regression verifies rejection during the wait and
+release afterward. Connect's continuation is registered before a throwing handshake
+send so failure can complete it, rather than orphaning it. Focused re-review remains
+pending before handoff.

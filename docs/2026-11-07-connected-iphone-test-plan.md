@@ -185,7 +185,7 @@ TEST_RUNNER_STREAM14_DUAL_OUTPUT_SECONDS=30 \
 
 This candidate clamps its requested loop to 12–600 seconds and uses two encoders. Its one-second reconnect and isolated writer-failure probe are NOT proof of B08/B10, common encoded fan-out, finite socket queues or physical sync. Do not run it against an ordinary public event.
 
-The F6 SharedEncodingPrototypeTests suite exists only in the experimental F6 branch and currently has unresolved packet comparison/failure-preservation tests. After fixes, independent review and integration, Codex may run it on-device with the same helper and selector Stream14Tests/SharedEncodingPrototypeTests. It uses generated media and no camera/network. Do not present that command as a current passing or integrated production acceptance test.
+The F6 SharedEncodingPrototypeTests suite is experimental. At checkpoint 9753224, both synthetic Simulator tests pass: native single-encode fan-out into two files, codec packet bytes with explicit AAC trim-origin handling, decoded midpoint markers within 35 ms, and bounded sender/retained partial-consumer checks. This is not physical sync, real socket delivery or production acceptance. After independent review and integration, Codex should run the same suite on the connected 13 mini using selector Stream14Tests/SharedEncodingPrototypeTests to verify native-device API behavior. It uses generated media and no camera/network. Earlier failed results are retained; never label this proof of the full F6 acceptance gate.
 
 Other fixture-driven hosted tests and Simulator-only seeded deletion/recording-layout/denied-permission tests do not need this phone session. Do not carry their fixture IDs or Simulator privacy-reset commands onto the owner's phone.
 
