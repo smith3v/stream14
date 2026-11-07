@@ -1,7 +1,7 @@
 import Foundation
 
-/// Only idempotent reads. Every retry gets a current SDK-managed token, and every
-/// response is checked against the account generation before decoding/returning.
+/// Idempotent reads use bounded retries; the focused F5 mutations below are sent
+/// once. Credentials stay in memory and every read checks the account generation.
 nonisolated struct YouTubeClient: Sendable {
     typealias Send = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
     typealias Token = @MainActor @Sendable (UInt64) async throws -> String
@@ -175,6 +175,86 @@ nonisolated struct YouTubeClient: Sendable {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "EEE',' dd MMM yyyy HH':'mm':'ss z"
         return formatter.date(from: value).map { max(0, $0.timeIntervalSinceNow) } ?? fallback
+    }
+}
+
+extension YouTubeClient {
+    func checkBindingGeneration(_ generation: UInt64) async throws { try await check(generation) }
+
+    func allBroadcasts(channelID: String, generation: UInt64) async throws -> [YouTubeBroadcast] {
+        let events: [YouTubeBroadcast] = try await pages("liveBroadcasts", query: [
+            "part": "snippet,status,contentDetails", "broadcastStatus": "all", "broadcastType": "all"
+        ], generation: generation)
+        guard events.allSatisfy({ $0.snippet?.channelId == channelID }) else { throw YouTubeReadError.wrongChannel }
+        guard events.allSatisfy({ !$0.id.isEmpty }) else { throw YouTubeReadError.malformedResponse }
+        return events
+    }
+
+    func ingestionStream(id: String, channelID: String, generation: UInt64) async throws -> YouTubeIngestionStream {
+        let page: YouTubePage<YouTubeIngestionStream> = try await read("liveStreams", query: [
+            "part": "snippet,cdn,status,contentDetails", "id": id
+        ], generation: generation)
+        guard page.items.count == 1, let stream = page.items.first, stream.id == id else { throw YouTubeReadError.missingStream }
+        guard stream.snippet?.channelId == channelID else { throw YouTubeReadError.wrongChannel }
+        return stream
+    }
+
+    /// A successful mutation result must reach the workflow even if the account
+    /// changed while awaiting it: persist its ID first, then reject stale readiness.
+    func insertDedicatedStream(marker: UUID, generation: UInt64) async throws -> YouTubeIngestionStream {
+        let body = try JSONSerialization.data(withJSONObject: [
+            "snippet": ["title": "stream14 " + marker.uuidString],
+            "cdn": ["ingestionType": "rtmp", "resolution": "variable", "frameRate": "variable"],
+            "contentDetails": ["isReusable": false]
+        ])
+        let created: YouTubeIngestionStream = try await writeOnce("liveStreams", query: [
+            "part": "snippet,cdn,status,contentDetails"
+        ], body: body, generation: generation)
+        guard !created.id.isEmpty, created.id.utf8.count <= 512 else { throw YouTubeMutationError.uncertain }
+        return created
+    }
+
+    func bindBroadcast(eventID: String, streamID: String, generation: UInt64) async throws -> YouTubeBroadcast {
+        try await writeOnce("liveBroadcasts/bind", query: [
+            "part": "snippet,status,contentDetails", "id": eventID, "streamId": streamID
+        ], body: nil, generation: generation)
+    }
+
+    private func writeOnce<Value: Decodable & Sendable>(_ resource: String, query: [String: String],
+                                                       body: Data?, generation: UInt64) async throws -> Value {
+        try await check(generation)
+        let accessToken: String
+        do { accessToken = try await token(generation) }
+        catch {
+            if error is CancellationError || (error as? YouTubeAuthorizationError) == .cancelled { throw CancellationError() }
+            throw YouTubeReadError.authorizationRequired
+        }
+        try await check(generation)
+        var parts = URLComponents(string: "https://www.googleapis.com/youtube/v3/" + resource)!
+        parts.queryItems = query.sorted(by: { $0.key < $1.key }).map { URLQueryItem(name: $0.key, value: $0.value) }
+        var request = URLRequest(url: parts.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.setValue("Bearer " + accessToken, forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
+        let data: Data
+        let response: HTTPURLResponse
+        do { (data, response) = try await send(request) }
+        catch { throw YouTubeMutationError.uncertain }
+        guard response.url?.scheme == "https", response.url?.host == "www.googleapis.com", data.count <= 2_000_000 else {
+            throw YouTubeMutationError.uncertain
+        }
+        if (200..<300).contains(response.statusCode) {
+            do { return try JSONDecoder().decode(Value.self, from: data) }
+            catch { throw YouTubeMutationError.uncertain }
+        }
+        // No automatic refresh/retry for writes. Timeouts/server failures may have
+        // applied remotely; a definite API rejection permits a later explicit try.
+        if (400..<500).contains(response.statusCode), response.statusCode != 408 {
+            throw YouTubeMutationError.rejected(Self.failure(status: response.statusCode, data: data, resource: resource))
+        }
+        throw YouTubeMutationError.uncertain
     }
 }
 
