@@ -228,6 +228,15 @@ new development build.
 
 ### MVP scope and interface
 
+Issue #34 (2026-11-07) removes the separate browser-source strip from the main
+screen. A top-aligned ZStack retains the nonzero 60-point attached WebKit host
+behind the opaque system-background ScrollView; the scrolling content fills the
+available area without reserving that strip's height. The browser itself remains
+attached, unhidden and at alpha 1 with its 1920×1080 CSS canvas. Overlay status,
+manual hiding and URL settings remain available, and the composed camera preview
+and recorder retain the same WebOverlayLayer handoff. Covered-host snapshot
+evidence and remaining device limits are recorded in the development guide.
+
 - Rear camera (Wide by default), microphone, landscape 1920×1080 at 30 fps on iPhone 13 mini
   with iOS 27. Use the main profile's starting encoding settings below. No 720p,
   60 fps, HDR, lens changes during recording, manual exposure, or advanced audio controls yet.
