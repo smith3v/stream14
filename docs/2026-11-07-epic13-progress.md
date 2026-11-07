@@ -64,3 +64,7 @@ Current SSH-agent signing is unavailable. Publishing via an explicit HTTPS URL a
 ## Connected-phone batching request
 
 The owner will connect the phone later and requested that all connected-device tests be recorded for one coordinated session. The [connected-iPhone test plan](2026-11-07-connected-iphone-test-plan.md) now lists current commands, manual/service-gated checks, future F6–F14 acceptance and separately agreed long runs, with status/evidence templates. No phone tests have been started. This documentation PR is inserted after F3/#43; F5 must merge it before its own chained PR.
+
+## Owner correction — five-minute routine
+
+The owner rejected an hour-long connected-phone test session and requested about five minutes. The connected-phone plan now starts with a five-minute TOTAL timeline; its 50 rows are a backlog, not a single run. Laptop-only preparation/fixtures/Simulator checks happen beforehand; setup blockers stop the visit within budget, long-run criteria remain pending/unscheduled unless agreed. A fresh short-smoke agent is implementing one local-only opt-in two-profile test targeting 60–90 seconds actual execution. Do not claim that selector exists or passes before its source/build evidence. Root is updating PR #44 and will merge this correction forward into F5/F6 without rewriting history.
