@@ -66,3 +66,42 @@ xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
   -only-testing:Stream14Tests/AppConfigurationTests \
   -resultBundlePath /private/tmp/stream14-f3-tests.xcresult test
 ```
+
+## Final merged-stack handoff (2026-11-07)
+
+Merged reviewed F4 predecessor `ef1e7be` without rewriting history at `92c0953`.
+The SetupView conflict retains both the app-owned YouTube selection and persisted
+SessionProfile initialization; both specifications/guide sections and corrected F1
+evidence remain. PR target is `codex/issue-17-session-controls` (PR #42), per the
+owner's stacked workflow. The initial plan checkpoint is `d4f14ed`, implementation
+`e7941fb`, and fixture/lifecycle/evidence checkpoint `d228825`.
+
+The merged-stack native unsigned Release passed, including the final accessibility
+change: `/private/tmp/stream14-f3-release-final-2.log`. Hosted integration passed
+**32 tests in four suites** (13 F3, 11 authorization, two configuration, six
+profile/control): `/private/tmp/stream14-f3-merged-tests.xcresult` and `.log`.
+
+Initial portrait UI audit found low contrast on the unavailable disabled Refresh
+label; that failed result is retained in `/private/tmp/stream14-f3-ui.xcresult`.
+The action is now shown only while authorized, with an explicit 44-point label
+height; disconnected instructions remain readable. No accessibility audit was
+suppressed. Final recheck passed **13 F3 tests plus two setup UI tests** including
+portrait and largest-text landscape accessibility audits:
+`/private/tmp/stream14-f3-ui-recheck.xcresult` and `.log`. Exported original/final
+private screenshots were inspected; final evidence lives in
+`/private/tmp/stream14-f3-ui-recheck-attachments`. These default-config checks do
+not establish authenticated event-row layout or physical VoiceOver acceptance.
+
+Relative documentation-link/fence checks and `git diff --check` pass. Independent
+review remains for the parent to arrange against actual final files/full main diff
+and the F4 stage delta. PR body: `/private/tmp/stream14-f3-pr-body.md`. No remote
+PR or issue mutation was performed by this stage agent. No actual Google request,
+media publishing, phone recording or recording deletion occurred.
+
+F5/F7 entry points: the app-owned `YouTubeEventSelection` exposes channel, events,
+selected, refresh, select, invalidate/accountChanged and async recheckSelected.
+`YouTubeClient` exposes authorizedChannel, upcomingBroadcasts, broadcast(id:channelID:
+generation:) and stream(id:channelID:generation:). F5 must add its separately
+reviewed write/reconciliation policy, short-lived key ownership and binding guards;
+F3's bounded read retries must not be reused blindly for mutations. F7 must freeze
+account/event/profile snapshots around confirmed Go Live and reconcile remote state.
