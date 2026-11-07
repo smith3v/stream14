@@ -636,7 +636,10 @@ the app does not fetch a saved URL. **Open camera** requests camera/microphone
 permission and starts the composed preview. Keep the phone landscape with the rear
 camera upright, then **Record** / **Stop recording**. The timer/status are native
 UI, excluded from output. Manual hiding changes both preview and file composition.
-A small source-browser strip remains visibly attached; it is not the camera preview.
+The separate source-browser strip is removed by issue #34. Its WebKit host remains
+attached behind the opaque scrolling screen for snapshots, without reserving space.
+Inspect the overlay in the composed camera preview; the status and manual-hide
+control remain in the main screen and URL setup remains under **Overlay**.
 
 Finished/retained samples are listed with actual status. Play them using the system
 player, or **Export original file** through Files/share. No conversion or Photos
@@ -1021,3 +1024,48 @@ playback. Focused Simulator lens/setup checks passed in
 `/tmp/stream14-issue33-compact-simulator.xcresult`; the Release build passed in
 `/tmp/stream14-issue33-compact-release.log`. Independent review found no material
 issues. Private screenshots remain outside Git.
+
+### Separate overlay preview removed, issue #34 (2026-11-07)
+
+The main screen no longer reserves a 60-point source-browser strip. A top-aligned
+ZStack retains the attached, nonzero WebKit host behind the opaque system-background
+ScrollView. The source itself stays unhidden at alpha 1; its full-canvas snapshots
+still feed the existing composed preview and recorder. Status, manual hiding and
+Overlay URL settings remain available. No recording/output lifecycle is changed.
+See the [focused plan](2026-11-07-remove-overlay-preview-implementation.md).
+
+Reproduce with fresh result paths:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /tmp/stream14-issue34-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution \
+  -resultBundlePath /tmp/stream14-issue34-new.xcresult test
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /tmp/stream14-issue34-release \
+  -clonedSourcePackagesDirPath /tmp/stream14-issue3-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+```
+
+Evidence: the hosted suite passed 26 cases (including opt-in skips) in ten suites
+in `/tmp/stream14-issue34-simulator.xcresult`. The covered 60-point WebKit host
+produced full 1920×1080 alpha snapshots, including changing score pixels, and
+manual hiding still worked. The actual HaishinKit NV12 hide/restore regression and
+recorder tests passed. Unsigned iPhone Release passed in
+`/tmp/stream14-issue34-release.log`. The initial UI run's new gap assertion used the
+ScrollView accessibility frame, which includes navigation insets, and failed;
+the corrected assertion measures the heading from the navigation bar's bottom.
+Final UI evidence is `/tmp/stream14-issue34-ui-final.xcresult`: ordinary portrait,
+landscape largest-text and overlay-settings checks pass, including accessibility
+audits; six fixture/device opt-in tests are skipped. Retained portrait/landscape
+screenshots are inspected for removal of the strip and retained content.
+
+Independent source review found no material implementation issues. The paired
+physical phone was disconnected; covered-host rendering with camera preview,
+recording/playback, spoken VoiceOver and owner visual acceptance on the 13 mini
+remain unverified for this change. No camera/microphone capture, private recording
+deletion, TestFlight upload or long-run qualification was performed.

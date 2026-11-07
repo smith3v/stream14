@@ -14,11 +14,11 @@ struct SetupView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Stable attached source surface; never place WebKit in a lazy row.
+            ZStack(alignment: .top) {
+                // Keep WebKit attached at a nonzero size for snapshots, covered by
+                // the opaque scroll surface so it takes no separate layout space.
                 AttachedOverlayView(renderer: experiment.renderer)
                     .frame(height: 60)
-                    .background(Color(uiColor: .secondarySystemBackground))
                     .accessibilityHidden(true)
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -60,6 +60,7 @@ struct SetupView: View {
                         }
                     }
                     Text(experiment.renderer.status).font(.caption)
+                        .accessibilityIdentifier("overlayStatus")
                     Toggle("Hide overlay manually", isOn: Binding(
                         get: { experiment.renderer.health.manuallyHidden },
                         set: { experiment.renderer.setManuallyHidden($0) }))
@@ -106,6 +107,7 @@ struct SetupView: View {
                 .tint(Color.primary)
                 .controlSize(.large)
             }
+            .background(Color(uiColor: .systemBackground))
             }
             .navigationTitle("stream14")
             .toolbar {

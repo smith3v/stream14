@@ -304,6 +304,11 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertLessThan(app.frame.width, app.frame.height)
         XCTAssertTrue(app.staticTexts["setupStatus"].exists)
         XCTAssertEqual(app.staticTexts["setupStatus"].label, "Local recording")
+        // Only standard content padding precedes the heading; no 60-point strip.
+        XCTAssertEqual(app.staticTexts["setupStatus"].frame.minY - app.navigationBars["stream14"].frame.maxY,
+                       16, accuracy: 2)
+        XCTAssertTrue(app.staticTexts["overlayStatus"].exists)
+        XCTAssertTrue(app.switches["Hide overlay manually"].exists)
         XCTAssertEqual(
             app.staticTexts["setupExplanation"].label,
             "Record camera, microphone and a transparent web overlay. Keep the phone in landscape with the rear camera upright."

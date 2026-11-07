@@ -13,7 +13,7 @@ struct WebOverlayRendererTests {
         }
     }
 
-    @Test @MainActor func attachedFixtureHasCanvasAndAlpha() async throws {
+    @Test @MainActor func coveredAttachedFixtureHasCanvasAndAlpha() async throws {
         let fixtureURL = try #require(Bundle(for: FixtureBundle.self).url(forResource: "overlay", withExtension: "html", subdirectory: "Fixtures")
             ?? Bundle(for: FixtureBundle.self).url(forResource: "overlay", withExtension: "html"))
         let html = try String(contentsOf: fixtureURL, encoding: .utf8)
@@ -26,8 +26,14 @@ struct WebOverlayRendererTests {
         let controller = UIViewController()
         window.rootViewController = controller
         let host = OverlayViewport(webView: renderer.webView)
-        host.frame = CGRect(x: 0, y: 80, width: 375, height: 211)
+        host.frame = CGRect(x: 0, y: 80, width: 375, height: 60)
         controller.view.addSubview(host)
+        // Main-screen source host sits behind an opaque scroll surface, without
+        // being hidden, detached, zero-sized or made transparent itself.
+        let cover = UIView(frame: controller.view.bounds)
+        cover.backgroundColor = .systemBackground
+        cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        controller.view.addSubview(cover)
         window.makeKeyAndVisible()
         host.setNeedsLayout()
         host.layoutIfNeeded()
@@ -43,6 +49,8 @@ struct WebOverlayRendererTests {
         #expect(image.height == 1080)
         #expect(renderer.visible)
         #expect(renderer.viewport == "1920×1080 CSS → 1920×1080 pixels")
+        #expect(renderer.webView.window != nil)
+        #expect(!host.isHidden && host.alpha == 1)
         // Normalize to RGBA and inspect untouched transparency and the CSS panel.
         let data = try #require(image.dataProvider?.data)
         let bytes = CFDataGetBytePtr(data)!
