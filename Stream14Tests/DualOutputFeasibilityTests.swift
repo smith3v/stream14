@@ -73,7 +73,7 @@ struct DualOutputFeasibilityTests {
             try await Task.sleep(for: .milliseconds(34))
         }
         _ = try await recorder.finish()
-        try await exerciseCompressedIngress(source)
+        try await callCompressedOverloadsForCompileCompatibility(source)
         let sourceAsset = AVURLAsset(url: source)
         let writer = try AVAssetWriter(outputURL: copy, fileType: .mp4)
         var tracks: [(AVAssetReader, AVAssetReaderTrackOutput, AVAssetWriterInput)] = []
@@ -116,9 +116,12 @@ struct DualOutputFeasibilityTests {
         try FileManager.default.removeItem(at: directory)
     }
 
-    /// Compile and exercise both public compressed ingress overloads. An idle
-    /// stream has no destination, so this proves API/format fit, not delivery.
-    private func exerciseCompressedIngress(_ url: URL) async throws {
+    /// Compile/call compatibility only. append returns Void and catches/logs
+    /// timestamp errors; idle state and absent observer callbacks do not establish
+    /// acceptance of these media formats. Run 5 logged invalidSequence for the
+    /// first zero-timestamp samples. A live adapter needs a common positive input
+    /// timeline, strict per-track order, and verified first-origin/A/V handling.
+    private func callCompressedOverloadsForCompileCompatibility(_ url: URL) async throws {
         let connection = RTMPConnection()
         let stream = RTMPStream(connection: connection)
         let probe = RawStreamProbe()
@@ -229,7 +232,8 @@ struct DualOutputFeasibilityTests {
         let previousAppender = transportLogger.appender
         transportLogger.appender = DiscardTransportLogs()
         defer { transportLogger.appender = previousAppender }
-        let session = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in })
+        // This private candidate has fixed 1080p fixtures/transport settings.
+        let session = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in }, profile: .fullHD)
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         let window = UIWindow(windowScene: scene)
         let controller = UIViewController()

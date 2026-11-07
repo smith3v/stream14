@@ -7,9 +7,9 @@ final class WebOverlayLayer {
     private var lastImage: CGImage?
     private var lastVisible = false
     private var installed = false
-    func install(on mixer: MediaMixer) throws {
-        mixer.screen.size = CGSize(width: 1920, height: 1080)
-        layer.size = CGSize(width: 1920, height: 1080)
+    func install(on mixer: MediaMixer, profile: SessionProfile = .fullHD) throws {
+        mixer.screen.size = profile.size
+        layer.size = profile.size
         if !installed { try mixer.screen.addChild(layer); installed = true }
         layer.isVisible = false
         layer.ciImage = nil

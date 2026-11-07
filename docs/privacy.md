@@ -72,7 +72,8 @@ stream14 has no developer-operated collection backend, advertising, analytics or
 third-party crash-reporting SDK. The app does not track you across apps or websites.
 It uses HaishinKit and Logboard locally for media processing and local diagnostic
 logging. The app privacy manifest declares elapsed-time calculations for overlay
-freshness and app-container file metadata for safe deletion; neither is used for
+freshness, app-container file metadata for safe deletion, and app-only UserDefaults
+for the selected nonsecret session profile. These are not used for
 fingerprinting or sent to the developer by stream14.
 
 Apple operates TestFlight and may provide beta feedback and crash information under
