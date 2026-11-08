@@ -724,6 +724,14 @@ compares this with library-native separate encoding. Production keeps its existi
 single local encode until physical evidence and explicit architecture review select
 a dual-output path. Test-only RTMP experiments do not authorize production adoption.
 
+F6 preparation adds a test-only native single-encoder/file-fan-out candidate and a
+reviewable, unadopted package admission patch. Synthetic compressed-file bytes,
+explicit AAC trim-origin handling and independently decoded midpoint markers pass
+Simulator checks; these are not physical or receiver evidence. See the
+[F6 feasibility record](feasibility.md#full-app-f6-isolated-single-encoder-and-output-admission-preparation-2026-11-07)
+for retained failures, proposed bounds and unresolved adoption/qualification gates.
+No production encoding, transport or recording-lifecycle selection changes yet.
+
 ## 7. Architecture, ownership, and interfaces
 
 Use one Xcode iOS app target plus focused unit and UI test targets. Keep small
