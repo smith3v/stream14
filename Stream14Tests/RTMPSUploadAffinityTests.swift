@@ -7,7 +7,8 @@ struct RTMPSUploadAffinityTests {
         let original = try prepared()
         var affinity = RTMPSUploadAffinity()
         #expect(!affinity.hasAdmittedTransport)
-        #expect(affinity.admit(original))
+        let admittedOriginal = affinity.admit(original)
+        #expect(admittedOriginal)
         #expect(affinity.hasAdmittedTransport)
         #expect(affinity.permits(original))
         let changed = try [
@@ -17,7 +18,8 @@ struct RTMPSUploadAffinityTests {
         ]
         for candidate in changed {
             #expect(!affinity.permits(candidate))
-            #expect(!affinity.admit(candidate))
+            let admittedChanged = affinity.admit(candidate)
+            #expect(!admittedChanged)
             #expect(affinity.permits(original))
         }
     }
@@ -25,15 +27,18 @@ struct RTMPSUploadAffinityTests {
         let original = try prepared()
         let other = try prepared(event: "other-event")
         var affinity = RTMPSUploadAffinity()
-        #expect(affinity.admit(original))
+        let admittedOriginal = affinity.admit(original)
+        #expect(admittedOriginal)
         affinity.beginRecordingSession(keepingTransportEpoch: true)
         #expect(!affinity.permits(other))
         affinity.beginRecordingSession(keepingTransportEpoch: false)
         #expect(!affinity.hasAdmittedTransport)
-        #expect(affinity.admit(other))
+        let admittedOther = affinity.admit(other)
+        #expect(admittedOther)
         affinity.endCaptureSession()
         #expect(!affinity.hasAdmittedTransport)
-        #expect(affinity.admit(original))
+        let admittedAfterReset = affinity.admit(original)
+        #expect(admittedAfterReset)
     }
     @Test func diagnosticReflectionOmitsContextAndCredentials() throws {
         let context = try #require(RTMPSUploadContext(prepared()))

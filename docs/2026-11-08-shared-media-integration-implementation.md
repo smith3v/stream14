@@ -235,3 +235,21 @@ path sends duration-only AMF onMetaData because the library populates profile
 fields only from raw outgoing input formats. Codec sequence headers carry the
 actual compressed formats. No receiver acceptance/profile-metadata result is
 claimed; a necessary future metadata change needs its own patch/tests/review.
+
+### Observed review-fix validation
+
+The first context-test build failed because Swift Testing's #expect macro cannot
+invoke a mutating value method through its captured immutable receiver. The test
+now evaluates each admission into a local Bool before asserting; application code
+and policy behavior are unchanged by this macro correction. The failed log is
+retained at `/private/tmp/stream14-integration-review-fixes-1.log`.
+
+The corrected affected repeat passes **11 executed checks in three suites** at
+`/private/tmp/stream14-integration-review-fixes-2.xcresult` (2.579 seconds), covering
+exact retry identity/new-session policy, actual writer-startup/adapter/failure
+independence and finite upload queues. Generic unsigned iPhone SDK build-for-testing
+also passes at `/private/tmp/stream14-integration-fork-build-4.log`. Two noncapture
+UI checks passed at `/private/tmp/stream14-integration-ui-1.xcresult` (normal launch
+and accessible landscape profile controls). No phone identifier, installation,
+capture, stream socket or Google mutation was used for this follow-up. Focused
+independent re-review of the final context fix is pending before handoff.
