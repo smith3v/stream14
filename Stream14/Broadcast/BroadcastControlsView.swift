@@ -10,7 +10,7 @@ struct BroadcastControlsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("YouTube broadcast").font(.headline)
-            Text(broadcast.message).fixedSize(horizontal: false, vertical: true)
+            Text("YouTube: " + broadcast.message).fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("broadcastStatus")
             Text("Upload: " + media.uploadMessage)
                 .accessibilityIdentifier("uploadStatus")
@@ -31,20 +31,24 @@ struct BroadcastControlsView: View {
                 Button("Go Live", systemImage: "dot.radiowaves.left.and.right") {
                     broadcast.requestConfirmation(channel: selection.channel, event: selection.selected)
                 }
+                .frame(minHeight: 44)
                 .disabled(selection.selected == nil)
                 .accessibilityIdentifier("goLive")
             }
             if broadcast.isWorking && broadcast.state != .ending {
                 Button("Cancel YouTube startup") { broadcast.cancelStartup() }
+                    .frame(minHeight: 44)
                     .accessibilityIdentifier("cancelBroadcastStartup")
             }
             if broadcast.activeIntent != nil || broadcast.pendingRemote != nil {
                 Button("End broadcast", role: .destructive) { confirmingEnd = true }
+                    .frame(minHeight: 44)
                     .disabled(broadcast.state == .ending)
                     .accessibilityIdentifier("endBroadcast")
             }
             if broadcast.state == .needsReconciliation {
                 Button("Reconcile YouTube status") { broadcast.reconcile() }
+                    .frame(minHeight: 44)
                     .disabled(broadcast.isWorking || broadcast.hasUnsettledMutation || !authorization.isAuthorized)
                     .accessibilityIdentifier("reconcileBroadcast")
                 Link("Open YouTube Studio", destination: URL(string: "https://studio.youtube.com")!)

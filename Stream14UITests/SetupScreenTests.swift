@@ -6,6 +6,124 @@ final class SetupScreenTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    private func auditInterface(_ app: XCUIApplication) throws {
+        try app.performAccessibilityAudit { issue in
+            print("F10 accessibility issue: \(issue.auditType) \(issue.element?.debugDescription ?? "unknown element")")
+            return false
+        }
+    }
+
+    private func fixtureApp(_ state: String = "idle", largeText: Bool = false) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchEnvironment["STREAM14_INTERFACE_FIXTURE"] = state
+        app.launchArguments = largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : []
+        app.launch()
+        return app
+    }
+
+    func testNativeDestinationsNeverStartCaptureOrPublishing() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = fixtureApp()
+        XCTAssertTrue(app.staticTexts["setupStatus"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Session"].tap()
+        XCTAssertTrue(app.buttons["openExperiment"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["recordSample"].exists)
+        XCTAssertFalse(app.buttons["endBroadcast"].exists)
+        app.tabBars.buttons["Recordings"].tap()
+        XCTAssertTrue(app.staticTexts["Recordings"].exists)
+        app.tabBars.buttons["Preparation"].tap()
+        app.buttons["testWebOverlay"].tap()
+        XCTAssertTrue(app.textFields["overlayURL"].waitForExistence(timeout: 5))
+        app.buttons["Close overlay settings"].tap()
+        app.tabBars.buttons["Session"].tap()
+        XCTAssertTrue(app.buttons["openExperiment"].exists)
+        XCTAssertFalse(app.buttons["endBroadcast"].exists)
+        try auditInterface(app)
+    }
+
+    func testPreflightBlockersAndExactPublishingConfirmation() throws {
+        XCUIDevice.shared.orientation = .portrait
+        for state in ["idle", "overlay-unavailable", "ready"] {
+            let app = fixtureApp(state)
+            let goLive = app.buttons["goLive"]
+            scrollTo(goLive, in: app)
+            goLive.tap()
+            if state == "ready" {
+                let confirm = app.buttons["Go Live — Unlisted"]
+                XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+                let text = app.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " ")
+                for value in ["Fixture channel", "fixture-channel", "Fixture scheduled match", "Unlisted", "1080p30"] {
+                    XCTAssertTrue(text.contains(value), value)
+                }
+                if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() }
+                else { app.otherElements["PopoverDismissRegion"].tap() }
+                XCTAssertFalse(app.buttons["endBroadcast"].exists)
+            } else {
+                XCTAssertFalse(app.buttons["Go Live — Unlisted"].exists)
+                let status = app.staticTexts["broadcastStatus"]
+                scrollTo(status, in: app)
+                XCTAssertTrue(status.label.contains(state == "idle" ? "Open the camera" : "configured overlay is unavailable"))
+            }
+            app.terminate()
+        }
+    }
+
+    func testPersistentFailureStatesAndLockedSettings() throws {
+        XCUIDevice.shared.orientation = .portrait
+        for (state, expected) in [("reconnecting", "Reconnecting"), ("backup-failed", "Local backup is unavailable"),
+                                  ("unknown-end", "YouTube end not confirmed"), ("ended", "ended remotely")] {
+            let app = fixtureApp(state)
+            app.tabBars.buttons["Session"].tap()
+            let status = app.staticTexts["broadcastStatus"]
+            scrollTo(status, in: app)
+            XCTAssertTrue(status.label.contains(expected))
+            XCTAssertTrue(app.staticTexts["uploadStatus"].exists)
+            XCTAssertTrue(app.staticTexts["overlayStatus"].exists)
+            if state == "unknown-end" {
+                XCTAssertTrue(app.buttons["reconcileBroadcast"].exists)
+                XCTAssertTrue(app.links["Open YouTube Studio"].exists)
+            }
+            if state == "backup-failed" {
+                let warning = app.staticTexts["backupWarning"]
+                scrollTo(warning, in: app)
+                XCTAssertTrue(warning.label.contains("Saved footage is retained"))
+            }
+            if state != "ended" {
+                app.buttons["testWebOverlay"].tap()
+                XCTAssertTrue(app.textFields["overlayURL"].waitForExistence(timeout: 5))
+                XCTAssertFalse(app.textFields["overlayURL"].isEnabled)
+                XCTAssertFalse(app.buttons["applyOverlayURL"].isEnabled)
+                app.buttons["Close overlay settings"].tap()
+            }
+            app.terminate()
+        }
+    }
+
+    func testSessionLayoutsAndManualOverlayAtLargestText() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        for large in [false, true] {
+            for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight] {
+                XCUIDevice.shared.orientation = orientation
+                let app = fixtureApp("ready", largeText: large)
+                app.tabBars.buttons["Session"].tap()
+                let mute = app.switches["microphoneMute"]
+                scrollTo(mute, in: app)
+                XCTAssertGreaterThanOrEqual(mute.frame.height, 44)
+                let hide = app.switches["Hide overlay manually"]
+                scrollTo(hide, in: app)
+                let previous = hide.value as? String
+                hide.tap()
+                XCTAssertNotEqual(hide.value as? String, previous)
+                let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                screenshot.name = "Session landscape \(orientation.rawValue) largest text \(large)"
+                screenshot.lifetime = .keepAlways
+                add(screenshot)
+                try auditInterface(app)
+                app.terminate()
+            }
+        }
+    }
+
     func testDeviceRearLensSelector() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["STREAM14_DEVICE_LENS_UI"] == "1",
                           "Opt-in private device camera recording check.")
@@ -26,6 +144,7 @@ final class SetupScreenTests: XCTestCase {
             }
         }
         XCTAssertFalse(app.buttons["cameraLensSelector"].exists)
+        app.tabBars.buttons["Session"].tap()
         let open = app.buttons["openExperiment"]
         reveal(open)
         XCTAssertTrue(open.isHittable)
@@ -65,6 +184,7 @@ final class SetupScreenTests: XCTestCase {
         record.tap()
         expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: selector)
         waitForExpectations(timeout: 10)
+        app.tabBars.buttons["Recordings"].tap()
         let play = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "playRecording-")).firstMatch
         reveal(play)
         XCTAssertTrue(play.isHittable)
@@ -72,6 +192,7 @@ final class SetupScreenTests: XCTestCase {
         let done = app.buttons["Done"]
         XCTAssertTrue(done.waitForExistence(timeout: 5))
         done.tap()
+        app.tabBars.buttons["Session"].tap()
         let close = app.buttons["Close camera"]
         reveal(close)
         XCTAssertTrue(close.isHittable)
@@ -91,6 +212,7 @@ final class SetupScreenTests: XCTestCase {
         try XCTSkipUnless(fixtureID != nil, "Seed an isolated Simulator recording fixture first.")
         let app = XCUIApplication()
         app.launch()
+        app.tabBars.buttons["Recordings"].tap()
         let identifier = "deleteRecording-" + fixtureID!
         let target = app.buttons[identifier]
         XCTAssertTrue(target.waitForExistence(timeout: 5))
@@ -120,6 +242,7 @@ final class SetupScreenTests: XCTestCase {
                           "Opt-in private device camera recording check.")
         let app = XCUIApplication()
         app.launch()
+        app.tabBars.buttons["Session"].tap()
         let open = app.buttons["openExperiment"]
         for _ in 0..<8 {
             if open.isHittable { break }
@@ -146,6 +269,7 @@ final class SetupScreenTests: XCTestCase {
         app.activate()
         XCTAssertTrue(app.buttons["openExperiment"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["recordSample"].exists)
+        app.tabBars.buttons["Recordings"].tap()
         let play = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "playRecording-")).firstMatch
         for _ in 0..<12 {
             if play.isHittable { break }
@@ -174,6 +298,7 @@ final class SetupScreenTests: XCTestCase {
                 app.launchArguments = largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : []
                 XCUIDevice.shared.orientation = orientation
                 app.launch()
+                app.tabBars.buttons["Recordings"].tap()
                 let play = app.buttons["playRecording-" + id]
                 scrollTo(play, in: app)
                 let export = app.buttons["exportRecording-" + id]
@@ -206,9 +331,10 @@ final class SetupScreenTests: XCTestCase {
                 XCTAssertFalse(app.buttons["exportRecording-" + missingID].isEnabled)
                 XCTAssertTrue(app.buttons["deleteRecording-" + missingID].isEnabled)
                 XCTAssertTrue(app.staticTexts["recordingMetadata-" + missingID].label.contains("File size unavailable"))
+                app.tabBars.buttons["Preparation"].tap()
                 let privacy = app.descendants(matching: .any).matching(identifier: "privacyPolicy").firstMatch
                 scrollTo(privacy, in: app)
-                XCTAssertGreaterThan(privacy.frame.minY, missingPlay.frame.maxY)
+                XCTAssertTrue(privacy.exists)
                 let notices = app.buttons["thirdPartyNotices"]
                 scrollTo(notices, in: app)
                 let footer = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -227,6 +353,7 @@ final class SetupScreenTests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launch()
+        app.tabBars.buttons["Recordings"].tap()
         let play = app.buttons["playRecording-" + id]
         scrollTo(play, in: app)
         play.tap()
@@ -279,6 +406,7 @@ final class SetupScreenTests: XCTestCase {
                           "Run after explicitly revoking Simulator camera permission.")
         let app = XCUIApplication()
         app.launch()
+        app.tabBars.buttons["Session"].tap()
         let open = app.buttons["openExperiment"]
         for _ in 0..<8 {
             if open.isHittable { break }
@@ -352,7 +480,7 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["stream14"].waitForExistence(timeout: 5))
         XCTAssertLessThan(app.frame.width, app.frame.height)
         XCTAssertTrue(app.staticTexts["setupStatus"].exists)
-        XCTAssertEqual(app.staticTexts["setupStatus"].label, "Local recording")
+        XCTAssertEqual(app.staticTexts["setupStatus"].label, "Prepare your session")
         // Only standard content padding precedes the heading; no 60-point strip.
         XCTAssertEqual(app.staticTexts["setupStatus"].frame.minY - app.navigationBars["stream14"].frame.maxY,
                        16, accuracy: 2)
@@ -360,7 +488,7 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(app.switches["Hide overlay manually"].exists)
         XCTAssertEqual(
             app.staticTexts["setupExplanation"].label,
-            "Record camera, microphone and a transparent web overlay. Keep the phone in landscape with the rear camera upright."
+            "Record locally without Google, or choose a scheduled YouTube event before confirming Go Live. Keep the phone in landscape with the rear camera upright."
         )
         XCTAssertFalse(app.buttons["recordSample"].exists)
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -429,6 +557,7 @@ final class SetupScreenTests: XCTestCase {
         let invalidWasDiscarded = field.value as? String == original
         XCTAssertTrue(invalidWasDiscarded)
         app.buttons["Close overlay settings"].tap()
+        app.tabBars.buttons["Session"].tap()
         XCTAssertTrue(app.buttons["openExperiment"].exists)
         XCTAssertFalse(app.buttons["recordSample"].exists)
     }

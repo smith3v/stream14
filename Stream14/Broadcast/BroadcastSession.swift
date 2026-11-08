@@ -115,6 +115,27 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         media.onInterruption = { [weak self] reason in self?.interrupted(reason) }
     }
 
+    #if DEBUG
+    func installInterfaceFixture(_ name: String, intent: BroadcastIntent) {
+        switch name {
+        case "reconnecting":
+            state = .live; activeIntent = intent; reconnectStatus = .waiting
+            message = "Reconnecting to the same event. Local recording continues while healthy."
+        case "backup-failed":
+            state = .live; activeIntent = intent
+            message = "Live on YouTube. Local backup is unavailable."
+        case "unknown-end":
+            state = .needsReconciliation
+            pendingRemote = PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id)
+            message = "YouTube end not confirmed. The event may still be live. Check Studio and reconcile."
+        case "ended":
+            state = .ended
+            message = "The YouTube event ended remotely. Healthy local recording continues. Stop recording when ready."
+        default: break
+        }
+    }
+    #endif
+
     var locksSelection: Bool { confirmation != nil || isWorking || activeIntent != nil || pendingRemote != nil }
     var requiresEndFirst: Bool { isWorking || [.starting, .waitingForIngestion, .goingLive, .live, .ending].contains(state) }
     var canResume: Bool { !isWorking && !hasUnsettledMutation && !journalUnavailable && authorization.isAuthorized && pendingRemote?.interrupted == true && pendingRemote?.transition == nil && pendingRemote?.streamID != nil }

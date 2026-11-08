@@ -30,13 +30,13 @@ struct SetupView: View {
                     .accessibilityHidden(true)
                 TabView(selection: $destination) {
                     Tab("Preparation", systemImage: "checklist", value: Destination.preparation) {
-                        preparationScreen
+                        if destination == .preparation { preparationScreen }
                     }
                     Tab("Session", systemImage: "video", value: Destination.session) {
-                        sessionScreen
+                        if destination == .session { sessionScreen }
                     }
                     Tab("Recordings", systemImage: "film.stack", value: Destination.recordings) {
-                        recordingsScreen
+                        if destination == .recordings { recordingsScreen }
                     }
                 }
                 .background(Color(uiColor: .systemBackground))
@@ -45,10 +45,13 @@ struct SetupView: View {
                 .controlSize(.large)
             }
             .navigationTitle("stream14")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                Button("Overlay", systemImage: "globe") {
+                Button {
                     overlayURLDraft = experiment.overlayURL
                     showingOverlayTest = true
+                } label: {
+                    Image(systemName: "globe").frame(width: 44, height: 44)
                 }
                     .accessibilityLabel("Overlay settings")
                     .accessibilityIdentifier("testWebOverlay")
@@ -135,19 +138,24 @@ struct SetupView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Prepare your session").font(.headline).accessibilityIdentifier("setupStatus")
+                backupFailureWarning
                 Text("Record locally without Google, or choose a scheduled YouTube event before confirming Go Live. Keep the phone in landscape with the rear camera upright.")
                     .accessibilityIdentifier("setupExplanation")
                 profileControls
-                Text(experiment.phase == .idle ? "Camera and microphone: not open" : "Camera and microphone: open")
+                Text(experiment.broadcastCaptureReady ? "Camera and microphone: ready" : "Camera and microphone: not ready")
+                Text(experiment.message).font(.footnote)
                 Text("Input: " + experiment.audioRoute)
                 overlayControls
                 Button("Open session", systemImage: "video") { destination = .session }
                     .frame(minHeight: 44).accessibilityIdentifier("openSession")
                 YouTubeConnectionView(authorization: authorization, broadcastActive: broadcast.requiresEndFirst)
                 YouTubeEventsView(selection: youtubeEvents).disabled(broadcast.locksSelection)
-                broadcastControls
+                if destination == .preparation { broadcastControls }
                 Text("Opening settings or choosing an event does not publish. Go Live requires camera readiness, a healthy or explicitly disabled overlay, and confirmation of the channel, event, visibility and profile.")
                     .font(.footnote)
+                DisclosureGroup("Session help") {
+                    Text("Open Session to rehearse, mute the microphone or record without YouTube. A configured overlay must recover or be explicitly disabled before Go Live. Upload failure leaves a healthy recording running. Backgrounding stops capture; reopen the camera and explicitly review Resume for the same event. If YouTube status is unknown, reconcile or inspect Studio before retrying End.")
+                }
                 footerLayout { footerLinks }
             }.padding()
         }
@@ -170,47 +178,54 @@ struct SetupView: View {
         }
     }
 
-    @ViewBuilder private var previewPanel: some View {
-                    if experiment.phase != .idle {
-                        ExperimentPreview(view: experiment.preview)
-                            .aspectRatio(16 / 9, contentMode: .fit)
-                            .background(.black)
-                            .accessibilityLabel("Composed camera preview with web overlay")
-                            .accessibilityIdentifier("cameraPreview")
-                        if !experiment.availableLenses.isEmpty {
-                            Button {
-                                showingLensChoices = true
-                            } label: {
-                                Label(experiment.selectedLens.buttonLabel, systemImage: "camera")
-                                    .frame(minHeight: 44)
-                            }
-                            .controlSize(.small)
-                            .disabled(!experiment.canSelectLens)
-                            .accessibilityLabel("Rear camera lens")
-                            .accessibilityHint("Choose a rear lens before recording. Selection is locked while recording or finalizing.")
-                            .accessibilityValue(experiment.selectedLens.label)
-                            .accessibilityIdentifier("cameraLensSelector")
-                            .confirmationDialog("Choose rear camera", isPresented: $showingLensChoices,
-                                                titleVisibility: .visible) {
-                                ForEach(experiment.availableLenses) { lens in
-                                    Button(lens.label) {
-                                        Task { await experiment.selectLens(lens) }
-                                    }
-                                }
-                                Button("Cancel", role: .cancel) {}
-                            } message: {
-                                Text("Current lens: " + experiment.selectedLens.label)
-                            }
-                        }
+    private var previewPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if experiment.phase != .idle {
+                ExperimentPreview(view: experiment.preview)
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .background(.black)
+                    .accessibilityLabel("Composed camera preview with web overlay")
+                    .accessibilityIdentifier("cameraPreview")
+
+            }
+            if experiment.phase == .idle {
+                ContentUnavailableView("Camera closed", systemImage: "video.slash", description: Text("Open the camera to rehearse or record. This does not publish to YouTube."))
+            }
+        }
+    }
+
+    @ViewBuilder private var lensControls: some View {
+        if experiment.phase != .idle && !experiment.availableLenses.isEmpty {
+            Button {
+                showingLensChoices = true
+            } label: {
+                Label(experiment.selectedLens.buttonLabel, systemImage: "camera")
+                    .frame(minHeight: 44)
+            }
+            .controlSize(.small)
+            .disabled(!experiment.canSelectLens)
+            .accessibilityLabel("Rear camera lens")
+            .accessibilityHint("Choose a rear lens before recording. Selection is locked while recording or finalizing.")
+            .accessibilityValue(experiment.selectedLens.label)
+            .accessibilityIdentifier("cameraLensSelector")
+            .confirmationDialog("Choose rear camera", isPresented: $showingLensChoices,
+                                titleVisibility: .visible) {
+                ForEach(experiment.availableLenses) { lens in
+                    Button(lens.label) {
+                        Task { await experiment.selectLens(lens) }
                     }
-        if experiment.phase == .idle {
-            ContentUnavailableView("Camera closed", systemImage: "video.slash", description: Text("Open the camera to rehearse or record. This does not publish to YouTube."))
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Current lens: " + experiment.selectedLens.label)
+            }
         }
     }
 
     private var sessionControls: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Session").font(.headline)
+            backupFailureWarning
             if let intent = broadcast.activeIntent ?? broadcast.confirmation {
                 Text("Channel: " + intent.channel.title)
                 Text("Event: " + intent.event.title)
@@ -225,13 +240,11 @@ struct SetupView: View {
             if !experiment.thermalWarning.isEmpty {
                 Text(experiment.thermalWarning).accessibilityLabel("Thermal warning: " + experiment.thermalWarning)
             }
-            if !experiment.backupWarning.isEmpty {
-                Text(experiment.backupWarning).accessibilityIdentifier("backupWarning")
-            }
             cameraActions
+            lensControls
             mediaControls
             overlayControls
-            broadcastControls
+            if destination == .session { broadcastControls }
         }
     }
 
@@ -260,9 +273,11 @@ struct SetupView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Overlay: " + experiment.renderer.status).font(.caption)
                 .accessibilityIdentifier("overlayStatus")
-            Toggle("Hide overlay manually", isOn: Binding(
+            Toggle(isOn: Binding(
                 get: { experiment.renderer.health.manuallyHidden },
-                set: { experiment.renderer.setManuallyHidden($0) })).frame(minHeight: 44)
+                set: { experiment.renderer.setManuallyHidden($0) })) {
+                    Text("Hide overlay manually").frame(minHeight: 44)
+                }
             if !experiment.overlayURL.isEmpty {
                 Button("Reload overlay", systemImage: "arrow.clockwise") { experiment.renderer.reload() }
                     .frame(minHeight: 44).accessibilityIdentifier("reloadOverlay")
@@ -274,10 +289,19 @@ struct SetupView: View {
         BroadcastControlsView(broadcast: broadcast, media: experiment, selection: youtubeEvents, authorization: authorization)
     }
 
+    @ViewBuilder private var backupFailureWarning: some View {
+        if !experiment.backupWarning.isEmpty {
+            Text(experiment.backupWarning)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("backupWarning")
+        }
+    }
+
     private var recordingsScreen: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Recordings").font(.headline)
+                backupFailureWarning
                 if experiment.savedSamples.isEmpty { Text("No recordings on this iPhone.") }
                 ForEach(experiment.savedSamples) { sample in
                     RecordingRow(sample: sample, canDelete: experiment.canDeleteSamples,
@@ -313,9 +337,12 @@ struct SetupView: View {
 
     @ViewBuilder private var mediaControls: some View {
                     if experiment.phase == .preview || experiment.phase == .recording {
-                        Toggle("Mute microphone", isOn: Binding(
+                        Toggle(isOn: Binding(
                             get: { experiment.microphoneMuted },
-                            set: { value in Task { await experiment.setMicrophoneMuted(value) } }))
+                            set: { value in Task { await experiment.setMicrophoneMuted(value) } })) {
+                                Text("Mute microphone").frame(minHeight: 44)
+                            }
+                            .frame(minHeight: 44)
                             .disabled(!experiment.canAdjustMedia)
                             .accessibilityIdentifier("microphoneMute")
                         ProgressView(value: experiment.microphoneLevel) {
@@ -364,7 +391,8 @@ struct SetupView: View {
     private var runsIsolatedMediaHarness: Bool {
         #if DEBUG
         ProcessInfo.processInfo.environment["STREAM14_OVERLAY_RECOVERY_DEVICE"] == "1" ||
-        Self.runsShortPhoneSmoke
+        Self.runsShortPhoneSmoke ||
+        ProcessInfo.processInfo.environment["STREAM14_INTERFACE_FIXTURE"] != nil
         #else
         false
         #endif
@@ -397,55 +425,6 @@ struct SetupView: View {
         guard let url = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt"),
               let text = try? String(contentsOf: url, encoding: .utf8) else { return "Notices unavailable." }
         return text
-    }
-}
-
-/// One original file, one set of actions. Reuse this contract in the full-app list.
-private struct RecordingRow: View {
-    let sample: ExperimentSample
-    let canDelete: Bool
-    let play: (URL) -> Void
-    let delete: () -> Void
-
-    var body: some View {
-        let directory = try? ExperimentSample.directory()
-        let size = directory.flatMap { sample.fileSize(in: $0) }
-        let url = directory?.appendingPathComponent(sample.fileName)
-        let date = sample.created.formatted(date: .abbreviated, time: .standard)
-        let sizeLabel = size.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) }
-            ?? "File size unavailable"
-        VStack(alignment: .leading, spacing: 8) {
-            Text("\(date) · \(sizeLabel)")
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("recordingMetadata-" + sample.id.uuidString)
-            Text(sample.status.rawValue).font(.caption)
-            HStack(spacing: 12) {
-                Button { if let url { play(url) } } label: {
-                    Label("Play recording", systemImage: "play.circle")
-                        .frame(minWidth: 44, minHeight: 44)
-                }
-                .disabled(size == nil)
-                .accessibilityLabel("Play recording from " + date)
-                .accessibilityIdentifier("playRecording-" + sample.id.uuidString)
-                if let url {
-                    ShareLink(item: url) {
-                        Label("Export original recording", systemImage: "square.and.arrow.up")
-                            .frame(minWidth: 44, minHeight: 44)
-                    }
-                    .disabled(size == nil)
-                    .accessibilityLabel("Export original recording from " + date)
-                    .accessibilityIdentifier("exportRecording-" + sample.id.uuidString)
-                }
-                Button(role: .destructive, action: delete) {
-                    Label("Delete recording", systemImage: "trash")
-                        .frame(minWidth: 44, minHeight: 44)
-                }
-                .disabled(!canDelete)
-                .accessibilityLabel("Delete recording from " + date)
-                .accessibilityIdentifier("deleteRecording-" + sample.id.uuidString)
-            }
-            .labelStyle(.iconOnly)
-        }
     }
 }
 

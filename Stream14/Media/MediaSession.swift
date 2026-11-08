@@ -374,6 +374,9 @@ final class MediaSession {
     }
 
     func record(injection: LocalRecorder.Injection = .none) async {
+        #if DEBUG
+        guard !interfaceFixtureMode else { return }
+        #endif
         guard canRecord else { return }
         busy = true
         phase = .starting
@@ -746,6 +749,28 @@ final class MediaSession {
         if interrupted && !failure { message = "Capture stopped after an interruption. Open the camera explicitly to resume." }
         finishOperation()
     }
+
+    #if DEBUG
+    private var interfaceFixtureMode = false
+
+    /// Presentation-only fixture: no capture, encoder, writer or network is opened.
+    func installInterfaceFixture(_ state: String) {
+        interfaceFixtureMode = true
+        guard state != "idle" else { return }
+        phase = .preview
+        message = "Fixture camera ready; no capture is running."
+        audioRoute = "Fixture microphone"
+        cameraZoom = CameraZoom(value: 1, minimum: 1, maximum: 3)
+        if ["reconnecting", "backup-failed", "unknown-end", "ended"].contains(state) {
+            broadcastConfigurationLocked = state != "ended"
+            uploadMessage = state == "reconnecting" ? "Reconnecting. Local recording continues while healthy." : "Upload stopped"
+        }
+        if state == "backup-failed" {
+            recordingFailed = true
+            uploadMessage = "Upload connected; YouTube confirmed live"
+        }
+    }
+    #endif
 
     private enum ExperimentError: Error {
         case permissions, devices, emptySample

@@ -12,6 +12,14 @@ struct Stream14App: App {
         #if DEBUG
         // Hosted camera smoke must not construct Google's SDK/Keychain driver,
         // even when a real public client ID is present in the signed candidate.
+        if let fixture = ProcessInfo.processInfo.environment["STREAM14_INTERFACE_FIXTURE"] {
+            let models = InterfaceFixture.make(fixture)
+            _authorization = State(initialValue: models.authorization)
+            _media = State(initialValue: models.media)
+            _broadcast = State(initialValue: models.broadcast)
+            _youtubeEvents = State(initialValue: models.events)
+            return
+        }
         let authorization = ProcessInfo.processInfo.environment["STREAM14_SHORT_DEVICE_SMOKE"] == "1" ?
             YouTubeAuthorization(driver: nil, configured: false) : YouTubeAuthorization()
         #else
