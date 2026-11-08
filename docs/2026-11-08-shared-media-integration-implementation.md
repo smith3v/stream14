@@ -253,3 +253,14 @@ UI checks passed at `/private/tmp/stream14-integration-ui-1.xcresult` (normal la
 and accessible landscape profile controls). No phone identifier, installation,
 capture, stream socket or Google mutation was used for this follow-up. Focused
 independent re-review of the final context fix is pending before handoff.
+
+### F7 start-cancellation contract
+
+F7 owns the Task that calls startUpload. Cancelling/ending while that Task is
+connecting must cancel that Task and await its bounded cleanup; stopUpload stops
+an already attached publisher and does not cancel a busy connecting operation.
+The SDK's connect/command bounds are ten seconds. startUpload rechecks Task
+cancellation before attachment and after its keyframe await. A start/API error
+alone must leave healthy local recording running. requestStop is reserved for an
+intentional whole-session end or interruption. This explicit integration contract
+was confirmed by root for F7; no broader component API change was added.
