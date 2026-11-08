@@ -210,3 +210,10 @@ F8 review resumed and found two material lifecycle issues: file-only finalizatio
 [PR #51](https://github.com/smith3v/stream14/pull/51) publishes the independently reviewed Go Live/End coordinator on top of held #49. Its source remains the reviewed F7 runtime after documentation-only inheritance; final prepublication merge is `86c96bb`. Keep #51 for code review and defer merge until its prerequisite and attended broadcast checks are ready. The next physical build must use this new shared pipeline, not reuse the older successful Short47 run as acceptance.
 
 [PR #50](https://github.com/smith3v/stream14/pull/50) is ready for review/merge into main to restore the already-reviewed #41–#48 stack. No child issue was closed after the requested audit: #14–#27 still have explicit unmet acceptance. No new camera test, live transition, binding or file deletion occurred during repository preparation.
+
+
+## F8 reviewed publication checkpoint — 2026-11-08
+
+F8 final implementation `4203446` inherits F7 `e22a04c`. Independent focused re-review confirms both lifecycle findings fixed in `2f456dd`, no remaining material findings. Full hosted regression: 130 passes, seven physical-only skips, zero failures; 31 coordinator checks and native Release pass. Root is publishing this reviewed stack above PR #51. Its actual two-minute outage, network change, receiver/file continuity and phone qualification remain pending.
+
+F9 interruption implementation continues in `/private/tmp/stream14-epic13-f9-interruptions` with a new stage agent. A separate receiver-validation agent is preparing actual TLS/decoder evidence in `/private/tmp/stream14-epic13-receiver-validation`; it uses only generated media and a private laptop receiver, no phone or YouTube action. Both stages need independent review before handoff.
