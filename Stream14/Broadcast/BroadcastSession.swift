@@ -8,6 +8,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     let event: YouTubeBroadcast
     let profile: SessionProfile
     let overlayURL: String
+    var isResume = false
     var customMirror: Mirror { Mirror(self, children: ["eventID": event.id, "overlay": "<redacted>"]) }
 }
 
@@ -108,10 +109,12 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     convenience init(authorization: YouTubeAuthorization, media: MediaSession) {
         let client = YouTubeClient(authorization: authorization)
         self.init(authorization: authorization, client: client, binding: YouTubeBinding(client: client), media: BroadcastMedia(session: media))
+        media.onInterruption = { [weak self] reason in self?.interrupted(reason) }
     }
 
     var locksSelection: Bool { confirmation != nil || isWorking || activeIntent != nil || pendingRemote != nil }
     var requiresEndFirst: Bool { isWorking || [.starting, .waitingForIngestion, .goingLive, .live, .ending].contains(state) }
+    var canResume: Bool { !isWorking && !hasUnsettledMutation && !journalUnavailable && authorization.isAuthorized && pendingRemote?.interrupted == true && pendingRemote?.transition == nil && pendingRemote?.streamID != nil }
     var canStart: Bool { !isWorking && activeIntent == nil && pendingRemote == nil && !journalUnavailable && authorization.isAuthorized }
     var canEnd: Bool { !isWorking || state != .ending }
 
@@ -133,7 +136,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
 
     /// Only the explicit confirmation button invokes this method.
     func confirmStart(_ intent: BroadcastIntent) {
-        guard canStart, confirmation?.id == intent.id else { return }
+        guard (intent.isResume ? canResume : canStart), confirmation?.id == intent.id else { return }
         confirmation = nil; activeIntent = intent
         epoch &+= 1
         let request = epoch
@@ -185,16 +188,26 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         guard channel == intent.channel else { throw StartError.changed }
         let event = try await client.broadcast(id: intent.event.id, channelID: intent.channel.id, generation: intent.generation)
         try check(intent, request)
-        try sameConfirmedEvent(event, intent)
+        if intent.isResume {
+            guard let streamID = pendingRemote?.streamID else { throw StartError.changed }
+            try sameBoundEvent(event, intent, streamID: streamID)
+        } else { try sameConfirmedEvent(event, intent) }
         message = "Backup is writing. Preparing the confirmed YouTube event…"
-        let prepared = try await binding.prepareConfirmed(eventID: intent.event.id, channelID: intent.channel.id,
+        let prepared: PreparedYouTubeIngestion
+        if intent.isResume {
+            guard let context = pendingRemote, context.transition == nil, !hasUnsettledMutation else { throw StartError.remoteUnknown }
+            prepared = try await binding.prepareResumeConfirmed(context: context, profile: intent.profile, generation: intent.generation)
+        } else {
+            prepared = try await binding.prepareConfirmed(eventID: intent.event.id, channelID: intent.channel.id,
                                                          profile: intent.profile, generation: intent.generation)
+        }
         try check(intent, request)
-        try sameConfirmedEvent(prepared.broadcast, intent)
+        if intent.isResume { try sameBoundEvent(prepared.broadcast, intent, streamID: prepared.streamID) }
+        else { try sameConfirmedEvent(prepared.broadcast, intent) }
         guard media.snapshot().writerStarted else { throw StartError.writer }
         // Persist BEFORE first possible publication, including auto-start. On a
         // crash/relaunch we read state rather than publishing or assuming idle.
-        try setPending(PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id))
+        try setPending(PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id, interrupted: false, streamID: prepared.streamID, profileName: intent.profile.rawValue))
         message = "Connecting upload; YouTube has not confirmed Live."
         try await media.startUpload(prepared)
         try check(intent, request)
@@ -233,6 +246,63 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
                 }
             }
             try await Task.sleep(for: .seconds(pollSeconds))
+        }
+    }
+
+    /// Called synchronously before MediaSession closes. Never asks YouTube to
+    /// complete: iOS can suspend us and the remote event may remain live.
+    func interrupted(_ reason: SessionInterruption) {
+        confirmation = nil
+        guard activeIntent != nil || pendingRemote != nil || isWorking else { return }
+        cancelSupervision()
+        epoch &+= 1
+        operation?.cancel(); operation = nil; isWorking = false
+        if var context = pendingRemote {
+            context.interrupted = true
+            do { try setPending(context) } catch { /* fail closed through journalUnavailable */ }
+        } else { activeIntent = nil; media.lockConfiguration(false) }
+        state = pendingRemote == nil ? .idle : .needsReconciliation
+        message = reason.message + " Upload stopped and local writing is finalizing. YouTube end is unconfirmed. Reopen the camera explicitly; reconcile before resuming the same event."
+    }
+
+    /// Foreground/relaunch performs reads only; no capture, writer or upload.
+    func foregroundReturned() {
+        if pendingRemote != nil, !isWorking { reconcile() }
+    }
+
+    /// The operator first reopens/checks preview. This button only reads and
+    /// presents a new identity/visibility confirmation; it does not publish.
+    func requestResumeConfirmation() {
+        guard canResume, let context = pendingRemote else { return }
+        let snapshot = media.snapshot()
+        guard snapshot.captureReady, snapshot.canRecord, !snapshot.writerStarted,
+              snapshot.overlayReady, snapshot.profile.rawValue == context.profileName else {
+            message = "Reopen the camera, restore the original profile and check the overlay before resuming. A new backup file is required."
+            return
+        }
+        epoch &+= 1
+        let request = epoch; let generation = authorization.generation
+        isWorking = true
+        operation = Task {
+            do {
+                let result = try await withBroadcastDeadline(seconds: endSeconds) {
+                    let channel = try await self.client.authorizedChannel(generation: generation)
+                    guard channel.id == context.channelID else { throw YouTubeReadError.wrongChannel }
+                    let prepared = try await self.binding.prepareResumeConfirmed(context: context, profile: snapshot.profile, generation: generation)
+                    return (channel, prepared.broadcast)
+                }
+                try checkGeneration(request, generation)
+                let latest = media.snapshot()
+                guard latest.captureReady, latest.canRecord, !latest.writerStarted, latest.overlayReady,
+                      latest.profile == snapshot.profile, latest.overlayURL == snapshot.overlayURL else { throw StartError.changed }
+                confirmation = BroadcastIntent(id: UUID(), generation: generation, channel: result.0, event: result.1,
+                    profile: snapshot.profile, overlayURL: snapshot.overlayURL, isResume: true)
+                message = "Review the same event and visibility. Resume creates a new local backup before upload."
+            } catch {
+                guard request == epoch else { return }
+                message = "This event cannot safely resume yet. Reconcile YouTube status and check the original inactive binding/profile in YouTube Studio. No media was published."
+            }
+            if request == epoch { isWorking = false; operation = nil }
         }
     }
 
@@ -346,6 +416,11 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
                     guard context.transition == nil else {
                         state = .needsReconciliation
                         message = "A previous YouTube transition has an unknown outcome. The event is currently upcoming; this does not prove the request cannot still apply. Resolve this event in YouTube Studio, then reconcile."
+                        break
+                    }
+                    if context.interrupted == true, context.streamID != nil {
+                        state = .needsReconciliation
+                        message = "The same event is upcoming and ingestion inactive. Reopen the camera and explicitly Resume, or confirm End/check YouTube Studio."
                         break
                     }
                     try setPending(nil); activeIntent = nil; state = .idle
@@ -586,6 +661,14 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     }
 
     private func setPending(_ context: PendingRemoteBroadcast?) throws {
+        var context = context
+        if var next = context, let previous = pendingRemote,
+           next.channelID == previous.channelID, next.eventID == previous.eventID {
+            next.streamID = next.streamID ?? previous.streamID
+            next.profileName = next.profileName ?? previous.profileName
+            next.interrupted = next.interrupted ?? previous.interrupted
+            context = next
+        }
         do { try store.save(context); pendingRemote = context; journalUnavailable = false }
         catch { journalUnavailable = true; throw StartError.journal }
     }
