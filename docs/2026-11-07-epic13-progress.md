@@ -1,6 +1,6 @@
 # Epic #13 progress and resume ledger
 
-Updated: 2026-11-07. Implementation, review and external acceptance are tracked separately.
+Updated: 2026-11-08. Implementation, review and external acceptance are tracked separately.
 
 ## Owner workflow
 
@@ -149,3 +149,57 @@ physical skips, 0 failed; the corrected context-test compile failure is retained
 not counted as a pass. A reviewed draft PR is ready for root publication, with
 F1/F6 receiver/physical/CBR/AMF and later endurance criteria still open. No phone
 execution, media transmission or Google mutation occurred in this integration.
+
+## Connected attempt and attended preparation — 2026-11-08
+
+Owner connected the 13 mini, set Auto-Lock to Never and confirmed unlocked/ready. Prepared normally signed Short47 Debug products; initial signature preflight used the wrong sibling test-bundle path, corrected to embedded app/PlugIns. Initial test invocation then selected ZERO tests: missing parentheses in Swift Testing method selector. Exit0 is not pass; no camera clips were recorded. Stopped the attempt within the selected budget, no actual Google/lock/revoke tests.
+
+Off-phone Xcode enumeration /private/tmp/stream14-short-smoke-enumeration-20261108.json has no errors and exactly one enabled identifier for suite Stream14Tests/ShortPhoneSmokeTests. Commands now use that suite, with explicit one-pass/zero-skip acceptance. Swift Testing method catalogue examples use quoted enumerated identifiers with parentheses; XCTest UI selectors unchanged.
+
+The owner will be available soon for attended tests. The new attended-session card documents exact owner taps, a five-minute local-smoke + sign-in/channel agenda, alternatives and future/not-runnable gates. No additional physical test started while preparing it. Current private attempt evidence /private/tmp/stream14-short-phone-20261108-084609; source8af669f, zero executed tests. Broader integration agents/reviewer most recently hit usage limits; F6 source9097f1e retry-context fix awaits final focused review/results, F7 work remains checkpointed separately.
+
+Latest follow-up: F6 final runtime review at1103a9d/docs0b35a1c found both startup findings resolved and no material issues; corrected 11 affected checks and native build pass. Final handoffd2bfec1 is ready for reviewed draft PR. F7 plan098cdd4 is committed and implementation proceeds without touching the phone.
+
+Prepublication handoff: reviewed runtime1103a9d/docsd2bfec1 now includes the attended card and verified suite selector from PR47ef2dbf3 through the updated native-probe predecessor. This merge changes documentation only; no additional phone invocation occurred. F7 continues in /private/tmp/stream14-epic13-f7-session from reviewed source and must inherit this documentation before its PR.
+## Actual attended results — 2026-11-08
+
+The corrected short-suite selector executed on the physical iPhone 13 mini/iOS 27.2: one pass, zero failures, zero skips, with a 10.013-second test body. The retained original clips are 3.443 seconds at 1080p and 3.225 seconds at 720p. Installed source `8af669f`, reviewed runtime `a7c18e5`, displayed version 0.2 (3), used the Xcode development route and the PR #47 local-only path. This was neither the newer PR #49 shared pipeline nor TestFlight. Private evidence remains in `/private/tmp/stream14-attended-20261108-091215`; the [scoped public report](2026-11-08-attended-device-results.md) records limits. The initial zero-test attempt remains a non-pass.
+
+The owner confirmed the real Google callback and intended channel after Refresh, then restored the SDK-saved connection without another Google prompt after an explicit normal process relaunch, Restore saved connection and Refresh. No tokens, keys or account contacts were exported. Separately Firefox showed the designated test event Unlisted, auto-stop Off, auto-start Off and No data; no setting or broadcast state changed. Event identifiers and URL remain in the private attended outcome only.
+
+PR #49's reviewed shared integration has 96 hosted passes and seven skips, 11 affected passes and native SDK/UI checks; these do not establish physical new-pipeline or real RTMPS acceptance. F7 fixtures recorded 21 focused and 120 full-suite passes with seven skips, plus native builds; focused review at `91fa893` found no material findings and handoff `4891f0d` remained a separate checkpoint. No Go Live candidate was installed or exercised in this attended session. These later checkpoints are evidence references, not source included in this consolidation.
+
+## Current merge and acceptance ledger — 2026-11-08
+
+GitHub metadata checked on 2026-11-08 shows #40 merged into `main` at `965481e22361acff0655efb6eb8fee204dc03f4a`. PRs #41–#48 are merged, but each landed on its original predecessor branch:
+
+| PR | Merged base branch | Included scope |
+| --- | --- | --- |
+| [#41](https://github.com/smith3v/stream14/pull/41) | `codex/issue-14-media-feasibility` | Google authorization |
+| [#42](https://github.com/smith3v/stream14/pull/42) | `codex/issue-15-youtube-authorization` | Fixed profiles and shared microphone controls |
+| [#43](https://github.com/smith3v/stream14/pull/43) | `codex/issue-17-session-controls` | Read-only channel and event selection |
+| [#44](https://github.com/smith3v/stream14/pull/44) | `codex/issue-16-youtube-client` | Coordinated phone plan |
+| [#45](https://github.com/smith3v/stream14/pull/45) | `codex/epic-13-device-test-plan` | Safe ingestion component and durable mutation guards |
+| [#46](https://github.com/smith3v/stream14/pull/46) | `codex/issue-18-safe-ingestion` | Experimental shared encoding and unadopted bounded-send patch |
+| [#47](https://github.com/smith3v/stream14/pull/47) | `codex/issue-19-independent-transport` | Isolated local-only physical smoke |
+| [#48](https://github.com/smith3v/stream14/pull/48) | `codex/short-connected-phone-smoke` | Native Mac fragmented-MP4 feasibility probe |
+
+The consolidation branch `codex/consolidate-reviewed-epic13` starts at that fetched current main and normally merges the original #48 head `8c3ce8f116dff45979841d9628079c8bf8fb2265`. Both are retained ancestors; no history is rewritten and no current-main changes are lost. Before adding attended-result documentation, the entire merged tree matched #48 exactly. Runtime, tests, project configuration, package pins, tools and experiment sources stay byte-identical to that tip. Only documentation records the attended results, current ledger and consolidation procedure. Prior independent reviews and native checks remain the evidence recorded in the stage handoffs above and the [recovery report](2026-11-08-native-fragment-recovery-feasibility.md); the attended-results documentation also received separate review with no material findings. A fresh full-diff independent consolidation review is required before publication, coordinated by the root agent.
+
+This restores only the already-reviewed #40–#48 scope onto main. [PR #49](https://github.com/smith3v/stream14/pull/49) now targets main and remains held for physical shared-pipeline/RTMPS evidence; its production encoder, compressed writer and transport integration are not included. Main does not gain that runtime merely by incorporating #46's synthetic prototype or experimental patch. No automatic merge is authorized. The owner requested closure of eligible issues; the acceptance audit found none eligible yet, so none were closed.
+
+Issues #14–#27 remain open with their existing acceptance limits. In particular: #14 needs physical dual output; #15 still needs signed-phone sign-out/revocation; #16 needs the intended scheduled unlisted event displayed in the app (Studio alone is insufficient); #17 retains audible mute, zoom, both-landscape, route/interruption and playback/export gaps; #18 needs real binding reconciliation; #19 needs new-pipeline RTMPS device evidence. #20 onward retain remaining implementation and qualification. Merged implementation is not acceptance. The five-minute routine phone budget and separately agreed longer qualification remain unchanged.
+
+
+## Usage-limit handoff — 2026-11-08
+
+The consolidation agent stopped at normal merge `19d454c` with documentation updates saved but not yet committed; root is completing checks and arranging the required independent review. Do not publish it as reviewed until that review completes. Original short-smoke worktree documentation remains preserved; this branch carries a copy.
+
+F8 is independently committed in `/private/tmp/stream14-epic13-f8-reconnect`, branch `codex/issue-21-same-event-reconnect`, head `5f172ce` (runtime `49d294b`). Native Release passed; hosted suite reports 128 passes, seven physical skips and zero failures, including 29 coordinator tests. Simulator lease is released. Its separate reviewer hit the usage limit before returning a review; independent review is still PENDING and no F8 PR was published. F7 remains at `4891f0d` in `/private/tmp/stream14-epic13-f7-session`, independently reviewed with no remaining material findings, awaiting parent documentation inheritance and PR publication. Next: finish consolidation review/PR into main, inherit its documentation into held #49 and F7, publish reviewed F7 as the next stacked PR, and complete F8 independent review before publication. No device or YouTube mutation is needed for these repository steps.
+
+
+## Consolidation publication and reconnect review — 2026-11-08
+
+The consolidation at `d679d83` completed fresh independent actual-file/full-diff review with no material findings and is published as [PR #50](https://github.com/smith3v/stream14/pull/50) into main; it is not automatically merged. PR #49 now targets main and inherits that consolidation's documentation through a normal merge. All integration source remains unchanged from the prior reviewed runtime; no device rerun occurred.
+
+F8 review resumed and found two material lifecycle issues: file-only finalization temporarily changes MediaSession phase and could end remote supervision even while upload continues; a terminal-event stop request could be lost when MediaSession was busy. The F8 author is fixing both with deterministic held-operation regressions. F8 must not publish until affected checks and focused independent re-review pass. No epic child issue is closed; the acceptance audit remains current.
