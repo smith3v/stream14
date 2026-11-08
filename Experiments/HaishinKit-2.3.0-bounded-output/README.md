@@ -130,3 +130,31 @@ in [the F6 plan](../../docs/2026-11-07-independent-transport-implementation.md#o
 This is compile/link evidence, not physical execution, receiver delivery or
 production dependency adoption. The full-package all-tests manifest attempt remains
 separately documented as stopped; normal Xcode iOS product selection passed.
+
+## Follow-on common-origin candidate (2026-11-08, unadopted)
+
+`0002-common-origin.patch` applies after `0001-bounded-output.patch` and adds
+`RTMPStream.setCompressedTimestampOrigin(_:)`. A caller sets this once after
+publish succeeds and before acknowledged compressed media. Both tracks measure
+integer-millisecond positions from the same CoreMedia epoch, preserving the first
+AAC packet's offset rather than independently resetting it to zero. Rational
+positions are quantized before subtracting the previous position, preventing
+independent fractional-clock drift. Nonfinite, pre-origin, nonincreasing and
+UInt32-overflow positions throw without advancing the clock. Re-publish clears
+the epoch; changing an active epoch is rejected. The legacy raw append APIs keep
+their existing semantics and must not be mixed with the new compressed mode.
+
+A new connection must begin at a video random-access frame; the app must omit AAC
+packets with decode/presentation time before the chosen transport epoch. This
+patch does not identify keyframes, re-encode audio, remove priming, conceal missing
+audio, or guarantee receiver synchronization. Codec headers use the existing
+bounded FIFO before acknowledged payload; receiver decode remains a separate gate.
+
+The private source copy `/private/tmp/stream14-integration-haishinkit` uses the
+reduced validation manifest; `swift test --package-path` there passes 39 tests in
+16 suites at `/private/tmp/stream14-integration-package-1.log`. Four new clock
+tests cover track-arrival order, exact first offsets, 10,000 AAC packet positions,
+invalid/regressing/overflow times and a fresh reconnect epoch. This is not actual
+network/receiver or production dependency evidence. Independent review, normal
+iOS-product compile and immutable fork publication are still pending; root alone
+coordinates publication/adoption. No app package pin or shared cache was changed.

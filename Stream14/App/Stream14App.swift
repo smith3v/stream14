@@ -6,6 +6,7 @@ struct Stream14App: App {
     @State private var youtubeEvents: YouTubeEventSelection
 
     init() {
+        RTMPPrivacy.configure()
         #if DEBUG
         // Hosted camera smoke must not construct Google's SDK/Keychain driver,
         // even when a real public client ID is present in the signed candidate.

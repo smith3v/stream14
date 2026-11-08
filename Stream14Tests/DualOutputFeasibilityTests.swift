@@ -1,7 +1,6 @@
 import AVFoundation
 import HaishinKit
 import RTMPHaishinKit
-import Logboard
 import Synchronization
 import Testing
 import UIKit
@@ -20,14 +19,6 @@ private final class RawStreamProbe: StreamOutput, Sendable {
     }
 }
 
-/// Logboard's exported NullAppender has an internal initializer in pinned 2.6.0.
-private final class DiscardTransportLogs: LBLoggerAppender {
-    func append(_ logboard: LBLogger, level: LBLogger.Level, message: [Any],
-                file: StaticString, function: StaticString, line: Int) {}
-    func append(_ logboard: LBLogger, level: LBLogger.Level, format: String, arguments: any CVarArg,
-                file: StaticString, function: StaticString, line: Int) {}
-}
-
 @Suite(.serialized)
 struct DualOutputFeasibilityTests {
     /// A public stream observer sees raw input even when the transport is idle.
@@ -41,13 +32,15 @@ struct DualOutputFeasibilityTests {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp4")
         let recorder = LocalRecorder()
         try recorder.start(url)
+        let codec = try SharedMediaCodec(profile: .fullHD)
         for index in 0..<30 {
-            let video = try LocalRecorderTests.video(index)
-            recorder.append(video)
-            recorder.append(try LocalRecorderTests.audio(index))
+            let video = try LocalRecorderTests.video(index + 30)
+            for packet in try codec.append(video) { recorder.append(packet) }
+            for packet in try codec.append(LocalRecorderTests.audio(index + 30)) { recorder.append(packet) }
             await stream.append(video)
             try await Task.sleep(for: .milliseconds(34))
         }
+        for packet in try codec.finish() { recorder.append(packet) }
         let metrics = try await recorder.finish()
         #expect(metrics.videoWritten > 20)
         #expect(await stream.readyState == .idle)
@@ -67,11 +60,13 @@ struct DualOutputFeasibilityTests {
         let copy = directory.appendingPathComponent("passthrough.mp4")
         let recorder = LocalRecorder()
         try recorder.start(source)
+        let codec = try SharedMediaCodec(profile: .fullHD)
         for index in 0..<30 {
-            recorder.append(try LocalRecorderTests.video(index))
-            recorder.append(try LocalRecorderTests.audio(index))
+            for packet in try codec.append(LocalRecorderTests.video(index + 30)) { recorder.append(packet) }
+            for packet in try codec.append(LocalRecorderTests.audio(index + 30)) { recorder.append(packet) }
             try await Task.sleep(for: .milliseconds(34))
         }
+        for packet in try codec.finish() { recorder.append(packet) }
         _ = try await recorder.finish()
         try await callCompressedOverloadsForCompileCompatibility(source)
         let sourceAsset = AVURLAsset(url: source)
@@ -228,10 +223,9 @@ struct DualOutputFeasibilityTests {
               let key = environment["STREAM14_PRIVATE_STREAM_KEY"], !key.isEmpty else {
             throw CandidateFailure.missingPrivateConfiguration
         }
-        let transportLogger = LBLogger.with(kRTMPHaishinKitIdentifier)
-        let previousAppender = transportLogger.appender
-        transportLogger.appender = DiscardTransportLogs()
-        defer { transportLogger.appender = previousAppender }
+        // Explicitly configure the shared redacting sink before ANY direct
+        // legacy RTMPConnection, independent of the new sender factory.
+        RTMPPrivacy.configure()
         // This private candidate has fixed 1080p fixtures/transport settings.
         let session = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in }, profile: .fullHD)
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)

@@ -114,9 +114,41 @@ Early F11 native research is committed at 8503510 in /private/tmp/stream14-epic1
 
 The Mac-only generated H.264/AAC test uses 320×180 video and mono 48 kHz, not the app profile. Ten-second fragments preserve about 20 of 25 submitted seconds after own-child termination; distinct native passthrough copies preserve compressed payload hashes and decoded counts, originals unchanged. Before-first-fragment files remain unreadable and are retained honestly. See the native recovery report and exact private evidence paths there.
 
-Draft actual F6 pipeline work continues in /private/tmp/stream14-epic13-f6-integration-repo: single native persistent encoder and passthrough migration report 13 tests: 12 executed passes and one physical skip, including independent decoded midpoint markers; current local checkpoint d50d4e5 reviewed with no material findings. Concrete bounded uploader queue ae313e4 has four checks; adapter and full-PR review remain pending. Common-origin patch fedc43b passed separate review, 39 package checks and original-manifest iOS product compilation.
+Draft actual F6 pipeline work continues in /private/tmp/stream14-epic13-f6-integration-repo: single native persistent encoder and passthrough migration pass 12 executed generated-media checks plus one explicit physical skip, including independent decoded midpoint markers; current local checkpoint d50d4e5 reviewed with no material findings. Concrete bounded uploader queue ae313e4 has four checks; adapter and full-PR review remain pending. Common-origin patch fedc43b passed separate review, 39 package checks and original-manifest iOS product compilation.
 
 The reviewed minimal fork is now published at https://github.com/smith3v/HaishinKit.swift.git revision 8dc2ecce781d320ef0f2576ff5195411c91505ad, parent official 2.3.0 aa2149df822f2e965adf2410a106db959b2e1962. Root verified all eight changed/new source/test files byte-for-byte against reviewed/validated sources and original Package.swift unchanged. No upstream PR was sent. App adoption must pin that exact revision, document maintenance/notices, run full affected regressions and independent full integration review; no live media or physical acceptance is implied.
+
+
+## F6 actual shared-media integration — 2026-11-08 draft
+
+The isolated integration branch has merged reviewed short-smoke #47 and native
+recovery-feasibility #48 normally. Its normal Xcode project now pins the reviewed
+owner fork `8dc2ecce781d320ef0f2576ff5195411c91505ad` with committed resolved graph,
+links only core/RTMP products, and uses one persistent native encoder followed by
+compressed MP4 passthrough and an independently bounded RTMPS pump. Preview/setup
+still start no upload; F7 owns the explicit operator flow. All original files and
+the five-minute TOTAL phone visit constraint remain intact.
+
+Actual remote-pinned iPhone SDK build-for-testing passes. Eighteen focused
+encoder/recorder/pump/integration checks execute and pass, including this new
+persistent converter's decoded audible/video marker and packet readback, writer
+failure surviving upload, upload failure surviving writing, actual writer-startup
+admission and finite stalled-send accounting. Full hosted regression reports
+96 passed, 7 explicit physical skips, 0 failed (103 total, 22 suites). Evidence
+paths, earlier failures, current interfaces and review gates are in the
+[shared-media integration record](2026-11-08-shared-media-integration-implementation.md).
+Final whole-change review and noncapture UI/cancellation follow-up are pending.
+No physical or receiver test, F1/F6 completion, actual CBR or shipping claim follows.
+
+F6 final draft checkpoint: the immutable remote-fork-pinned app passes its generic
+iPhone SDK build and two noncapture UI checks. Whole independent source review
+found two startup/context gaps; both are resolved, and focused re-review reports
+no remaining material findings at source `1103a9d`/docs `0b35a1c`. After those fixes,
+11 affected checks execute/pass. Full hosted baseline is 96 passed, 7 explicit
+physical skips, 0 failed; the corrected context-test compile failure is retained,
+not counted as a pass. A reviewed draft PR is ready for root publication, with
+F1/F6 receiver/physical/CBR/AMF and later endurance criteria still open. No phone
+execution, media transmission or Google mutation occurred in this integration.
 
 ## Connected attempt and attended preparation — 2026-11-08
 
@@ -128,6 +160,7 @@ The owner will be available soon for attended tests. The new attended-session ca
 
 Latest follow-up: F6 final runtime review at1103a9d/docs0b35a1c found both startup findings resolved and no material issues; corrected 11 affected checks and native build pass. Final handoffd2bfec1 is ready for reviewed draft PR. F7 plan098cdd4 is committed and implementation proceeds without touching the phone.
 
+Prepublication handoff: reviewed runtime1103a9d/docsd2bfec1 now includes the attended card and verified suite selector from PR47ef2dbf3 through the updated native-probe predecessor. This merge changes documentation only; no additional phone invocation occurred. F7 continues in /private/tmp/stream14-epic13-f7-session from reviewed source and must inherit this documentation before its PR.
 ## Actual attended results — 2026-11-08
 
 The corrected short-suite selector executed on the physical iPhone 13 mini/iOS 27.2: one pass, zero failures, zero skips, with a 10.013-second test body. The retained original clips are 3.443 seconds at 1080p and 3.225 seconds at 720p. Installed source `8af669f`, reviewed runtime `a7c18e5`, displayed version 0.2 (3), used the Xcode development route and the PR #47 local-only path. This was neither the newer PR #49 shared pipeline nor TestFlight. Private evidence remains in `/private/tmp/stream14-attended-20261108-091215`; the [scoped public report](2026-11-08-attended-device-results.md) records limits. The initial zero-test attempt remains a non-pass.
@@ -163,3 +196,10 @@ Issues #14–#27 remain open with their existing acceptance limits. In particula
 The consolidation agent stopped at normal merge `19d454c` with documentation updates saved but not yet committed; root is completing checks and arranging the required independent review. Do not publish it as reviewed until that review completes. Original short-smoke worktree documentation remains preserved; this branch carries a copy.
 
 F8 is independently committed in `/private/tmp/stream14-epic13-f8-reconnect`, branch `codex/issue-21-same-event-reconnect`, head `5f172ce` (runtime `49d294b`). Native Release passed; hosted suite reports 128 passes, seven physical skips and zero failures, including 29 coordinator tests. Simulator lease is released. Its separate reviewer hit the usage limit before returning a review; independent review is still PENDING and no F8 PR was published. F7 remains at `4891f0d` in `/private/tmp/stream14-epic13-f7-session`, independently reviewed with no remaining material findings, awaiting parent documentation inheritance and PR publication. Next: finish consolidation review/PR into main, inherit its documentation into held #49 and F7, publish reviewed F7 as the next stacked PR, and complete F8 independent review before publication. No device or YouTube mutation is needed for these repository steps.
+
+
+## Consolidation publication and reconnect review — 2026-11-08
+
+The consolidation at `d679d83` completed fresh independent actual-file/full-diff review with no material findings and is published as [PR #50](https://github.com/smith3v/stream14/pull/50) into main; it is not automatically merged. PR #49 now targets main and inherits that consolidation's documentation through a normal merge. All integration source remains unchanged from the prior reviewed runtime; no device rerun occurred.
+
+F8 review resumed and found two material lifecycle issues: file-only finalization temporarily changes MediaSession phase and could end remote supervision even while upload continues; a terminal-event stop request could be lost when MediaSession was busy. The F8 author is fixing both with deterministic held-operation regressions. F8 must not publish until affected checks and focused independent re-review pass. No epic child issue is closed; the acceptance audit remains current.

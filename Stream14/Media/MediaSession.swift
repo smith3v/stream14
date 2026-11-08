@@ -36,6 +36,18 @@ final class MediaSession {
     private var overlayForeground = false
     var canEditOverlayURL: Bool { !busy && !stopRequested && (phase == .idle || phase == .preview) }
     private var recorder: LocalRecorder?
+    private var sharedEncoder: SharedMediaEncoder?
+    private var mediaDestinations: SharedMediaDestinations?
+    private var publisher: RTMPSPublisher?
+    private var publisherErrorTask: Task<Void, Never>?
+    private var encoderErrorTask: Task<Void, Never>?
+    private var uploadAffinity = RTMPSUploadAffinity()
+    private var pendingWriterFailure = false
+    private(set) var recordingFailed = false
+    enum UploadState { case idle, connecting, connected, failed }
+    private(set) var uploadState: UploadState = .idle
+    private(set) var uploadMessage = "Upload not started"
+    var hasUpload: Bool { publisher != nil }
     private var overlay: WebOverlayLayer?
     private var overlayTask: Task<Void, Never>?
     private var errorTask: Task<Void, Never>?
@@ -58,7 +70,7 @@ final class MediaSession {
     var canDeleteSamples: Bool { !busy && (phase == .idle || phase == .preview) }
     var recordingID: UUID? { recorder == nil ? nil : sample?.id }
     var recordingMetrics: LocalRecorder.Metrics? { recorder?.metrics }
-    var isRecording: Bool { phase == .recording }
+    var isRecording: Bool { phase == .recording && recorder != nil && !recordingFailed }
 
     init(readOverlayURL: @MainActor () throws -> String = OverlayURLStore.read,
          saveOverlayURL: @escaping @MainActor (String) throws -> Void = OverlayURLStore.save,
@@ -325,6 +337,11 @@ final class MediaSession {
         busy = true
         phase = .starting
         failure = false
+        recordingFailed = false
+        pendingWriterFailure = false
+        uploadAffinity.beginRecordingSession(keepingTransportEpoch: publisher != nil || sharedEncoder != nil)
+        uploadState = .idle
+        uploadMessage = "Upload not started"
         sampleURL = nil
         defer { finishOperation() }
         do {
@@ -338,13 +355,26 @@ final class MediaSession {
             errorTask = Task { [weak self] in
                 for await _ in recorder.failures {
                     guard !Task.isCancelled else { return }
-                    self?.failure = true
-                    self?.message = "Recording failed. The file is retained as incomplete."
-                    self?.requestStop()
+                    await self?.handleRecorderFailure()
                 }
             }
             try recorder.start(directory.appendingPathComponent(sample.fileName), injection: injection, profile: profile)
-            await mixer.addOutput(recorder)
+            let destinations = SharedMediaDestinations(recorder: recorder)
+            mediaDestinations = destinations
+            let encoder = try SharedMediaEncoder(profile: profile, output: { sample in
+                destinations.append(sample)
+            }, failed: { _ in destinations.encoderFailed() })
+            sharedEncoder = encoder
+            encoderErrorTask = Task { [weak self] in
+                for await _ in destinations.encoderFailures {
+                    guard !Task.isCancelled else { return }
+                    self?.failure = true
+                    self?.message = "Media encoding failed. Saved footage is retained as incomplete."
+                    self?.requestStop()
+                }
+            }
+            await encoder.start()
+            await mixer.addOutput(encoder)
             previousIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
             UIApplication.shared.isIdleTimerDisabled = true
             startedAt = Date()
@@ -378,22 +408,134 @@ final class MediaSession {
     }
 
     func stopRecording() async {
-        guard phase == .recording, !busy else { return }
+        guard phase == .recording, !busy, recorder != nil else { return }
         busy = true
         phase = .stopping
-        await finishRecording()
-        phase = .preview
+        if publisher != nil {
+            await finishRecording(keepEncoding: true)
+            phase = .recording
+            message = "Local recording stopped. Upload continues."
+        } else {
+            await finishRecording()
+            phase = .preview
+        }
         finishOperation()
+    }
+
+    private func handleRecorderFailure() async {
+        guard recorder != nil else { return }
+        failure = true
+        recordingFailed = true
+        message = "Recording failed. The file is retained as incomplete."
+        if publisher != nil || uploadAffinity.hasAdmittedTransport {
+            guard !busy else { pendingWriterFailure = true; return }
+            busy = true
+            // A failed file consumer never gains ownership of a healthy upload.
+            await finishRecording(keepEncoding: true)
+            message = publisher != nil ? "Backup failed. Upload continues; saved footage is retained." :
+                "Backup failed; upload unavailable. Saved footage is retained. Retry the same event or end."
+            finishOperation()
+        } else { requestStop() }
+    }
+
+    /// Explicit F7 integration entry point; no setup/preview action invokes it.
+    func startUpload(_ prepared: PreparedYouTubeIngestion) async throws {
+        guard phase == .recording, !busy, !stopRequested, publisher == nil,
+              prepared.profile == profile, let sharedEncoder, let mediaDestinations else {
+            throw RTMPSPublisher.StartupFailure.recordingNotReady
+        }
+        let recorder = self.recorder
+        guard uploadAffinity.permits(prepared) else { throw RTMPSPublisher.StartupFailure.contextChanged }
+        let retry = uploadAffinity.hasAdmittedTransport
+        guard retry || recorder?.hasStarted == true else { throw RTMPSPublisher.StartupFailure.recordingNotReady }
+        busy = true
+        uploadState = .connecting
+        uploadMessage = "Connecting upload"
+        defer {
+            if publisher == nil, uploadState == .connecting { uploadState = Task.isCancelled ? .idle : .failed }
+            finishOperation()
+        }
+        let recordingID = sample?.id
+        let (failures, continuation) = AsyncStream<RTMPSPublisher.Failure>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        let publisher = try await RTMPSPublisher.connected(to: prepared,
+            canPublish: { retry || recorder?.hasStarted == true },
+            failed: { failure in continuation.yield(failure); continuation.finish() })
+        guard !Task.isCancelled, !stopRequested, phase == .recording, sample?.id == recordingID else {
+            await publisher.stop()
+            throw RTMPSPublisher.StartupFailure.cancelled
+        }
+        self.publisher = publisher
+        mediaDestinations.attachPublisher(publisher)
+        await sharedEncoder.requestKeyframe()
+        guard !Task.isCancelled, !stopRequested else {
+            mediaDestinations.detachPublisher()
+            self.publisher = nil
+            await publisher.stop()
+            uploadState = .idle
+            throw RTMPSPublisher.StartupFailure.cancelled
+        }
+        guard uploadAffinity.admit(prepared) else {
+            mediaDestinations.detachPublisher()
+            self.publisher = nil
+            await publisher.stop()
+            throw RTMPSPublisher.StartupFailure.contextChanged
+        }
+        uploadState = .connected
+        uploadMessage = "Upload connected; waiting for YouTube confirmation"
+        publisherErrorTask = Task { [weak self, weak publisher] in
+            for await _ in failures {
+                guard !Task.isCancelled, let self, let publisher, self.publisher === publisher else { return }
+                self.mediaDestinations?.detachPublisher()
+                self.publisher = nil
+                self.uploadState = .failed
+                self.uploadMessage = "Upload failed. Local recording continues while healthy."
+                await publisher.stop()
+                if self.recorder == nil {
+                    self.uploadMessage = "Upload failed; backup unavailable. Retry the same event or end."
+                }
+            }
+        }
+    }
+
+    func stopUpload() async {
+        guard !busy else { return }
+        busy = true
+        defer { finishOperation() }
+        let publisher = self.publisher
+        self.publisher = nil
+        mediaDestinations?.detachPublisher()
+        publisherErrorTask?.cancel(); publisherErrorTask = nil
+        await publisher?.stop()
+        uploadState = .idle
+        uploadMessage = "Upload stopped"
+        if recorder == nil, sharedEncoder != nil {
+            await finishRecording()
+            phase = .preview
+        }
     }
 
     private func finishOperation() {
         busy = false
         if stopRequested { Task { await close() } }
+        else if pendingWriterFailure {
+            pendingWriterFailure = false
+            Task { await handleRecorderFailure() }
+        }
     }
 
-    private func finishRecording() async {
-        guard let recorder else { return }
-        await mixer.removeOutput(recorder)
+    private func finishRecording(keepEncoding: Bool = false) async {
+        if !keepEncoding, let sharedEncoder {
+            await mixer.removeOutput(sharedEncoder)
+            do { try await sharedEncoder.finish() }
+            catch { failure = true }
+            self.sharedEncoder = nil
+            encoderErrorTask?.cancel(); encoderErrorTask = nil
+        }
+        guard let recorder else {
+            if !keepEncoding { restoreIdleTimer() }
+            return
+        }
+        mediaDestinations?.detachRecorder()
         do {
             let metrics = try await recorder.finish()
             sample?.metrics = metrics
@@ -429,6 +571,10 @@ final class MediaSession {
         self.recorder = nil
         refreshSamples()
         startedAt = nil
+        if !keepEncoding { restoreIdleTimer() }
+    }
+
+    private func restoreIdleTimer() {
         if let previousIdleTimerDisabled { UIApplication.shared.isIdleTimerDisabled = previousIdleTimerDisabled }
         previousIdleTimerDisabled = nil
     }
@@ -438,7 +584,15 @@ final class MediaSession {
         busy = true
         stopRequested = false
         phase = .stopping
+        let publisher = self.publisher
+        self.publisher = nil
+        mediaDestinations?.detachPublisher()
+        publisherErrorTask?.cancel(); publisherErrorTask = nil
+        // Socket shutdown never delays file finalization. This is one control
+        // task per stop operation, not a retained task per media callback.
+        let uploadClosing = publisher.map { publisher in Task { await publisher.stop() } }
         await finishRecording()
+        mediaDestinations = nil
         overlayTask?.cancel()
         overlayTask = nil
         interruptionTask?.cancel()
@@ -463,6 +617,9 @@ final class MediaSession {
             UIApplication.shared.endBackgroundTask(backgroundTask)
             backgroundTask = .invalid
         }
+        await uploadClosing?.value
+        uploadAffinity.endCaptureSession()
+        uploadState = .idle
         phase = .idle
         if interrupted && !failure { message = "Capture stopped after an interruption. Open the camera explicitly to resume." }
         finishOperation()

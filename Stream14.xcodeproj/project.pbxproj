@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B60000000000000000000001 /* RTMPHaishinKit in App Frameworks */ = {isa = PBXBuildFile; productRef = B40000000000000000000002 /* RTMPHaishinKit */; };
 		B50000000000000000000001 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = B50000000000000000000002 /* GoogleSignIn */; };
 		B30000000000000000000001 /* HaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000002 /* HaishinKit */; };
 		B40000000000000000000001 /* RTMPHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = B40000000000000000000002 /* RTMPHaishinKit */; };
@@ -60,6 +61,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B30000000000000000000001 /* HaishinKit in Frameworks */,
+                B60000000000000000000001 /* RTMPHaishinKit in App Frameworks */,
 				B50000000000000000000001 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -123,6 +125,7 @@
 			name = Stream14;
 			packageProductDependencies = (
 				B30000000000000000000002 /* HaishinKit */,
+                B40000000000000000000002 /* RTMPHaishinKit */,
 				B50000000000000000000002 /* GoogleSignIn */,
 			);
 			productName = Stream14;
@@ -521,10 +524,10 @@
 		};
 		B30000000000000000000003 /* XCRemoteSwiftPackageReference "HaishinKit.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/HaishinKit/HaishinKit.swift.git";
+			repositoryURL = "https://github.com/smith3v/HaishinKit.swift.git";
 			requirement = {
-				kind = exactVersion;
-				version = 2.3.0;
+				kind = revision;
+                revision = 8dc2ecce781d320ef0f2576ff5195411c91505ad;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

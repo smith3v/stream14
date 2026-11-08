@@ -739,6 +739,17 @@ Simulator checks; these are not physical or receiver evidence. See the
 for retained failures, proposed bounds and unresolved adoption/qualification gates.
 No production encoding, transport or recording-lifecycle selection changes yet.
 
+On 2026-11-08 the owner/root authorized a draft app-owned single native encoder
+following the existing HaishinKit mixer. A public library codec exposure would
+also need bounded compressed callbacks, explicit owned AAC buffers and independent
+codec lifetime/error reporting; changing access levels alone is insufficient. The
+native candidate keeps library camera/composition/preview and replaces the raw
+writer encoding, with independently owned passthrough MP4 and bounded RTMPS
+consumers. See the [integration plan](2026-11-08-shared-media-integration-implementation.md).
+This decision does not pass F1, adopt a fork, enable operator publishing, or establish
+physical realtime/sync/resource evidence. Common transport epoch and package review
+remain prerequisites to an immutable production dependency selection.
+
 ## 7. Architecture, ownership, and interfaces
 
 Use one Xcode iOS app target plus focused unit and UI test targets. Keep small
@@ -1064,3 +1075,46 @@ project/client/API/testing audience are now prepared, but signed-device OAuth,
 actual API-returned channel identity and an upcoming unlisted test event remain
 external acceptance work. See the [F3 handoff](2026-11-07-youtube-client-implementation.md)
 for reproducible commands and remaining evidence.
+
+### F6 draft dependency selection — 2026-11-08
+
+The draft selects [the owner-maintained HaishinKit fork](https://github.com/smith3v/HaishinKit.swift)
+at immutable revision `8dc2ecce781d320ef0f2576ff5195411c91505ad`, parent upstream
+2.3.0 `aa2149df822f2e965adf2410a106db959b2e1962`. The original Package.swift is
+unchanged. This contains only the independently reviewed bounded acknowledged
+output and explicit common-origin compressed publishing changes retained in
+`Experiments/HaishinKit-2.3.0-bounded-output/0001-bounded-output.patch` and
+`0002-common-origin.patch`. Normal full-manifest iOS RTMP product compile/link
+passed; 39 isolated package checks passed. These are adoption evidence for a
+draft, not proof of real receiver/physical reliability.
+
+Link core HaishinKit plus actually used RTMPHaishinKit, whose linked dependency
+remains Logboard 2.6.0. SRT, RTC, OpenSSL and libdatachannel products are not linked
+by the application. The full package may resolve/download those declared packages;
+resolution is distinct from binary footprint. BSD-3-Clause notices for HaishinKit
+and Logboard are retained. The native encoder uses Apple frameworks already in
+scope; the native alternative to the RTMP product would require implementing RTMP
+framing, handshake, AMF and socket lifecycle, which adds more code and protocol
+risk than these focused reviewed changes. The fork creates an explicit maintenance
+obligation: reconcile future upstream security/compatibility changes and repeat
+queue/clock/lifecycle and normal-product builds before changing the revision.
+No moving branch follows release builds.
+
+Initialize an empty appender for the SDK's RTMP logger before creating any
+connection; upstream trace/status/error messages can contain credentials. App
+transport diagnostics use only finite local enums/counters, never raw endpoint,
+stream name, server status description or underlying SDK error. TLS remains
+Network.framework normal certificate validation. A socket acknowledgment reports
+local processing, not receiver delivery. Actual writer startup must be observed
+before connection/publish, and no current preview/setup/UI action starts upload;
+F7 still owns operator confirmation and remote broadcast state.
+
+The F6 draft requests VideoToolbox AverageBitRate at the existing 14/8 Mbps
+profile targets and two-second keyframes. It does **not** claim constant bitrate.
+The installed iOS 27.2 SDK's VTCompressionProperties.h (ConstantBitRate section)
+says strict CBR adds padding in low-motion scenes, is not recommended for general
+streaming, is mutually exclusive with AverageBitRate and can be unsupported by
+an encoder. The owner/root explicitly retained the existing average target for
+this draft after reviewing that evidence. The initial CBR target in section 2
+remains an unmet starting criterion pending actual receiver/device rate-control
+qualification and a final default decision; no physical performance is inferred.
