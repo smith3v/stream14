@@ -44,3 +44,23 @@ The operator's five-minute budget includes installation and unresolved prerequis
 ## Evidence limitations
 
 The clips exercise current local composition/profile controls with actual camera/microphone data. A red/green rectangle in decoded originals proves the changing overlay reached each file; audio track/decode structure does not prove audible unmute or physical A/V synchronization. No network output, actual overlay-source outage, two-minute internet outage, injected disk fault, crash recovery or long-run stability is established. Originals remain in MediaExperiments and are never deleted by this test.
+
+## Checkpoint and validation — 2026-11-08
+
+Worktree: /private/tmp/stream14-epic13-short-smoke. Branch: codex/short-connected-phone-smoke. The stage started from reviewed F5 ce00961, then merged reviewed experimental F6 at 8c14f67. Plan checkpoint 3e07c3c; implementation ae12876; independent-review fix a7c18e5.
+
+Independent review found that physical Release tests could have enabled capture while host isolation was Debug-only. The fix compiles enablement only under DEBUG on a physical device and makes the operator command explicitly Debug. Release is not a supported hosted-smoke configuration. Extra checks prevent starting recording after the internal deadline or accepting a polling success after cancellation/deadline expiry.
+
+| Check | Actual result / retained local evidence |
+| --- | --- |
+| Physical iOS SDK Debug build-for-testing, final reviewed source | Passed; /private/tmp/stream14-short-smoke-ios-build-tests-4.log |
+| Simulator normal-mode regression | Eight hosted tests executed successfully, one physical smoke skipped, two accessibility UI tests passed; /private/tmp/stream14-short-smoke-regression.xcresult and .log |
+| Explicit short-smoke flag on Simulator | Two configuration tests executed successfully, physical smoke skipped; /private/tmp/stream14-short-smoke-opt-in-simulator.xcresult |
+| Final Debug gate/deadline recheck with flag on Simulator | Two configuration tests executed successfully, physical smoke skipped; /private/tmp/stream14-short-smoke-review-recheck.xcresult and .log |
+| Ordinary unsigned Release app build | Passed; /private/tmp/stream14-short-smoke-release-app-build.log |
+| Attempted Release build-for-testing | Unsupported existing configuration: app module lacks -enable-testing for the project's @testable imports. Failed log retained at /private/tmp/stream14-short-smoke-ios-release-build-tests.log; no project setting was changed to make Release tests work |
+| Focused documentation links/fences, shell-template syntax, git diff --check | Passed; no documented command was executed for the syntax check |
+
+No phone was installed, launched or recorded. Actual physical duration, camera/file marker checks, audio audibility and physical synchronization remain pending. The one-minute test target and 90-second runner watchdog are design limits, not measured physical performance or a guarantee that installation fits the owner’s total five-minute visit.
+
+The ShortPhoneSmokeTests selector is supported only after permission setup, normal Debug signing and branding. The source host deliberately does not load the saved overlay URL/preferences or construct Google's SDK driver under its opt-in flag; it never signs out or revokes the owner's authorization. Normal app/Release paths retain their usual configuration. The fixture contains no network resources and the test session uses independent empty-URL/nonpersisting configuration.
