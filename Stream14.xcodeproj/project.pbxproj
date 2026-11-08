@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B50000000000000000000001 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = B50000000000000000000002 /* GoogleSignIn */; };
 		B30000000000000000000001 /* HaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000002 /* HaishinKit */; };
 		B40000000000000000000001 /* RTMPHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = B40000000000000000000002 /* RTMPHaishinKit */; };
 /* End PBXBuildFile section */
@@ -29,6 +30,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B50000000000000000000004 /* Google.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Google.xcconfig; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000021 /* Stream14.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Stream14.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000022 /* Stream14Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Stream14Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000023 /* Stream14UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Stream14UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -58,6 +60,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B30000000000000000000001 /* HaishinKit in Frameworks */,
+				B50000000000000000000001 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,6 +123,7 @@
 			name = Stream14;
 			packageProductDependencies = (
 				B30000000000000000000002 /* HaishinKit */,
+				B50000000000000000000002 /* GoogleSignIn */,
 			);
 			productName = Stream14;
 			productReference = A10000000000000000000021 /* Stream14.app */;
@@ -206,6 +210,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				B30000000000000000000003 /* XCRemoteSwiftPackageReference "HaishinKit.swift" */,
+				B50000000000000000000003 /* GoogleSignIn-iOS */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A10000000000000000000034 /* Products */;
@@ -325,12 +330,14 @@
 		};
 		A10000000000000000000072 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B50000000000000000000004 /* Google.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				INFOPLIST_FILE = Config/AppInfo.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = stream14;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photo-video";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Show the rear camera and save it in a local test recording.";
@@ -358,12 +365,14 @@
 		};
 		A10000000000000000000073 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = B50000000000000000000004 /* Google.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				INFOPLIST_FILE = Config/AppInfo.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = stream14;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photo-video";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Show the rear camera and save it in a local test recording.";
@@ -505,6 +514,11 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		B50000000000000000000003 /* GoogleSignIn-iOS */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS.git";
+			requirement = {kind = exactVersion; version = 10.1.0; };
+		};
 		B30000000000000000000003 /* XCRemoteSwiftPackageReference "HaishinKit.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/HaishinKit/HaishinKit.swift.git";
@@ -516,6 +530,7 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		B50000000000000000000002 /* GoogleSignIn */ = {isa = XCSwiftPackageProductDependency; package = B50000000000000000000003 /* GoogleSignIn-iOS */; productName = GoogleSignIn; };
 		B30000000000000000000002 /* HaishinKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B30000000000000000000003 /* XCRemoteSwiftPackageReference "HaishinKit.swift" */;

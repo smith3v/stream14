@@ -1,7 +1,8 @@
-# stream14 local-recording beta privacy
+# stream14 beta privacy
 
-Effective: 2026-11-05. This policy covers the local-recording beta. YouTube login,
-streaming and cloud recording are not implemented.
+Effective: 2026-11-07. This policy covers local recording and optional Google
+authorization. YouTube media upload and cloud recording are not implemented by
+the authorization stage.
 
 ## Camera, microphone and local files
 
@@ -20,9 +21,10 @@ app removes its local recordings; export anything you want to keep first.
 
 ## Web overlays and network requests
 
-Loading an overlay explicitly contacts the HTTPS address you choose and any
+Applying an overlay URL contacts the HTTPS address you choose and any
 resources requested by its webpage. The reference-overlay button selects a public
-webpage; Load starts requests. The website and its providers can receive ordinary
+webpage; Apply URL saves it and starts requests while the app is active. A saved
+overlay also resumes requests when the app becomes active. The website and its providers can receive ordinary
 web-request information, including your IP address, requested URL and browser
 information. URLs can contain private tokens: choose trusted services and do not
 post such URLs in public reports. The website's own privacy policy applies to its
@@ -33,7 +35,45 @@ permission requests.
 The complete configured URL is saved in this iPhone's device-only Keychain and is
 accessible to the app while unlocked. WebKit uses a nonpersistent website data
 store. No native credentials or media access are exposed to webpage JavaScript.
-Clearing the URL and choosing Load removes the saved URL and disables the overlay.
+Applying an empty URL removes the saved URL and disables the overlay.
+
+## Optional Google and YouTube authorization
+
+Connect YouTube opens Google's supported system-browser authorization through the
+Google Sign-In SDK. Google receives authorization requests and handles account
+selection, consent and token services under its [privacy policy](https://policies.google.com/privacy).
+The app requests YouTube access to manage the selected broadcast in later stages;
+connecting alone never uploads camera or microphone media. Without Google setup,
+local recording remains available and no Google authorization request is made.
+
+The SDK stores its credentials in the iPhone Keychain. stream14 does not copy them
+to preferences, files, an app backend or overlay JavaScript. A fresh access token
+is held in memory only for authorized API use. Sign out removes this iPhone's SDK
+session; Revoke Google access additionally requests revocation from Google. If
+revocation fails, the app says so and you can review access in your Google Account.
+These actions clear the app's in-memory YouTube channel/event information and keep
+local recordings and overlay settings. When you explicitly refresh scheduled events,
+the app sends authorized read requests directly to YouTube and holds channel/event
+metadata in memory for selection. It does not save raw API responses or ingestion
+keys, and selecting an event alone does not publish or change it.
+
+The broadcast-preparation component keeps a small local request journal
+containing channel, event and any created stream identifiers, the chosen media
+profile and request phase. This prevents duplicate stream creation after a network
+error or app restart. The journal is excluded from backups and contains no Google
+token, ingestion address or stream key. Signing out hides account-dependent state
+but retains this duplicate-prevention record; an unresolved creation requires
+checking YouTube Studio before another stream can be created. Preparation is used
+only from the later confirmed Go Live flow, not from listing or selecting events.
+
+GoogleSignIn 10.1.0's bundled privacy manifest declares Google-side account/contact,
+coarse location, user/device identifiers and usage/other data for app functionality
+and some analytics purposes, with tracking declared false. The SDK's included
+AppCheckCore and GoogleUtilities products are required dependencies; stream14
+adds no separate analytics or crash SDK and does not configure optional App Check
+attestation. Review Google's disclosures and the aggregate archive privacy report
+before distributing a build with accounts enabled. Provider processing is distinct
+from collection by the stream14 developer.
 
 ## Developer collection and Apple beta services
 
@@ -41,7 +81,8 @@ stream14 has no developer-operated collection backend, advertising, analytics or
 third-party crash-reporting SDK. The app does not track you across apps or websites.
 It uses HaishinKit and Logboard locally for media processing and local diagnostic
 logging. The app privacy manifest declares elapsed-time calculations for overlay
-freshness and app-container file metadata for safe deletion; neither is used for
+freshness, app-container file metadata for safe deletion, and app-only UserDefaults
+for the selected nonsecret session profile. These are not used for
 fingerprinting or sent to the developer by stream14.
 
 Apple operates TestFlight and may provide beta feedback and crash information under

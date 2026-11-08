@@ -24,6 +24,10 @@ qualify the later full-app build. Development experiments remain capped at 15 mi
 longer qualification needs a later explicit agreement. A PR target does not authorize
 merging; use independent review and explicit merge approval.
 
+## Owner testing-time update — 2026-11-07
+
+Routine connected-iPhone validation targets five minutes TOTAL, not an hour. Prepare builds and deterministic/Simulator checks on the laptop first; combine a short smoke with only a targeted physical case relevant to the change. The full inventory is a backlog, not every-visit work. If setup consumes the budget, retain a blocked/incomplete result rather than extending silently. Longer runs need explicit agreement; the existing 15-minute development ceiling is not the default. Long-run criteria remain unverified until separately agreed/measured; five-minute smoke results do not establish endurance or waive those criteria.
+
 ## Current milestone: local-recording MVP
 
 The owner's 2026-11-01 architecture handoff and subsequent instruction select a
@@ -580,6 +584,33 @@ supported, and use its returned RTMPS endpoint. Track the created ID immediately
 retrying a later bind does not repeatedly create resources. An ambiguous create
 response requires reconciliation or operator action, not blind repeated insertion.
 
+F5 implementation (2026-11-07): `YouTubeBinding.prepareConfirmed` is an explicit
+component for the later Go Live coordinator; listing, selection and preview do not
+invoke it. It checks the actual channel and selected event again, then checks all
+pages of `broadcastStatus=all,broadcastType=all` for other unfinished bindings.
+Existing reusable streams are not presumed shared: known ready/inactive, healthy,
+profile-compatible streams can be reused only after current dedication is established.
+Unknown lifecycle/health/reuse/compatibility information fails closed. Newly created
+streams request RTMP with paired variable resolution/frame rate and `isReusable=false`.
+
+An atomic, backup-excluded local journal stores only operation/channel/event/profile
+and known created-resource IDs plus phase, independently for each channel/event.
+Completing one event does not block another or discard an older unresolved create.
+The `inserting` phase is written before
+POST; a successful response ID is saved before cancellation/account-change rejection.
+Malformed/timeout/server-failure insert results become unresolved and never trigger
+another blind insert, including after relaunch. Definitive API rejection or credential
+preflight failure permits a later explicit retry. Known created IDs survive binding
+failure and are read before retrying; binds are sent once and reconciled by event ID.
+The workflow has one in-flight operation and a 45-second deadline with cancellation.
+No automatic remote deletion/unbinding or editorial/auto-start/auto-stop updates occur.
+When Studio resolves an ambiguous request by binding the event, verified readback
+marks that journal entry prepared without inventing a known app-created ID. If that
+event later becomes unbound, the prior unknown-create guard still prevents blind insertion.
+Raw responses and credentials are not persisted; credential values redact diagnostic
+descriptions/reflection. Physical signed-account/unlisted-event API acceptance remains
+pending; deterministic fixtures do not establish live service acceptance.
+
 Fetch `rtmpsIngestionAddress` and the stream name/key from YouTube; do not manufacture
 an insecure RTMP fallback. Use TLS certificate and hostname validation. RTMPS and
 the relevant ingestion fields are described in [YouTube's ingestion guide][rtmps].
@@ -657,6 +688,13 @@ combination and recovery/export behavior on the device. Keep incomplete files fo
 recovery or explicit deletion; never silently discard them. A crash can still lose
 the current fragment and must be described honestly.
 
+Early F11 laptop evidence (2026-11-08): [native MP4 recovery probe](2026-11-08-native-fragment-recovery-feasibility.md)
+reads and passthrough-remuxes completed ten-second fragments after SIGKILL of an
+owned synthetic H.264/AAC writer child; a pre-first-fragment file cannot be opened.
+Originals remain unchanged. This supports retaining MP4 as the recovery candidate,
+not production adoption or A5: repeat on the F6 compressed writer and physical
+13 mini, preserve truncated/interrupted status and disclose lost tail media.
+
 Storage reporting and forecasting are deferred improvements, not MVP requirements.
 There is no required free-space display, time-remaining estimate, periodic capacity
 polling, or fixed 1 GiB/250 MiB reserve policy. Do not implement those thresholds
@@ -692,6 +730,14 @@ The [F1 feasibility audit](feasibility.md#full-app-f1-public-dual-output-api-aud
 compares this with library-native separate encoding. Production keeps its existing
 single local encode until physical evidence and explicit architecture review select
 a dual-output path. Test-only RTMP experiments do not authorize production adoption.
+
+F6 preparation adds a test-only native single-encoder/file-fan-out candidate and a
+reviewable, unadopted package admission patch. Synthetic compressed-file bytes,
+explicit AAC trim-origin handling and independently decoded midpoint markers pass
+Simulator checks; these are not physical or receiver evidence. See the
+[F6 feasibility record](feasibility.md#full-app-f6-isolated-single-encoder-and-output-admission-preparation-2026-11-07)
+for retained failures, proposed bounds and unresolved adoption/qualification gates.
+No production encoding, transport or recording-lifecycle selection changes yet.
 
 ## 7. Architecture, ownership, and interfaces
 
@@ -893,3 +939,128 @@ requirements must be rechecked when their milestone is implemented.
 [hk-readme]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/README.md
 [hk-package]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/Package.swift
 [hk-license]: https://github.com/HaishinKit/HaishinKit.swift/blob/2.2.5/LICENSE.md
+
+## F2 authorization implementation decision — 2026-11-07
+
+The authorization stage pins GoogleSignIn 10.1.0 and links only its GoogleSignIn
+product. The native alternative is ASWebAuthenticationSession plus application-owned
+PKCE, OAuth token exchange/refresh/revocation and Keychain storage. The maintained
+SDK is selected to retain one credential owner and Google's supported flow. A
+broad Google API/Firebase SDK and a backend are unnecessary. Required linked
+products are AppAuth/AppAuthCore 3.0.0, GTMAppAuth 6.0.0,
+GTMSessionFetcherCore 5.3.1, AppCheckCore 12.0.0 and GoogleUtilities 8.1.5
+(Environment/UserDefaults/Logger and IsAppEncrypted). All new packages use Apache
+2.0 except IsAppEncrypted's reproduced MIT license. Package.resolved includes
+upstream resolved packages that are not linked (including existing HaishinKit
+transport packages); resolution is not evidence of linkage. No optional App Check
+configuration, analytics SDK or server token store is added.
+
+The concrete MainActor authorization owner serializes SDK account operations,
+validates the YouTube scope and changes an account generation before changes.
+Only Sendable account snapshots/token strings cross SDK callbacks; SDK objects
+are read synchronously on its documented main callback queue. The SDK alone owns
+Keychain credentials. Explicit restore never publishes or opens the camera.
+Cancellation/stale callbacks cannot restore signed-out readiness; API cancellation
+does not invalidate a valid session. Account actions provide an active-broadcast
+guard for the later coordinator. Local media/overlay state is independent.
+
+Missing/mismatched public iOS configuration disables connection while rehearsal
+works. SDK privacy declarations and Google-side processing are recorded in the
+[privacy policy](privacy.md); packaged notices preserve licenses. No signed-phone callback, Brand Account/channel identity or revoke test
+has passed yet; console setup prepared later in F3 is not app-authorization evidence. See the [development guide](ios-development-guide.md#f2-google-authorization-setup-2026-11-07)
+for setup and pending evidence. F3 owns channel identity and event selection.
+
+## Full app F4: fixed session profiles and shared controls (2026-11-07)
+
+F4 adds profile selection while capture is closed. `SessionProfile` is the concrete,
+immutable media contract for 1920×1080/14 Mbps or 1280×720/8 Mbps, both landscape
+30 fps, H.264, a two-second maximum keyframe interval, stereo AAC 44.1 kHz/128 kbps.
+The camera format filter, mixer screen/image layer, attached WebKit CSS viewport,
+snapshot normalization, preview composition and writer consume that same selected
+value. Changing profile retires old browser callbacks and raster, preserving manual
+hide intent and foreground URL recovery. Opening preview freezes the profile;
+close the camera before changing it. Only the nonsecret enum preference is persisted.
+The owner-authorized Ultra Wide/Wide/available Telephoto selection remains, now
+filtered against the selected profile; selecting a lens resets its device zoom.
+
+Camera HDR is disabled, HaishinKit uses `.sdr` and its pinned implementation uses
+a Rec.709 Core Image working/output space with video-range 8-bit NV12. The local
+writer requests Rec.709 color properties and average bitrate, not a verified CBR
+mode. Requested metadata/settings do not establish measured color accuracy, bitrate
+stability or a long-run performance gate. The starting bitrates, keyframe interval,
+stereo rate and color target match the current English [YouTube encoder guide](https://support.google.com/youtube/answer/2853702?hl=en),
+checked 2026-11-07. Future encoded transport must reuse the same profile constants;
+F4 does not add a network output or establish shared encoding.
+
+Microphone mute sets public `AudioMixerSettings.isMuted` on the existing mixer.
+Pinned HaishinKit 2.3.0 `AudioMixerBySingleTrack.track(_:didOutput:when:)` applies
+mute before its mixed `UInt8.max` output is distributed by MediaMixer, so recording
+and future consumers of that mixed boundary receive the same silence. Metering is
+an observer of that boundary, not a second audio path. Each callback samples at
+most 256 values per channel and stores one peak/time pair under `Mutex`; the
+existing 100 ms view-update loop reads it and expires stale readings after 500 ms.
+No per-buffer task or sample queue is introduced. The meter is an approximate
+linear peak indicator, not a calibrated loudness meter. The route caption follows
+AVAudioSession input-route changes. Background/interruption policy remains explicit
+stop; there is no background capture or automatic recording restart.
+
+Zoom uses the existing mixer's public throwing `configuration(video:configuration:)`
+to clamp finite requests to the active physical device's supported zoom range,
+with device locking on the media actor. The standard slider commits when released,
+so dragging cannot launch a task for every intermediate value. Media operations
+remain serialized; mute/zoom are available in preview/recording and profile/lens
+changes remain locked during recording/finalization. Original export and deliberate
+confirmed deletion are unchanged. Physical controls, both profile recordings,
+route changes, both landscape orientations and long-run performance remain separate
+acceptance checks; Simulator evidence cannot establish them.
+
+## F3 read-only channel and event selection — 2026-11-07
+
+`YouTubeClient` uses native ephemeral URLSession/Codable with SDK-refreshed in-memory
+access tokens; it adds no dependency or backend. Requests do not use a disk cache,
+cookie store or automatic redirects, and normal HTTPS certificate validation remains
+in force. API response bodies, headers and ingestion keys are not logged or saved.
+The F3 stream model intentionally discards ingestion addresses/keys; F5 owns their
+later short-lived use. Channel/event metadata lives in memory and is cleared on
+account change, sign-out or detected revoked/insufficient authorization. Recordings
+and overlay configuration are independent.
+
+Verified official contracts are [channels.list](https://developers.google.com/youtube/v3/docs/channels/list),
+[liveBroadcasts.list](https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list),
+[the broadcast resource](https://developers.google.com/youtube/v3/live/docs/liveBroadcasts),
+[liveStreams.list](https://developers.google.com/youtube/v3/live/docs/liveStreams/list)
+and [live API errors](https://developers.google.com/youtube/v3/live/docs/errors).
+The client resolves `channels.list(mine=true)` rather than inferring a channel
+from Google identity. Multiple returned channels require reconnecting to the intended
+channel/Brand Account instead of silently choosing one. It reads each upcoming-event
+page with `broadcastStatus=upcoming`, `broadcastType=event`, `maxResults=50` and
+`snippet,status,contentDetails`; by-ID reads use `id` alone as their filter.
+Repeated pagination tokens or a 100-page safety limit fail explicitly without
+handing off a truncated selection. A moving YouTube list is not an atomic snapshot;
+selected events are read again by ID before use.
+
+Only idempotent reads retry: at most two transient retries plus one SDK-supported
+refresh-if-needed/401 retry (at most four requests for one page). Bounded exponential
+backoff respects numeric or HTTP-date Retry-After. A server delay over ten seconds
+returns a wait/retry message instead of sleeping indefinitely or shortening the delay.
+Disabled live streaming, missing channel/event/stream, wrong channel, insufficient
+scope, exhausted quota, rate limiting, transient service/network failure and invalid
+responses have distinct safe messages. Account-generation and cancellation checks
+surround async operations and decoding; late responses cannot restore old data.
+
+The app-owned `YouTubeEventSelection` supplies native explicit Refresh and event
+rows with actual channel identity, device-local date/time, visibility and eligibility.
+Unknown or missing state/visibility/time/auto-start/auto-stop information stays
+ineligible; auto-stop must be disabled in Studio. Auto-start is disclosed when an
+otherwise eligible event is selected. A disappeared/ineligible event clears selection,
+and changing selection during a by-ID recheck rejects the old result. Selecting,
+refreshing or opening a preview performs no API write and sends no camera media.
+F3 adds no Go Live action. F5/F7 must freeze the selection and recheck account/remote
+state around their own subsequent mutations.
+
+The focused Simulator run passed 26 deterministic tests across F3, authorization
+and app-configuration suites; it used only sanitized fixtures. The Google console
+project/client/API/testing audience are now prepared, but signed-device OAuth,
+actual API-returned channel identity and an upcoming unlisted test event remain
+external acceptance work. See the [F3 handoff](2026-11-07-youtube-client-implementation.md)
+for reproducible commands and remaining evidence.

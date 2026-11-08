@@ -1,0 +1,4 @@
+// Public OAuth configuration only. Never add a client secret or user token.
+GOOGLE_CLIENT_ID =
+GOOGLE_REVERSED_CLIENT_ID = com.smith3v.stream14.oauth.unconfigured
+#include? "Local.xcconfig"
