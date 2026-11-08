@@ -439,3 +439,15 @@ private func markerTimes(_ url: URL) async throws -> (video: Double, audio: Doub
 }
 
 private enum PrototypeFailure: Error { case converterDidNotFinish, writerFailed, writerStalled }
+
+// Shared offline decoder fixtures only. New encoder tests generate their own
+// PCM/video and must independently pass through their own production adapter.
+func decodedSharedMediaMarkers(_ url: URL) async throws -> (video: Double, audio: Double) {
+    try await markerTimes(url)
+}
+func sharedMediaPacketReadback(_ url: URL, type: AVMediaType, audioPriming: CMTime) async throws -> [(Data, CMTime)] {
+    try await packets(url, type, audioPriming: audioPriming).map { ($0.data, $0.pts) }
+}
+func sharedMediaPacketBytes(_ sample: CMSampleBuffer) throws -> [(Data, CMTime)] {
+    try codecPackets(sample).map { ($0.data, $0.pts) }
+}

@@ -1,10 +1,10 @@
 import AVFoundation
-import HaishinKit
 import Synchronization
 
-/// MediaMixer delivers composed NV12 video and mixed PCM audio. The lock owns all
-/// writer/input access; callbacks append synchronously, with no task/sample queue.
-final class LocalRecorder: MediaMixerOutput, Sendable {
+/// MP4 passthrough consumer of the one shared H.264/AAC encoder. This type owns
+/// no encoder or capture lifecycle. The lock serializes writer/input access; a
+/// finite startup buffer waits for both codec descriptions, never the network.
+nonisolated final class LocalRecorder: Sendable {
     enum Failure: Error { case initialization, append, finalization, missingMedia }
     enum Injection: Sendable { case none, initialization, append, finalization }
     struct Metrics: Codable, Sendable {
@@ -29,12 +29,13 @@ final class LocalRecorder: MediaMixerOutput, Sendable {
         var audioWritten = 0
         var metrics = Metrics()
         var injection = Injection.none
+        var profile = SessionProfile.fullHD
+        var pending: [CMSampleBuffer] = []
+        var pendingBytes = 0
     }
     private let state = Mutex(State())
     private let failureContinuation: AsyncStream<Failure>.Continuation
     let failures: AsyncStream<Failure>
-    let videoTrackId: UInt8? = .max
-    let audioTrackId: UInt8? = .max
 
     init() {
         (failures, failureContinuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
@@ -43,71 +44,103 @@ final class LocalRecorder: MediaMixerOutput, Sendable {
     func start(_ url: URL, injection: Injection = .none, profile: SessionProfile = .fullHD) throws {
         try state.withLock { state in
             guard state.writer == nil, injection != .initialization else { throw Failure.initialization }
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: url.deletingLastPathComponent().path,
+                                                  isDirectory: &isDirectory), isDirectory.boolValue else {
+                throw Failure.initialization
+            }
             let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
-            let video = AVAssetWriterInput(mediaType: .video, outputSettings: profile.videoSettings)
-            let audio = AVAssetWriterInput(mediaType: .audio, outputSettings: profile.audioSettings)
-            video.expectsMediaDataInRealTime = true
-            audio.expectsMediaDataInRealTime = true
-            guard writer.canAdd(video), writer.canAdd(audio) else { throw Failure.initialization }
-            writer.add(video)
-            writer.add(audio)
-            guard writer.startWriting() else { throw Failure.initialization }
-            state = State(writer: writer, video: video, audio: audio, injection: injection)
+            // Compression settings are nil when the actual formats arrive.
+            // Creating the destination first catches initialization/path errors
+            // before a session or publisher is allowed to start.
+            state = State(writer: writer, injection: injection, profile: profile)
         }
     }
 
     func append(_ sample: CMSampleBuffer) {
         state.withLock { state in
             guard let writer = state.writer, !state.failed else { return }
-            let isVideo = sample.formatDescription?.mediaType == .video
-            let time = sample.presentationTimeStamp
-            guard time.isValid else { return }
-            if isVideo {
-                state.metrics.videoReceived += 1
-                if state.receivedVideoTime.isValid, time > state.receivedVideoTime {
-                    let intervals = Int(((time - state.receivedVideoTime).seconds * 30).rounded())
-                    state.metrics.missingOutputFrames = (state.metrics.missingOutputFrames ?? 0) + max(0, intervals - 1)
-                }
-                if !state.receivedVideoTime.isValid || time > state.receivedVideoTime { state.receivedVideoTime = time }
-            }
-            // Establish the common session origin from video. Do not queue early audio.
+            guard let format = sample.formatDescription,
+                  format.mediaSubType.rawValue == kCMVideoCodecType_H264 || format.mediaSubType.rawValue == kAudioFormatMPEG4AAC,
+                  format.mediaType == .video || format.mediaType == .audio,
+                  sample.presentationTimeStamp.isNumeric else { fail(&state); return }
             if !state.started {
-                guard isVideo else { return }
-                writer.startSession(atSourceTime: time)
-                state.started = true
-                state.origin = time
-            }
-            guard writer.status == .writing, state.injection != .append else { fail(&state); return }
-            let previous = isVideo ? state.videoTime : state.audioTime
-            guard !previous.isValid || time > previous else {
-                if isVideo { state.metrics.videoDropped += 1 } else { state.metrics.audioDropped += 1 }
-                return
-            }
-            // Audio preceding the first video timestamp must not enter the session.
-            if !isVideo, time < state.origin { return }
-            guard let input = isVideo ? state.video : state.audio else { fail(&state); return }
-            guard input.isReadyForMoreMediaData else {
-                if isVideo { state.metrics.videoDropped += 1 } else { state.metrics.audioDropped += 1 }
-                return
-            }
-            guard input.append(sample) else { fail(&state); return }
-            if isVideo {
-                if previous.isValid {
-                    let gap = (time - previous).seconds
-                    state.metrics.largestVideoGap = max(state.metrics.largestVideoGap, gap)
-                    if gap >= 0.5 { state.metrics.videoStalls += 1 }
+                let bytes = sample.dataBuffer.map { CMBlockBufferGetDataLength($0) } ?? sample.totalSampleSize
+                guard state.pending.count < 16, bytes <= 2 * 1024 * 1024 - state.pendingBytes else {
+                    fail(&state); return
                 }
-                state.videoTime = time
-                state.metrics.videoWritten += 1
-            } else {
-                state.audioTime = time
-                state.audioWritten += 1
+                state.pending.append(sample)
+                state.pendingBytes += bytes
+                guard let videoSample = state.pending.first(where: { $0.formatDescription?.mediaType == .video }),
+                      let audioSample = state.pending.first(where: { $0.formatDescription?.mediaType == .audio }),
+                      let videoFormat = videoSample.formatDescription, let audioFormat = audioSample.formatDescription else { return }
+                guard videoFormat.mediaSubType.rawValue == kCMVideoCodecType_H264,
+                      audioFormat.mediaSubType.rawValue == kAudioFormatMPEG4AAC,
+                      videoFormat.dimensions.width == state.profile.width,
+                      videoFormat.dimensions.height == state.profile.height else { fail(&state); return }
+                let video = AVAssetWriterInput(mediaType: .video, outputSettings: nil, sourceFormatHint: videoFormat)
+                let audio = AVAssetWriterInput(mediaType: .audio, outputSettings: nil, sourceFormatHint: audioFormat)
+                video.expectsMediaDataInRealTime = true
+                audio.expectsMediaDataInRealTime = true
+                guard writer.canAdd(video), writer.canAdd(audio) else { fail(&state); return }
+                writer.add(video); writer.add(audio)
+                guard writer.startWriting() else { fail(&state); return }
+                state.video = video; state.audio = audio
+                state.origin = videoSample.presentationTimeStamp
+                writer.startSession(atSourceTime: state.origin)
+                state.started = true
+                let pending = state.pending
+                state.pending.removeAll(); state.pendingBytes = 0
+                for packet in pending { append(packet, state: &state) }
+            } else { append(sample, state: &state) }
+        }
+    }
+
+    private func append(_ sample: CMSampleBuffer, state: inout State) {
+        guard !state.failed, let writer = state.writer else { return }
+        let isVideo = sample.formatDescription?.mediaType == .video
+        let time = sample.presentationTimeStamp
+        if isVideo {
+            state.metrics.videoReceived += 1
+            if state.receivedVideoTime.isValid, time > state.receivedVideoTime {
+                let intervals = Int(((time - state.receivedVideoTime).seconds * 30).rounded())
+                state.metrics.missingOutputFrames = (state.metrics.missingOutputFrames ?? 0) + max(0, intervals - 1)
             }
+            state.receivedVideoTime = time
+        }
+        let previous = isVideo ? state.videoTime : state.audioTime
+        guard writer.status == .writing, state.injection != .append,
+              !previous.isValid || time > previous,
+              let input = isVideo ? state.video : state.audio,
+              input.isReadyForMoreMediaData, input.append(sample) else {
+            // Dropping a compressed P frame can invalidate later references.
+            // Fail this consumer explicitly; never stall or stop the uploader.
+            fail(&state); return
+        }
+        if isVideo {
+            if previous.isValid {
+                let gap = (time - previous).seconds
+                state.metrics.largestVideoGap = max(state.metrics.largestVideoGap, gap)
+                if gap >= 0.5 { state.metrics.videoStalls += 1 }
+            }
+            state.videoTime = time
+            state.metrics.videoWritten += 1
+        } else {
+            state.audioTime = time
+            state.audioWritten += 1
+        }
+    }
+
+    func encoderFailed() {
+        state.withLock { state in
+            if state.writer != nil, !state.failed { fail(&state) }
         }
     }
 
     private func fail(_ state: inout State) {
+        guard !state.failed else { return }
         state.failed = true
+        state.pending.removeAll(); state.pendingBytes = 0
         failureContinuation.yield(.append)
     }
 
@@ -120,10 +153,11 @@ final class LocalRecorder: MediaMixerOutput, Sendable {
                 state.audio?.markAsFinished()
             }
             let writer = state.writer
-            if !state.started { writer?.cancelWriting() }
+            // Never call cancelWriting here: it can remove an original file.
             state.writer = nil
             state.video = nil
             state.audio = nil
+            state.pending.removeAll(); state.pendingBytes = 0
             return (writer, success, state.metrics)
         }
         guard let writer = terminal.0 else { throw Failure.finalization }
@@ -154,13 +188,4 @@ final class LocalRecorder: MediaMixerOutput, Sendable {
     }
 
     var metrics: Metrics { state.withLock { $0.metrics } }
-    func selectTrack(_ id: UInt8?, mediaType: CMFormatDescription.MediaType) async {}
-    func mixer(_ mixer: MediaMixer, didOutput sampleBuffer: CMSampleBuffer) { append(sampleBuffer) }
-    func mixer(_ mixer: MediaMixer, didOutput buffer: AVAudioPCMBuffer, when: AVAudioTime) {
-        guard let sample = Self.audioSample(buffer, when: when) else {
-            state.withLock { state in if state.writer != nil { fail(&state) } }
-            return
-        }
-        append(sample)
-    }
 }

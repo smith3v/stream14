@@ -36,6 +36,7 @@ final class MediaSession {
     private var overlayForeground = false
     var canEditOverlayURL: Bool { !busy && !stopRequested && (phase == .idle || phase == .preview) }
     private var recorder: LocalRecorder?
+    private var sharedEncoder: SharedMediaEncoder?
     private var overlay: WebOverlayLayer?
     private var overlayTask: Task<Void, Never>?
     private var errorTask: Task<Void, Never>?
@@ -344,7 +345,12 @@ final class MediaSession {
                 }
             }
             try recorder.start(directory.appendingPathComponent(sample.fileName), injection: injection, profile: profile)
-            await mixer.addOutput(recorder)
+            let encoder = try SharedMediaEncoder(profile: profile, output: { sample in
+                recorder.append(sample)
+            }, failed: { _ in recorder.encoderFailed() })
+            sharedEncoder = encoder
+            await encoder.start()
+            await mixer.addOutput(encoder)
             previousIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
             UIApplication.shared.isIdleTimerDisabled = true
             startedAt = Date()
@@ -393,7 +399,12 @@ final class MediaSession {
 
     private func finishRecording() async {
         guard let recorder else { return }
-        await mixer.removeOutput(recorder)
+        if let sharedEncoder {
+            await mixer.removeOutput(sharedEncoder)
+            do { try await sharedEncoder.finish() }
+            catch { failure = true }
+            self.sharedEncoder = nil
+        }
         do {
             let metrics = try await recorder.finish()
             sample?.metrics = metrics

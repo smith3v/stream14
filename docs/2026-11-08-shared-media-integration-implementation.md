@@ -61,3 +61,43 @@ DerivedData `/private/tmp/stream14-integration-build` and the existing pinned
 packages. The first compile exposed one nonoptional AVAudioFormat initializer
 assumption; corrected before the passing build. Runtime tests await the root's
 Simulator lease. No realtime performance, receiver or physical result is claimed.
+
+### Source checkpoint 2 — draft migration under runtime validation
+
+The independently reviewed short-smoke branch `8af669f` joined by merge `4d2cb71`.
+The draft local path now attaches SharedMediaEncoder to the mixer and passes its
+compressed samples to LocalRecorder. The recorder has no compression settings;
+its finite startup queue waits for both actual codec descriptions, then creates
+passthrough MP4 inputs. Append/backpressure failure fails that consumer rather
+than dropping a compressed reference frame. No uploader is attached yet. The
+existing failure handler still stops local-only capture; it must be revised for
+independent active upload before F6 integration is complete.
+
+Actual upstream ownership was inspected at HaishinKit 2.3.0:
+`Screen.makeSampleBuffer` allocates a fresh pooled pixel buffer per composition;
+`AudioCaptureUnit.audioMixer(didOutput:)` clones PCM before yielding. The app's
+raw reservation precedes retaining the video sample or creating its CoreMedia PCM
+copy. Reservations store their exact charge (including plane alignment allowance)
+until processing returns; no per-buffer Task is created. Upstream capture/mixer
+AsyncStreams themselves are not established as globally bounded by this change.
+
+Runtime evidence is retained, including failures. The first five encoder tests
+pass in `/private/tmp/stream14-integration-codec-2.xcresult` after fixing PCM size
+accounting and setting destination frameLength before copying. Initial migrated
+writer checks failed with native invalid-timestamp errors; the persistent AAC
+path needed an explicit 1024/44100 packet duration, which the older finite
+prototype's retiming happened to provide. The audible-marker experiment now
+exercises this new persistent converter, arbitrary callback boundaries, two new
+passthrough writers, actual packet readback and independent decode. Its first
+assertion exposed nanosecond-vs-audio-grid rational timestamp rounding. The host
+epoch is now quantized once to the nearest 44.1 kHz sample (at most half a sample),
+so later AAC positions do not accumulate independent rounding. The affected
+three-suite repeat is running at `/private/tmp/stream14-integration-local-2.log`;
+no pass is claimed in this checkpoint before observing its result.
+
+Recorder initialization now explicitly checks the parent directory because
+AVAssetWriter initialization alone deferred a missing-parent error. Incomplete
+cleanup never invokes cancelWriting, whose documented/observed behavior can
+remove output. Original export/deletion UI and the short-smoke test remain intact.
+No physical run, live receiver, transport attachment or fork pin is part of this
+checkpoint. `git diff --check` passes; independent source re-review remains due.

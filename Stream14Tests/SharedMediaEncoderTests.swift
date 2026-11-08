@@ -96,6 +96,73 @@ struct SharedMediaEncoderTests {
         #expect(errors.withLock { $0.count } == 1)
     }
 
+    @Test func persistentEncoderPassthroughFilesPreservePacketsAndDecodedMidpoint() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let first = LocalRecorder()
+        let second = LocalRecorder()
+        let firstURL = directory.appendingPathComponent("first.mp4")
+        let secondURL = directory.appendingPathComponent("second.mp4")
+        try first.start(firstURL, profile: .hd)
+        try second.start(secondURL, profile: .hd)
+        let source = Mutex([CMSampleBuffer]())
+        let errors = Mutex([SharedMediaEncoder.Failure]())
+        let encoder = try SharedMediaEncoder(profile: .hd, output: { packet in
+            source.withLock { $0.append(packet) }
+            first.append(packet); second.append(packet)
+        }, failed: { error in errors.withLock { $0.append(error) } })
+        await encoder.start()
+        let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 2))
+        var sourceFrame = 0
+        for index in 0..<30 {
+            let video = try LocalRecorderTests.video(index + 30, profile: .hd)
+            let image = try #require(video.imageBuffer)
+            CVPixelBufferLockBaseAddress(image, [])
+            memset(CVPixelBufferGetBaseAddress(image), index < 15 ? 90 : 255, CVPixelBufferGetDataSize(image))
+            CVPixelBufferUnlockBaseAddress(image, [])
+            #expect(encoder.offer(video))
+            // Deliberately cross AAC packet boundaries with three differently
+            // sized callbacks per video interval, including the audible onset.
+            for count in [113, 1000, 357] {
+                let pcm = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)))
+                pcm.frameLength = AVAudioFrameCount(count)
+                for channel in 0..<2 {
+                    for frame in 0..<count {
+                        let position = sourceFrame + frame
+                        pcm.floatChannelData![channel][frame] = position < 22_050 ? 0 :
+                            Float(sin(Double(position) * 2 * .pi * 440 / 44_100) * 0.1)
+                    }
+                }
+                let sample = try #require(LocalRecorder.audioSample(pcm, when: AVAudioTime(hostTime:
+                    AVAudioTime.hostTime(forSeconds: 1 + Double(sourceFrame) / 44_100))))
+                #expect(encoder.offer(sample))
+                sourceFrame += count
+            }
+            try await Task.sleep(for: .milliseconds(34))
+        }
+        try await encoder.finish()
+        _ = try await first.finish()
+        _ = try await second.finish()
+        #expect(errors.withLock { $0.isEmpty })
+        let packets = source.withLock { $0 }
+        let firstAudio = try #require(packets.first { $0.formatDescription?.mediaType == .audio })
+        let priming = CMTime(value: 1, timescale: 1) - firstAudio.presentationTimeStamp
+        for type in [AVMediaType.video, .audio] {
+            let mediaType: CMFormatDescription.MediaType = type == .video ? .video : .audio
+            let expected = try packets.filter { $0.formatDescription?.mediaType == mediaType }.flatMap(sharedMediaPacketBytes)
+            let actual = try await sharedMediaPacketReadback(firstURL, type: type, audioPriming: priming)
+            let other = try await sharedMediaPacketReadback(secondURL, type: type, audioPriming: priming)
+            #expect(actual.count == expected.count)
+            #expect(actual.count == other.count)
+            #expect(zip(actual, expected).allSatisfy { $0.0 == $1.0 && $0.1 == $1.1 })
+            #expect(zip(actual, other).allSatisfy { $0.0 == $1.0 && $0.1 == $1.1 })
+        }
+        let marker = try await decodedSharedMediaMarkers(firstURL)
+        #expect(abs(marker.video - 0.5) < 0.005)
+        #expect(abs(marker.audio - marker.video) < 0.035)
+    }
+
     private func trim(_ sample: CMSampleBuffer, key: CFString) throws -> CMTime {
         let dictionary = try #require(CMGetAttachment(sample, key: key, attachmentModeOut: nil) as? [String: Any])
         return CMTimeMakeFromDictionary(dictionary as CFDictionary)

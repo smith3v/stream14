@@ -41,11 +41,13 @@ struct LocalRecorderTests {
             let recorder = LocalRecorder()
             let url = directory.appendingPathComponent(UUID().uuidString + ".mp4")
             try recorder.start(url, injection: injection)
+            let codec = try SharedMediaCodec(profile: .fullHD)
             for index in 0..<30 {
-                recorder.append(try Self.video(index))
-                recorder.append(try Self.audio(index))
+                for packet in try codec.append(Self.video(index + 30)) { recorder.append(packet) }
+                for packet in try codec.append(Self.audio(index + 30)) { recorder.append(packet) }
                 try await Task.sleep(for: .milliseconds(34))
             }
+            for packet in try codec.finish() { recorder.append(packet) }
             if injection == .none {
                 let metrics = try await recorder.finish()
                 #expect(metrics.videoWritten > 0)
@@ -73,11 +75,13 @@ struct LocalRecorderTests {
         defer { try? FileManager.default.removeItem(at: url) }
         let recorder = LocalRecorder()
         try recorder.start(url, profile: .hd)
+        let codec = try SharedMediaCodec(profile: .hd)
         for index in 0..<20 {
-            recorder.append(try Self.video(index, profile: .hd))
-            recorder.append(try Self.audio(index))
+            for packet in try codec.append(Self.video(index + 30, profile: .hd)) { recorder.append(packet) }
+            for packet in try codec.append(Self.audio(index + 30)) { recorder.append(packet) }
             try await Task.sleep(for: .milliseconds(34))
         }
+        for packet in try codec.finish() { recorder.append(packet) }
         _ = try await recorder.finish()
         let asset = AVURLAsset(url: url)
         let videos = try await asset.loadTracks(withMediaType: .video)
@@ -97,11 +101,17 @@ struct LocalRecorderTests {
         defer { try? FileManager.default.removeItem(at: url) }
         let recorder = LocalRecorder()
         try recorder.start(url)
-        recorder.append(try Self.video(0))
-        recorder.append(try Self.video(1))
-        recorder.append(try Self.video(4))
+        let codec = try SharedMediaCodec(profile: .fullHD)
+        // Both formats are needed before the passthrough writer can begin.
+        for packet in try codec.append(Self.video(30)) { recorder.append(packet) }
+        for index in 30..<34 {
+            for packet in try codec.append(Self.audio(index)) { recorder.append(packet) }
+        }
+        for packet in try codec.append(Self.video(31)) { recorder.append(packet) }
+        for packet in try codec.append(Self.video(34)) { recorder.append(packet) }
         #expect(recorder.metrics.missingOutputFrames == 2)
-        await #expect(throws: LocalRecorder.Failure.self) { try await recorder.finish() }
+        for packet in try codec.finish() { recorder.append(packet) }
+        _ = try await recorder.finish()
         let legacy = Data(#"{"videoReceived":1,"videoWritten":1,"videoDropped":0,"audioDropped":0,"videoStalls":0,"largestVideoGap":0}"#.utf8)
         let metrics = try JSONDecoder().decode(LocalRecorder.Metrics.self, from: legacy)
         #expect(metrics.missingOutputFrames == nil)

@@ -19,8 +19,14 @@ actor SharedMediaEncoder: MediaMixerOutput {
         var rejectedVideoFrames = 0
         var rejectedAudioFrames = 0
     }
+    private struct Item {
+        let sample: CMSampleBuffer
+        let bytes: Int
+        let audioFrames: Int
+        let video: Bool
+    }
     private struct Intake {
-        var samples: [CMSampleBuffer] = []
+        var samples: [Item] = []
         var bytes = 0
         var videos = 0
         var audioFrames = 0
@@ -70,7 +76,7 @@ actor SharedMediaEncoder: MediaMixerOutput {
 
     private nonisolated static func cost(_ sample: CMSampleBuffer) -> Int {
         if let image = sample.imageBuffer { return CVPixelBufferGetDataSize(image) }
-        return sample.totalSampleSize
+        return sample.dataBuffer.map { CMBlockBufferGetDataLength($0) } ?? sample.totalSampleSize
     }
 
     private nonisolated func admit(video: Bool, frames: Int, bytes: Int,
@@ -92,7 +98,7 @@ actor SharedMediaEncoder: MediaMixerOutput {
                 state.accepting = false
                 return false
             }
-            state.samples.append(sample)
+            state.samples.append(Item(sample: sample, bytes: bytes, audioFrames: video ? 0 : frames, video: video))
             state.bytes += bytes
             if video { state.videos += 1 } else { state.audioFrames += frames }
             state.metrics.highWaterBytes = max(state.metrics.highWaterBytes, state.bytes)
@@ -106,12 +112,13 @@ actor SharedMediaEncoder: MediaMixerOutput {
 
     private func consume() {
         while !terminal {
-            let next = intake.withLock { state -> (CMSampleBuffer?, Failure?) in
+            let next = intake.withLock { state -> (Item?, Failure?) in
                 if let failure = state.failure { return (nil, failure) }
                 return (state.samples.isEmpty ? nil : state.samples.removeFirst(), nil)
             }
             if let failure = next.1 { fail(failure); return }
-            guard let sample = next.0 else { return }
+            guard let item = next.0 else { return }
+            let sample = item.sample
             do {
                 for packet in try core.append(sample) { output(packet) }
             } catch {
@@ -119,9 +126,9 @@ actor SharedMediaEncoder: MediaMixerOutput {
                 return
             }
             intake.withLock { state in
-                state.bytes -= Self.cost(sample)
-                if sample.formatDescription?.mediaType == .video { state.videos -= 1 }
-                else { state.audioFrames -= sample.numSamples }
+                state.bytes -= item.bytes
+                if item.video { state.videos -= 1 }
+                else { state.audioFrames -= item.audioFrames }
             }
         }
     }
@@ -157,7 +164,8 @@ actor SharedMediaEncoder: MediaMixerOutput {
     nonisolated func mixer(_ mixer: MediaMixer, didOutput sampleBuffer: CMSampleBuffer) { offer(sampleBuffer) }
     nonisolated func mixer(_ mixer: MediaMixer, didOutput buffer: AVAudioPCMBuffer, when: AVAudioTime) {
         let list = UnsafeMutableAudioBufferListPointer(buffer.mutableAudioBufferList)
-        let bytes = list.reduce(0) { $0 + Int($1.mDataByteSize) }
+        // Reserve CoreMedia plane-alignment overhead before making its owned copy.
+        let bytes = list.reduce(0) { $0 + Int($1.mDataByteSize) + 16 }
         admit(video: false, frames: Int(buffer.frameLength), bytes: bytes) {
             LocalRecorder.audioSample(buffer, when: when)
         }
@@ -267,13 +275,19 @@ nonisolated final class SharedMediaCodec {
             converter.primeMethod = .none
             self.converter = converter
             inputFormat = format
-            audioOrigin = sample.presentationTimeStamp
+            // AAC positions live on the output sample grid. Quantize the host
+            // epoch once (at most half a PCM frame); adding packet positions to
+            // nanosecond CMTime repeatedly would round every packet separately.
+            audioOrigin = CMTimeConvertScale(sample.presentationTimeStamp, timescale: 44_100,
+                                             method: .roundHalfAwayFromZero)
         }
         guard pcmFrames + sample.numSamples <= 11_025,
-              let pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(sample.numSamples)),
-              CMSampleBufferCopyPCMDataIntoAudioBufferList(sample, at: 0, frameCount: Int32(sample.numSamples),
-                into: pcm.mutableAudioBufferList) == noErr else { throw SharedMediaEncoder.Failure.audioFormat }
+              let pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(sample.numSamples)) else {
+            throw SharedMediaEncoder.Failure.audioFormat
+        }
         pcm.frameLength = AVAudioFrameCount(sample.numSamples)
+        guard CMSampleBufferCopyPCMDataIntoAudioBufferList(sample, at: 0, frameCount: Int32(sample.numSamples),
+            into: pcm.mutableAudioBufferList) == noErr else { throw SharedMediaEncoder.Failure.audioFormat }
         pendingPCM.append(pcm)
         pcmFrames += sample.numSamples
         audioSourceFrames += Int64(sample.numSamples)
@@ -361,9 +375,17 @@ nonisolated final class SharedMediaCodec {
             packetDescriptions: buffer.packetDescriptions, sampleBufferOut: &sample) == noErr, let sample else {
             throw SharedMediaEncoder.Failure.codec
         }
-        Self.trim(sample, key: kCMSampleBufferAttachmentKey_TrimDurationAtStart, frames: min(1024, max(0, leading - frame)))
-        Self.trim(sample, key: kCMSampleBufferAttachmentKey_TrimDurationAtEnd, frames: 0)
-        return sample
+        // Explicit packet duration is required by the compressed writer. The
+        // convenience creation API's sampleCount alone describes packet count,
+        // not an independent guarantee of 1024 PCM frames per AAC packet.
+        var timing = CMSampleTimingInfo(duration: CMTime(value: 1024, timescale: 44_100),
+            presentationTimeStamp: time, decodeTimeStamp: .invalid)
+        var timed: CMSampleBuffer?
+        guard CMSampleBufferCreateCopyWithNewTiming(allocator: nil, sampleBuffer: sample,
+            sampleTimingEntryCount: 1, sampleTimingArray: &timing, sampleBufferOut: &timed) == noErr,
+            let timed else { throw SharedMediaEncoder.Failure.codec }
+        Self.trim(timed, key: kCMSampleBufferAttachmentKey_TrimDurationAtStart, frames: min(1024, max(0, leading - frame)))
+        return timed
     }
 
     private static func trim(_ sample: CMSampleBuffer, key: CFString, frames: Int64) {

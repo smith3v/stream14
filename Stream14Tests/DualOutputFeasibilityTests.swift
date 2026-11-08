@@ -41,13 +41,15 @@ struct DualOutputFeasibilityTests {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp4")
         let recorder = LocalRecorder()
         try recorder.start(url)
+        let codec = try SharedMediaCodec(profile: .fullHD)
         for index in 0..<30 {
-            let video = try LocalRecorderTests.video(index)
-            recorder.append(video)
-            recorder.append(try LocalRecorderTests.audio(index))
+            let video = try LocalRecorderTests.video(index + 30)
+            for packet in try codec.append(video) { recorder.append(packet) }
+            for packet in try codec.append(LocalRecorderTests.audio(index + 30)) { recorder.append(packet) }
             await stream.append(video)
             try await Task.sleep(for: .milliseconds(34))
         }
+        for packet in try codec.finish() { recorder.append(packet) }
         let metrics = try await recorder.finish()
         #expect(metrics.videoWritten > 20)
         #expect(await stream.readyState == .idle)
@@ -67,11 +69,13 @@ struct DualOutputFeasibilityTests {
         let copy = directory.appendingPathComponent("passthrough.mp4")
         let recorder = LocalRecorder()
         try recorder.start(source)
+        let codec = try SharedMediaCodec(profile: .fullHD)
         for index in 0..<30 {
-            recorder.append(try LocalRecorderTests.video(index))
-            recorder.append(try LocalRecorderTests.audio(index))
+            for packet in try codec.append(LocalRecorderTests.video(index + 30)) { recorder.append(packet) }
+            for packet in try codec.append(LocalRecorderTests.audio(index + 30)) { recorder.append(packet) }
             try await Task.sleep(for: .milliseconds(34))
         }
+        for packet in try codec.finish() { recorder.append(packet) }
         _ = try await recorder.finish()
         try await callCompressedOverloadsForCompileCompatibility(source)
         let sourceAsset = AVURLAsset(url: source)
