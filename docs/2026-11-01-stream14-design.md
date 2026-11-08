@@ -1373,3 +1373,26 @@ A short attended 13 mini instrumentation-overhead run, actual installed-app expo
 physical start/end clap markers, whole-run memory evidence and A1–A9 acceptance
 remain pending. Development harnesses retain the 900-second cap; ordinary user
 recording is unlimited. No prior MVP measurement claim is changed by this work.
+
+### Private receiver evidence checkpoint — 2026-11-08
+
+A laptop-only synthetic fixture now exercises the actual shared encoder, compressed
+file fan-out and acknowledged RTMPSConnection into an independent normal-TLS
+receiver. The [receiver record](2026-11-08-private-rtmps-receiver-validation.md)
+records a canonical native AAC sequence-header bug and legacy66ms CTS addition,
+two isolated fork correction candidates, native packet/decoder measurements and
+limits. After those candidates, receiver H264/AAC decode succeeds but decoded audio
+still leads video by about59–70ms across two generations, exceeding35ms. AAC
+priming/trim versus receiver normalization remains unresolved; no guessed delay,
+production pin adoption, physical sync or full-app gate completion is authorized by
+this evidence. The app's existing immutable fork pin remains unchanged here.
+
+
+The focused receiver correction selects owned-fork revision
+`497f742c5f2c04cf3ca085378e660a273e351788`: canonical native AAC-LC sequence headers
+and zero added CTS for the explicit compressed-video path. Encoder output, AAC
+priming compensation, payloads, shared clock and queue limits are unchanged.
+Independent source review and native package regressions support these narrow fixes;
+receiver-file A/V alignment and physical YouTube markers remain pending. The private
+localhost fixture is compiled only into Debug Simulator products. Historical evidence
+for earlier revisions is not retroactively reclassified.
