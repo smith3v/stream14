@@ -103,27 +103,25 @@ struct RecordingRow: View {
                 Text("Duration: " + duration.formatted(.number.precision(.fractionLength(1))) + " seconds · may be truncated")
             }
             Text(size.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "Copy file unavailable")
-            ViewThatFits(in: .horizontal) {
-                HStack { recoveryActions(recovery, url: url, available: size != nil) }
-                VStack(alignment: .leading) { recoveryActions(recovery, url: url, available: size != nil) }
-            }
+            HStack(spacing: 12) { recoveryActions(recovery, url: url, available: size != nil) }
+                .labelStyle(.iconOnly)
         }
         .padding(.top, 8)
     }
 
     @ViewBuilder private func recoveryActions(_ recovery: ExperimentSample.Recovery, url: URL, available: Bool) -> some View {
         Button { play(url) } label: {
-            Label("Play recovery copy", systemImage: "play.circle").frame(minHeight: 44)
+            Label("Play recovery copy", systemImage: "play.circle").frame(minWidth: 44, minHeight: 44)
         }
         .disabled(!available)
         .accessibilityIdentifier("playRecovery-" + recovery.id.uuidString)
         ShareLink(item: url) {
-            Label("Export recovery copy", systemImage: "square.and.arrow.up").frame(minHeight: 44)
+            Label("Export recovery copy", systemImage: "square.and.arrow.up").frame(minWidth: 44, minHeight: 44)
         }
         .disabled(!available)
         .accessibilityIdentifier("exportRecovery-" + recovery.id.uuidString)
         Button(role: .destructive) { pendingRecoveryDeletion = recovery } label: {
-            Label("Delete recovery copy", systemImage: "trash").frame(minHeight: 44)
+            Label("Delete recovery copy", systemImage: "trash").frame(minWidth: 44, minHeight: 44)
         }
         .disabled(!canDelete)
         .accessibilityIdentifier("deleteRecovery-" + recovery.id.uuidString)
