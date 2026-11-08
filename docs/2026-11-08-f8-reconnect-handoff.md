@@ -89,3 +89,5 @@ Post-fix validation on merged parent: **137 total, 130 passed, 7 physical-only
 skipped, 0 failed**, 24 suites; **31 BroadcastSession tests passed**. Full log:
 `/private/tmp/stream14-f8-postreview-full.log`. Native unsigned Release build passed:
 `/private/tmp/stream14-f8-postreview-release.log`. `git diff --check` passed.
+
+Focused independent actual-file re-review at `4203446` confirmed both findings resolved by `2f456dd`, with no further material findings. Reviewer inspected lifetime, immediate detachment, deferred cleanup, stop-generation admission fencing and both held-operation regressions. Physical outage and media continuity remain pending; source is ready for code review, not full-app acceptance.
