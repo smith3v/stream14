@@ -14,7 +14,7 @@ Read canonical specification §7/A5, full-app plan F11, development guide, progr
 
 ### Task 2: Build and run independent laptop probe
 
-Add `tools/fragment-recovery/Probe.swift` and `tools/fragment-recovery/run.py`. Generate timed color/video and PCM tone, encode H.264/AAC with AVAssetWriter, interval ten seconds. Test normal stop, kill before first fragment, kill after completed fragments, and actual asynchronous finalization race. Compile using `xcrun swiftc -parse-as-library tools/fragment-recovery/Probe.swift -o /private/tmp/stream14-fragment-probe`. Run harness into a new private output directory. Record track counts, decoded endpoints, asset duration, writer status, file size, original SHA-256 and distinct remux outcome. Do not mistake a finalization race that completed before kill for an interrupted finalization.
+Add `Tools/fragment-recovery/Probe.swift` and `Tools/fragment-recovery/run.py`. Generate timed color/video and PCM tone, encode H.264/AAC with AVAssetWriter, interval ten seconds. Test normal stop, kill before first fragment, kill after completed fragments, and actual asynchronous finalization race. Compile using `xcrun swiftc -O -swift-version 6 -module-cache-path /private/tmp/stream14-f11-module-cache -parse-as-library Tools/fragment-recovery/Probe.swift -o /private/tmp/stream14-fragment-probe`. Run harness into a new private output directory. Record track counts, decoded endpoints, asset duration, writer status, file size, original SHA-256 and distinct remux outcome. Do not mistake a finalization race that completed before kill for an interrupted finalization.
 
 ### Task 3: Report evidence and constraints
 
