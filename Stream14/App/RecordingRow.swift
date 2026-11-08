@@ -64,6 +64,7 @@ struct RecordingRow: View {
                 Text("Recovery may omit unfinished fragments or trim the tail. The original is kept; inspect playback.")
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
             }
+            QualificationExportView(sampleID: sample.id)
             ForEach(sample.recoveries ?? []) { recovery in
                 if let directory { recoveryRow(recovery, directory: directory) }
             }

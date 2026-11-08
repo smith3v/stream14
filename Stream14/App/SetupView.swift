@@ -246,6 +246,10 @@ struct SetupView: View {
                 Text("Profile: " + intent.profile.label)
             }
             Text("Recording: " + experiment.message)
+            if !experiment.qualificationWarning.isEmpty {
+                Text(experiment.qualificationWarning)
+                    .font(.footnote).fixedSize(horizontal: false, vertical: true)
+            }
                 .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("mediaStatus")
             if let started = experiment.startedAt {
                 Text(started, style: .timer).monospacedDigit().accessibilityLabel("Recording duration")
