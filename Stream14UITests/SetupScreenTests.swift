@@ -399,26 +399,29 @@ final class SetupScreenTests: XCTestCase {
         app.tabBars.buttons["Recordings"].tap()
         let recover = app.buttons["recoverRecording-" + id]
         scrollTo(recover, in: app)
+        let row = app.otherElements["recordingRow-" + id]
+        let copies = row.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "recoveryStatus-"))
+        let previousIDs = Set(copies.allElementsBoundByIndex.map(\.identifier))
         recover.tap()
         let feedback = app.staticTexts["recordingsStatus"]
         expectation(for: NSPredicate(format: "label CONTAINS %@", "Recovered copy saved"), evaluatedWith: feedback)
         waitForExpectations(timeout: 30)
-        let row = app.otherElements["recordingRow-" + id]
-        let copies = row.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "recoveryStatus-"))
-        XCTAssertEqual(copies.count, 1)
+        XCTAssertEqual(copies.count, previousIDs.count + 1)
+        let newID = try XCTUnwrap(copies.allElementsBoundByIndex.map(\.identifier).first { !previousIDs.contains($0) })
+            .replacingOccurrences(of: "recoveryStatus-", with: "")
         XCTAssertEqual(app.staticTexts["recordingStatus-" + id].label, "interrupted")
         app.terminate()
         app.launch()
         app.tabBars.buttons["Recordings"].tap()
         XCTAssertTrue(copies.firstMatch.waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["recordingStatus-" + id].label, "interrupted")
-        let play = row.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "playRecovery-")).firstMatch
+        let play = row.buttons["playRecovery-" + newID]
         scrollTo(play, in: app)
         XCTAssertTrue(play.isEnabled)
         play.tap()
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
         app.buttons["Done"].tap()
-        let export = row.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "exportRecovery-")).firstMatch
+        let export = row.buttons["exportRecovery-" + newID]
         scrollTo(export, in: app)
         try auditInterface(app)
         let recoveredScreenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -430,7 +433,7 @@ final class SetupScreenTests: XCTestCase {
         app.terminate()
         app.launch()
         app.tabBars.buttons["Recordings"].tap()
-        let remove = row.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "deleteRecovery-")).firstMatch
+        let remove = row.buttons["deleteRecovery-" + newID]
         scrollTo(remove, in: app)
         remove.tap()
         XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 3))
@@ -464,7 +467,8 @@ final class SetupScreenTests: XCTestCase {
         waitForExpectations(timeout: 20)
         XCTAssertTrue(app.buttons["exportRecording-" + id].isEnabled)
         XCTAssertEqual(app.staticTexts["recordingStatus-" + id].label, "interrupted")
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "recoveryStatus-")).firstMatch.exists)
+        let row = app.otherElements["recordingRow-" + id]
+        XCTAssertTrue(row.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "recoveryStatus-")).firstMatch.exists)
         XCTAssertTrue(app.staticTexts["recordingReview-" + id].label.contains("unreadable"))
     }
 
