@@ -121,3 +121,26 @@ The private validation app is `/private/tmp/stream14-integration-ios-validation`
 and references `/private/tmp/stream14-integration-full-package` locally. This
 absolute override exists only in that private experiment; committed production
 package references remain unchanged. Runtime socket/receiver evidence is pending.
+
+### Source checkpoint 3 — concrete transport pump
+
+`RTMPSPublisher.swift` now owns a concrete finite compressed-media queue and two
+fixed workers: one acknowledged-send pump and one abort/close worker. Overflow
+can therefore close a stalled sender immediately; it does not wait behind that
+send's acknowledgment. A queue limit includes the in-flight item until the send
+actually returns. Close/overflow clears only queued media, preserves in-flight
+accounting, and prevents further admission. A fresh transport object waits for a
+video keyframe, chooses its epoch and omits pre-epoch audio. It owns neither file
+nor encoder and does not request Google mutations. Send/close closures are the
+focused deterministic test seams; the actual library adapter awaits the root's
+reviewed immutable fork pin.
+
+Four Simulator checks pass at `/private/tmp/stream14-integration-pump-1.xcresult`
+(log beside it): stalled-send overflow closes while retaining in-flight charge;
+cancellation releases queued media; activation/random-access/common epoch handling;
+and eight repeated failed fresh connections release their queues. The normal
+upstream-pinned app still compiles: generic iPhone build-for-testing passes at
+`/private/tmp/stream14-integration-build-5.log`. No socket was opened by these
+checks. The prior migration reviewer reported no actionable material findings;
+actual writer startup must be confirmed before a future publisher starts because
+codec hints/startWriting are deferred beyond LocalRecorder.start returning.
