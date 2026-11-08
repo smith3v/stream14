@@ -4,6 +4,82 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct BroadcastSessionTests {
+    @Test func reconnectDelayIsPositiveCappedAndJitterBounded() {
+        #expect(ReconnectClock.delay(attempt: 0, jitter: 0) == 0.8)
+        #expect(ReconnectClock.delay(attempt: 1, jitter: 10) == 2.4)
+        #expect(ReconnectClock.delay(attempt: 40, jitter: 1.2) == 30)
+    }
+
+    @Test func twoMinuteOutageRecoversSameEventWithoutRepeatingLiveOrStoppingFile() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start(); await h.session.waitForOperation()
+        h.snapshot.uploadFailed = true; h.uploaded = false
+        h.rejectUntil = 120
+        try await h.until { h.timeline.filter { $0 == "upload" }.count > 1 && h.uploaded }
+        #expect(h.elapsed >= 120 && h.elapsed < 180)
+        #expect(h.snapshot.writerStarted && h.snapshot.isRecording)
+        #expect(!h.timeline.contains("stopAll"))
+        #expect(h.server.transitions == ["live"])
+        #expect(h.session.reconnectStatus == .monitoring)
+        #expect(h.server.requests.filter { $0.httpMethod == "POST" }.count == 1)
+    }
+
+    @Test func exhaustedRecoveryPreservesFileAndExplicitRetryOnlyUsesOriginalEvent() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start(); await h.session.waitForOperation()
+        h.snapshot.uploadFailed = true; h.uploaded = false; h.rejectUpload = true
+        try await h.until { h.session.reconnectStatus == .exhausted }
+        #expect(h.elapsed >= 180)
+        #expect(h.session.reconnectAttempts <= 12)
+        #expect(h.snapshot.isRecording && !h.timeline.contains("stopAll"))
+        h.rejectUpload = false
+        h.session.retryUpload()
+        try await h.until { h.uploaded }
+        #expect(h.server.transitions == ["live"])
+    }
+
+    @Test func supervisionStopsChangedOrCompletedEventButPreservesFile() async throws {
+        for change in ["complete", "binding", "missing"] {
+            let h = try await Harness(fastClock: true)
+            defer { h.cleanup() }
+            h.start(); await h.session.waitForOperation()
+            if change == "complete" { h.server.remoteState = "complete" }
+            if change == "binding" { h.server.boundStreamID = "replacement" }
+            if change == "missing" { h.server.failure = "missing" }
+            try await h.until { h.session.reconnectStatus == .stopped }
+            #expect(!h.uploaded && h.snapshot.isRecording)
+            #expect(!h.timeline.contains("stopAll"))
+            #expect(h.server.transitions == ["live"])
+        }
+    }
+
+    @Test func failedStatusReadAndAuthorizationAttentionPreserveHealthyTransport() async throws {
+        for failure in ["network", "auth"] {
+            let h = try await Harness(fastClock: true)
+            defer { h.cleanup() }
+            h.start(); await h.session.waitForOperation()
+            h.server.failure = failure
+            try await h.until { h.elapsed > 30 || h.session.reconnectStatus == .authorizationRequired }
+            #expect(h.uploaded && h.snapshot.isRecording)
+            #expect(!h.timeline.contains("stopAll"))
+            if failure == "auth" { #expect(h.session.reconnectStatus == .authorizationRequired) }
+        }
+    }
+
+    @Test func cancelRecoveryRejectsHeldLateReadAndNeverReconnects() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start(); await h.session.waitForOperation()
+        h.snapshot.uploadFailed = true; h.uploaded = false; h.hold = "channels"
+        try await h.until { h.pending != nil }
+        h.session.cancelReconnect(); h.release()
+        try await Task.sleep(for: .milliseconds(10))
+        #expect(h.timeline.filter { $0 == "upload" }.count == 1)
+        #expect(h.snapshot.isRecording && !h.timeline.contains("stopAll"))
+    }
+
     @Test func confirmationIsRequiredAndDoesNotStartMediaOrAPI() async throws {
         let h = try await Harness()
         defer { h.cleanup() }
@@ -357,11 +433,15 @@ import UIKit
     var server: BroadcastFixtureServer!
     var client: YouTubeClient!
     var session: BroadcastSession!
+    var elapsed: Double = 0
+    var rejectUntil: Double = 0
+    let fastClock: Bool
     let startup: Double
     let end: Double
     let channel = YouTubeChannel(id: "channel", snippet: .init(title: "Fixture channel"))
 
-    init(auto: Bool = false, startup: Double = 0.7, end: Double = 0.3) async throws {
+    init(auto: Bool = false, startup: Double = 0.7, end: Double = 0.3, fastClock: Bool = false) async throws {
+        self.fastClock = fastClock
         self.startup = startup; self.end = end
         directory = FileManager.default.temporaryDirectory.appendingPathComponent("broadcast-fixture-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -384,8 +464,8 @@ import UIKit
             self.timeline.append("upload")
             await self.pause("upload")
             try Task.checkCancellation()
-            guard !self.rejectUpload else { throw URLError(.cannotConnectToHost) }
-            self.uploaded = true
+            guard !self.rejectUpload, self.elapsed >= self.rejectUntil else { throw URLError(.cannotConnectToHost) }
+            self.uploaded = true; self.snapshot.uploadFailed = false
         }, stopUpload: {
             self.timeline.append("stopUpload"); self.uploaded = false
         }, stopAll: {
@@ -395,7 +475,11 @@ import UIKit
         return BroadcastSession(authorization: authorization, client: client,
             binding: YouTubeBinding(client: client, store: PendingBroadcastIntentStore(directory: directory.appendingPathComponent("bindings"))),
             media: media, store: PendingRemoteBroadcastStore(url: directory.appendingPathComponent("remote.json")),
-            startupSeconds: startup, endSeconds: end, pollSeconds: 0.005, writerSeconds: 0.05)
+            startupSeconds: startup, endSeconds: end, pollSeconds: 0.005, writerSeconds: 0.05,
+            reconnectClock: fastClock ? ReconnectClock(now: { self.elapsed }, sleep: { seconds in
+                try await Task.sleep(for: .milliseconds(1))
+                self.elapsed += seconds
+            }, jitter: { 0.8 }) : ReconnectClock())
     }
     func start() {
         session.requestConfirmation(channel: channel, event: server.event)
@@ -414,7 +498,7 @@ import UIKit
         }
         try #require(condition())
     }
-    func cleanup() { release(); try? FileManager.default.removeItem(at: directory) }
+    func cleanup() { session.cancelReconnect(); release(); try? FileManager.default.removeItem(at: directory) }
 }
 
 @MainActor private final class BroadcastFixtureServer {
@@ -422,6 +506,7 @@ import UIKit
     let auto: Bool
     var failure = ""
     var stallAuto = false
+    var boundStreamID = "stream"
     var eventTitle = "Fixture scheduled event"
     var remoteState = "ready"
     var requests: [URLRequest] = []
@@ -431,7 +516,7 @@ import UIKit
         YouTubeBroadcast(id: "event", snippet: .init(channelId: "channel", title: eventTitle,
             scheduledStartTime: "2026-11-08T12:00:00Z", isDefaultBroadcast: false),
             status: .init(lifeCycleStatus: remoteState, privacyStatus: "unlisted"),
-            contentDetails: .init(boundStreamId: "stream", enableAutoStart: auto, enableAutoStop: false))
+            contentDetails: .init(boundStreamId: boundStreamID, enableAutoStart: auto, enableAutoStop: false))
     }
     func respond(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         requests.append(request)
@@ -441,6 +526,9 @@ import UIKit
         h.timeline.append("\(request.httpMethod ?? "GET") \(resource)")
         if resource == "channels" { await h.pause("channels") }
         if resource == "liveStreams" && !h.uploaded { await h.pause("binding") }
+        if failure == "network" { throw URLError(.notConnectedToInternet) }
+        if failure == "auth" { throw YouTubeReadError.authorizationRequired }
+        if failure == "missing" { throw YouTubeReadError.missingEvent }
         var status = 200
         let data: Data
         switch resource {

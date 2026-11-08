@@ -104,11 +104,21 @@ import UIKit
 
     @Test func transientReadsAreBoundedAndRespectRetryAfter() async throws {
         let server = ReadFixtureServer([.error(429, "rateLimitExceeded", retry: "2"), .error(429, "rateLimitExceeded", retry: "2"), .error(429, "rateLimitExceeded", retry: "2")])
-        await #expect(throws: YouTubeReadError.rateLimited) { try await makeClient(server).authorizedChannel(generation: 1) }
+        do {
+            _ = try await makeClient(server).authorizedChannel(generation: 1)
+            Issue.record("Expected rate-limit backoff")
+        } catch let error as YouTubeReadBackoff {
+            #expect(error.reason == .rateLimited && error.seconds == 2)
+        }
         #expect(await server.requests.count == 3)
         #expect(await server.delays == [2, 2])
         let longDelay = ReadFixtureServer([.error(503, "backendError", retry: "30")])
-        await #expect(throws: YouTubeReadError.unavailable) { try await makeClient(longDelay).authorizedChannel(generation: 1) }
+        do {
+            _ = try await makeClient(longDelay).authorizedChannel(generation: 1)
+            Issue.record("Expected server backoff")
+        } catch let error as YouTubeReadBackoff {
+            #expect(error.reason == .unavailable && error.seconds == 30)
+        }
         #expect(await longDelay.requests.count == 1)
         #expect(await longDelay.delays.isEmpty)
         let network = ReadFixtureServer([.network, .fixture("channel")])

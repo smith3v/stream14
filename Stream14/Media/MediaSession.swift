@@ -81,6 +81,7 @@ final class MediaSession {
         AVCaptureDevice.authorizationStatus(for: .video) == .authorized &&
         AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     }
+    var broadcastPipelineRunning: Bool { phase == .recording && sharedEncoder != nil && !stopRequested }
     var broadcastOverlayReady: Bool {
         overlayURL.isEmpty || (renderer.healthy && renderer.image != nil)
     }

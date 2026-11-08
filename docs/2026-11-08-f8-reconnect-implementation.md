@@ -10,7 +10,7 @@
 
 ### Task 1: Freeze interfaces and policy
 
-**Prompt:** Add a focused policy with six reconnect attempts per outage, 180-second elapsed budget, exponential delays with bounded jitter capped at 30 seconds. Inject monotonic now/sleep/jitter closures. Expose transport supervision status, retry count, and explicit retry/cancel actions on BroadcastSession. No credentials are persisted.
+**Prompt:** Add a focused policy with twelve reconnect attempts per outage, 180-second elapsed budget, exponential delays with bounded jitter capped at 30 seconds. Inject monotonic now/sleep/jitter closures. Expose transport supervision status, retry count, and explicit retry/cancel actions on BroadcastSession. No credentials are persisted.
 
 ### Task 2: Integrate read-only supervision
 
