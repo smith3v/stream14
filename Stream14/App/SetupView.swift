@@ -5,7 +5,8 @@ import SwiftUI
 struct SetupView: View {
     let authorization: YouTubeAuthorization
     let youtubeEvents: YouTubeEventSelection
-    @State private var experiment = Self.makeMediaSession()
+    let experiment: MediaSession
+    let broadcast: BroadcastSession
     @State private var pendingDeletion: ExperimentSample?
     @State private var playback: PlaybackSelection?
     @State private var showingNotices = false
@@ -96,10 +97,12 @@ struct SetupView: View {
                         .disabled(experiment.isRecording ? !experiment.canAdjustMedia : !experiment.canRecord)
                         .accessibilityIdentifier("recordSample")
                         Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
-                            .disabled(experiment.phase == .stopping)
+                            .disabled(experiment.phase == .stopping || broadcast.requiresEndFirst)
                     }
-                    YouTubeConnectionView(authorization: authorization)
+                    YouTubeConnectionView(authorization: authorization, broadcastActive: broadcast.requiresEndFirst)
                     YouTubeEventsView(selection: youtubeEvents)
+                        .disabled(broadcast.locksSelection)
+                    BroadcastControlsView(broadcast: broadcast, media: experiment, selection: youtubeEvents, authorization: authorization)
                     ForEach(experiment.savedSamples) { sample in
                         RecordingRow(sample: sample, canDelete: experiment.canDeleteSamples,
                                      play: { playback = PlaybackSelection(url: $0) },
@@ -107,7 +110,7 @@ struct SetupView: View {
                     }
                     Text("Export to keep a copy outside the app. Deleting the app removes its local samples.")
                         .font(.footnote)
-                    Text("\(experiment.profile.rawValue) · H.264/AAC · local MP4 · no media upload")
+                    Text("\(experiment.profile.rawValue) · H.264/AAC · local MP4")
                         .font(.footnote)
                     footerLayout { footerLinks }
                 }
@@ -256,17 +259,6 @@ struct SetupView: View {
         }
         let value = experiment.cameraZoom.value + step
         Task { await experiment.setCameraZoom(value) }
-    }
-
-    /// Keep the short hosted test out of the owner's saved URL and preferences.
-    /// Normal app launches and Release retain the usual secure configuration.
-    private static func makeMediaSession() -> MediaSession {
-        if runsShortPhoneSmoke {
-            return MediaSession(readOverlayURL: { "" },
-                saveOverlayURL: { _ in throw CocoaError(.featureUnsupported) },
-                profile: .fullHD, persistProfile: { _ in }, authorizeCapture: { false })
-        }
-        return MediaSession(profile: SessionProfile.saved())
     }
 
     private static var runsShortPhoneSmoke: Bool {
