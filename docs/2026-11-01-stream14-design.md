@@ -1207,3 +1207,10 @@ and explicit reconciliation remain read-only; there is no automatic resume.
 Overlay visibility/source recovery, including manual hiding, remains independent.
 Fixture/native-build evidence does not establish physical internet-outage recovery,
 receiver cadence, or full F8 acceptance; those checks remain deferred.
+
+F8 independent review resolved writer-finalization races: pipeline lifetime uses
+the encoder rather than transient `.stopping` file state. A terminal upload-stop
+request detaches transport immediately even during busy media controls, invalidates
+late admission and queues encoder-only cleanup behind the current operation.
+Deterministic held-finalization fixtures exercise both paths without capture or
+network media. This does not supply physical reconnect/continuity evidence.

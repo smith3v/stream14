@@ -68,6 +68,45 @@ import UIKit
         }
     }
 
+    @Test func heldFileFinalizationDoesNotEndActualPipelineSupervision() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        try h.installActualMediaFixture()
+        h.start(); await h.session.waitForOperation()
+        h.hold = "file"
+        let finalization = Task { await h.actualMedia!.holdFileFinalizationFixture { await h.pause("file") } }
+        try await h.until { h.pending != nil }
+        let start = h.elapsed
+        try await h.until { h.elapsed >= start + 25 }
+        #expect(h.actualMedia?.phase == .stopping)
+        #expect(h.actualMedia?.broadcastPipelineRunning == true)
+        #expect(h.actualMedia?.hasUpload == true)
+        #expect(h.session.reconnectStatus == .monitoring)
+        #expect(h.snapshot.isRecording && !h.timeline.contains("stopAll"))
+        h.release(); await finalization.value
+        await h.actualMedia?.stopUpload()
+    }
+
+    @Test func remoteCompletionDetachesActualPublisherWhileFileFinalizationIsHeld() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        try h.installActualMediaFixture()
+        h.start(); await h.session.waitForOperation()
+        h.hold = "file"
+        let finalization = Task { await h.actualMedia!.holdFileFinalizationFixture { await h.pause("file") } }
+        try await h.until { h.pending != nil }
+        h.server.remoteState = "complete"
+        try await h.until { h.session.reconnectStatus == .stopped }
+        #expect(h.actualMedia?.phase == .stopping)
+        #expect(h.actualMedia?.hasUpload == false)
+        #expect(h.fixturePublisherCloses == 1)
+        #expect(h.snapshot.isRecording && !h.timeline.contains("stopAll"))
+        h.release(); await finalization.value
+        try await h.until { h.actualMedia?.broadcastPipelineRunning == false }
+        #expect(h.fixturePublisherCloses == 1)
+        #expect(h.server.transitions == ["live"])
+    }
+
     @Test func overlayAndBackupFailureDoNotStopAdmittedUpload() async throws {
         let h = try await Harness(fastClock: true)
         defer { h.cleanup() }
@@ -449,6 +488,8 @@ import UIKit
     var timeline: [String] = []
     var snapshot = BroadcastMedia.Snapshot(captureReady: true, canRecord: true, writerStarted: false,
         isRecording: false, profile: .hd, overlayURL: "", overlayReady: true, uploadFailed: false)
+    var actualMedia: MediaSession?
+    var fixturePublisherCloses = 0
     var uploaded = false
     var rejectUpload = false
     var writerMode = ""
@@ -480,7 +521,11 @@ import UIKit
         session = makeSession()
     }
     func makeSession() -> BroadcastSession {
-        let media = BroadcastMedia(snapshot: { self.snapshot }, record: {
+        let media = BroadcastMedia(snapshot: {
+            var snapshot = self.snapshot
+            if let actualMedia = self.actualMedia { snapshot.pipelineRunning = actualMedia.broadcastPipelineRunning }
+            return snapshot
+        }, record: {
             self.timeline.append("record")
             await self.pause("record")
             if self.writerMode == "init" { return }
@@ -494,6 +539,7 @@ import UIKit
             self.uploaded = true; self.snapshot.uploadFailed = false
         }, stopUpload: {
             self.timeline.append("stopUpload"); self.uploaded = false
+            await self.actualMedia?.stopUpload()
         }, stopAll: {
             self.timeline.append("stopAll"); self.uploaded = false
             self.snapshot.isRecording = false; self.snapshot.writerStarted = false
@@ -506,6 +552,17 @@ import UIKit
                 try await Task.sleep(for: .milliseconds(1))
                 self.elapsed += seconds
             }, jitter: { 0.8 }) : ReconnectClock())
+    }
+    func installActualMediaFixture() throws {
+        let media = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in },
+                                 persistProfile: { _ in }, authorizeCapture: { false })
+        let encoder = try SharedMediaEncoder(profile: .hd, output: { _ in }, failed: { _ in })
+        let publisher = RTMPSPublisher(send: { _, _ in }, close: {
+            await MainActor.run { self.fixturePublisherCloses += 1 }
+        }, failed: { _ in })
+        publisher.activate()
+        media.installBroadcastFixture(encoder: encoder, publisher: publisher)
+        actualMedia = media
     }
     func start() {
         session.requestConfirmation(channel: channel, event: server.event)
