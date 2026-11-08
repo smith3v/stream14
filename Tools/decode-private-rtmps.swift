@@ -8,9 +8,11 @@ func require(_ condition: Bool, _ message: String) throws {
 
 @main struct DecodePrivateReceiver {
     static func main() async {
-        setbuf(stdout, nil)
         do { try await run() }
-        catch { fputs("Receiver validation failed: \(error)\n", stderr); exit(1) }
+        catch {
+            FileHandle.standardError.write(Data("Receiver validation failed: \(error)\n".utf8))
+            exit(1)
+        }
     }
     static func run() async throws {
         let paths = Array(CommandLine.arguments.dropFirst())

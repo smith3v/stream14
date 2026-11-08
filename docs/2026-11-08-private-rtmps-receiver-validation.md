@@ -53,7 +53,7 @@ No binary, private key, CA certificate, generated media or raw log belongs in Gi
    generations receive six seconds each, separated by one second of disconnected
    recording. Reconnect requests a random-access frame, with a fresh transport epoch.
    Socket sends must drain acknowledged media under finite time/queue bounds.
-7. Compile `Tools/decode-private-rtmps.swift` with native Swift (`swiftc
+7. Compile `Tools/decode-private-rtmps.swift` with native Swift (`swiftc -swift-version 6
    -parse-as-library ... -o PRIVATE_DECODER`) and pass the two finalized receiver
    MP4 paths in chronological order. It decodes every video/audio sample with
    AVFoundation and checks codec/dimensions/rate/channels, ordering, duration,
