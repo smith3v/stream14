@@ -14,6 +14,20 @@ actor RTMPSConnection {
     private var origin: CMTime?
 
     func connect(_ destination: YouTubeIngestionDestination, profile: SessionProfile, canPublish: @Sendable () -> Bool) async throws {
+        try await connect(endpoint: destination.endpoint, streamName: destination.streamName,
+            profile: profile, canPublish: canPublish)
+    }
+
+    #if DEBUG
+    /// Fixed local synthetic receiver only; never compiled into Release.
+    func connectPrivateFixture(profile: SessionProfile) async throws {
+        try await connect(endpoint: URL(string: "rtmps://localhost:19360/fixture")!,
+            streamName: "synthetic", profile: profile, canPublish: { !Task.isCancelled })
+    }
+    #endif
+
+    private func connect(endpoint: URL, streamName: String, profile: SessionProfile,
+                         canPublish: @Sendable () -> Bool) async throws {
         guard !closed, stream == nil else { throw Failure.cancelled }
         let stream = RTMPStream(connection: connection)
         self.stream = stream
@@ -28,9 +42,9 @@ actor RTMPSConnection {
             try await stream.setAudioSettings(AudioCodecSettings(bitRate: profile.audioBitRate,
                 downmix: false, sampleRate: profile.audioSampleRate))
             guard !closed, !Task.isCancelled, canPublish() else { throw Failure.cancelled }
-            _ = try await connection.connect(destination.endpoint.absoluteString)
+            _ = try await connection.connect(endpoint.absoluteString)
             guard !closed, !Task.isCancelled, canPublish() else { throw Failure.cancelled }
-            _ = try await stream.publish(destination.streamName)
+            _ = try await stream.publish(streamName)
             guard !closed, !Task.isCancelled else { throw Failure.cancelled }
         } catch {
             await close()
