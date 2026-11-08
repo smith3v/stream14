@@ -84,6 +84,7 @@ final class MediaSession {
     private var interruptionReported = false
     var backupWarning: String { recordingFailed ? "Backup failed. Saved footage is retained as incomplete; healthy upload continues independently." : "" }
     private var previousIdleTimerDisabled: Bool?
+    private var interruptedUploadClosing: Task<Void, Never>?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     var canSelectLens: Bool { !broadcastConfigurationLocked && !busy && !stopRequested && (phase == .idle || phase == .preview) }
@@ -470,6 +471,13 @@ final class MediaSession {
         stopRequested = true
         uploadStopGeneration &+= 1
         mediaDestinations?.detachPublisher()
+        if let publisher = self.publisher {
+            self.publisher = nil
+            publisherErrorTask?.cancel(); publisherErrorTask = nil
+            uploadState = .idle
+            uploadMessage = "Upload stopped after session interruption; YouTube end is unconfirmed"
+            interruptedUploadClosing = Task { await publisher.stop() }
+        }
         if !busy { Task { await close() } }
     }
 
@@ -691,7 +699,7 @@ final class MediaSession {
     }
 
     private func close() async {
-        guard !busy, phase != .idle else { return }
+        guard !busy, phase != .idle || stopRequested || backgroundTask != .invalid else { return }
         busy = true
         stopRequested = false
         phase = .stopping
@@ -701,7 +709,7 @@ final class MediaSession {
         publisherErrorTask?.cancel(); publisherErrorTask = nil
         // Socket shutdown never delays file finalization. This is one control
         // task per stop operation, not a retained task per media callback.
-        let uploadClosing = publisher.map { publisher in Task { await publisher.stop() } }
+        let uploadClosing = interruptedUploadClosing ?? publisher.map { publisher in Task { await publisher.stop() } }
         await finishRecording()
         mediaDestinations = nil
         overlayTask?.cancel()
@@ -731,6 +739,7 @@ final class MediaSession {
         if let uploadClosing {
             _ = try? await withBroadcastDeadline(seconds: 3) { await uploadClosing.value }
         }
+        interruptedUploadClosing = nil
         uploadAffinity.endCaptureSession()
         uploadState = .idle
         phase = .idle

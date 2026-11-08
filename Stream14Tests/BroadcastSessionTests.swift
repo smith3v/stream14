@@ -454,7 +454,8 @@ import UIKit
         #expect(!resumed.canStart)
         let count = h.server.requests.count
         resumed.reconcile(); await resumed.waitForOperation()
-        #expect(resumed.state == .idle)
+        #expect(resumed.state == .needsReconciliation && resumed.canResume)
+        #expect(resumed.pendingRemote?.eventID == "event")
         #expect(h.server.requests.dropFirst(count).allSatisfy { $0.httpMethod == "GET" })
     }
 

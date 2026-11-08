@@ -4,6 +4,18 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct SessionInterruptionTests {
+    @Test func interruptionWhilePermissionsArePendingStillCompletesIdleCleanup() async throws {
+        var permission: CheckedContinuation<Bool, Never>?
+        let media = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in },
+            persistProfile: { _ in }, authorizeCapture: { await withCheckedContinuation { permission = $0 } })
+        let opening = Task { await media.openPreview() }
+        try await until { permission != nil }
+        media.interrupt(.background)
+        permission?.resume(returning: true); await opening.value
+        try await until { media.phase == .idle && media.canSelectProfile }
+        #expect(!media.broadcastPipelineRunning)
+    }
+
     @Test func thermalPolicyReducesOverlayWithoutChangingProfileAndCriticalRequiresRestart() async throws {
         let media = session()
         var reasons: [SessionInterruption] = []
