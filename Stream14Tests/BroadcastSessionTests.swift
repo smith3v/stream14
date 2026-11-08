@@ -4,6 +4,96 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct BroadcastSessionTests {
+    @Test func interruptedLiveRequiresNewWriterAndExplicitSameEventConfirmation() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start(); await h.session.waitForOperation()
+        h.session.interrupted(.background)
+        h.uploaded = false
+        h.snapshot.writerStarted = false; h.snapshot.isRecording = false
+        h.snapshot.canRecord = false; h.snapshot.captureReady = false
+        h.session.foregroundReturned(); await h.session.waitForOperation()
+        #expect(h.session.state == .needsReconciliation && h.session.canResume)
+        #expect(h.server.transitions == ["live"])
+        let uploads = h.timeline.filter { $0 == "upload" }.count
+        h.session.requestResumeConfirmation(); await h.session.waitForOperation()
+        #expect(h.session.confirmation == nil)
+        h.snapshot.canRecord = true; h.snapshot.captureReady = true
+        h.session.requestResumeConfirmation(); await h.session.waitForOperation()
+        let intent = try #require(h.session.confirmation)
+        #expect(intent.isResume && intent.event.id == "event")
+        #expect(h.timeline.filter { $0 == "upload" }.count == uploads)
+        h.session.confirmStart(intent); await h.session.waitForOperation()
+        #expect(h.session.state == .live && h.uploaded)
+        #expect(h.timeline.filter { $0 == "record" }.count == 2)
+        #expect(h.server.transitions == ["live"])
+    }
+
+    @Test func relaunchResumeUsesDurableIdentityAndRejectsChangedBindingOrProfile() async throws {
+        for invalid in ["none", "binding", "profile", "ended", "active"] {
+            let h = try await Harness()
+            defer { h.cleanup() }
+            h.start(); await h.session.waitForOperation()
+            h.session.interrupted(.camera)
+            h.uploaded = invalid == "active"
+            h.snapshot.writerStarted = false; h.snapshot.isRecording = false; h.snapshot.canRecord = true
+            if invalid == "binding" { h.server.boundStreamID = "replacement" }
+            if invalid == "profile" { h.snapshot.profile = .fullHD }
+            if invalid == "ended" { h.server.remoteState = "complete" }
+            let relaunched = h.makeSession()
+            relaunched.foregroundReturned(); await relaunched.waitForOperation()
+            relaunched.requestResumeConfirmation(); await relaunched.waitForOperation()
+            #expect((relaunched.confirmation != nil) == (invalid == "none"))
+            #expect(h.server.transitions == ["live"])
+        }
+    }
+
+    @Test func interruptedHeldStartupAndReconnectIgnoreLateCallbacks() async throws {
+        for phase in ["record", "binding", "upload", "transition", "reconnect"] {
+            let h = try await Harness(fastClock: true)
+            defer { h.cleanup() }
+            if phase != "reconnect" { h.hold = phase }
+            h.start()
+            if phase == "reconnect" {
+                await h.session.waitForOperation()
+                h.snapshot.uploadFailed = true; h.uploaded = false; h.hold = "channels"
+            }
+            try await h.until { h.pending != nil }
+            h.session.interrupted(.audio); h.session.interrupted(.audio)
+            h.uploaded = false; h.snapshot.writerStarted = false; h.snapshot.isRecording = false
+            h.release()
+            try await Task.sleep(for: .milliseconds(15))
+            #expect(!h.uploaded && h.session.state != .live)
+            #expect(h.session.reconnectStatus == .inactive)
+            #expect(!h.server.transitions.contains("complete"))
+            #expect(!h.timeline.contains("stopAll"))
+        }
+    }
+
+    @Test func interruptedAmbiguousMutationCannotResumeOrClearBarrierOnUpcomingRead() async throws {
+        let h = try await Harness(startup: 0.07)
+        defer { h.cleanup() }
+        h.server.failure = "mutationTimeoutBefore"
+        h.start(); await h.session.waitForOperation()
+        h.session.interrupted(.background)
+        h.uploaded = false; h.snapshot.writerStarted = false; h.snapshot.isRecording = false; h.snapshot.canRecord = true
+        h.session.foregroundReturned(); await h.session.waitForOperation()
+        #expect(h.session.pendingRemote?.transition == .live)
+        #expect(!h.session.canResume)
+        h.session.requestResumeConfirmation()
+        #expect(h.session.confirmation == nil && h.server.transitions == ["live"])
+    }
+
+    @Test func transientForegroundActivationDoesNotCancelHealthyLiveSupervision() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start(); await h.session.waitForOperation()
+        h.session.foregroundReturned()
+        try await h.until { h.elapsed > 15 }
+        #expect(h.session.state == .live && h.session.reconnectStatus == .monitoring)
+        #expect(h.uploaded)
+    }
+
     @Test func reconnectDelayIsPositiveCappedAndJitterBounded() {
         #expect(ReconnectClock.delay(attempt: 0, jitter: 0) == 0.8)
         #expect(ReconnectClock.delay(attempt: 1, jitter: 10) == 2.4)
@@ -364,7 +454,8 @@ import UIKit
         #expect(!resumed.canStart)
         let count = h.server.requests.count
         resumed.reconcile(); await resumed.waitForOperation()
-        #expect(resumed.state == .idle)
+        #expect(resumed.state == .needsReconciliation && resumed.canResume)
+        #expect(resumed.pendingRemote?.eventID == "event")
         #expect(h.server.requests.dropFirst(count).allSatisfy { $0.httpMethod == "GET" })
     }
 

@@ -96,7 +96,10 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         self.reconnectClock = reconnectClock
         do {
             pendingRemote = try store.load()
-            if pendingRemote != nil {
+            if var context = pendingRemote {
+                context.interrupted = true
+                try store.save(context)
+                pendingRemote = context
                 state = .needsReconciliation
                 message = "YouTube status is unknown after the previous session. Reconcile or inspect YouTube Studio before starting."
             }
@@ -267,7 +270,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
 
     /// Foreground/relaunch performs reads only; no capture, writer or upload.
     func foregroundReturned() {
-        if pendingRemote != nil, !isWorking { reconcile() }
+        if pendingRemote?.interrupted == true, !isWorking { reconcile() }
     }
 
     /// The operator first reopens/checks preview. This button only reads and

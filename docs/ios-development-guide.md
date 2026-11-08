@@ -1589,3 +1589,45 @@ F8's held-finalization regressions use DEBUG-only fixture installation of an
 encoder with no media input and a publisher with fixture I/O. They verify actual
 MediaSession upload detachment while busy and supervision across temporary writer
 `.stopping`, without installing on a phone or opening a network connection.
+
+## F9 interruption and explicit resume workflow
+
+Keep the phone foreground while capturing. Home/lock, camera/audio interruption,
+critical heat, capture/encoder failure or microphone input loss stops the whole
+session. The app finalizes the file within available time and retains failed or
+pending originals. YouTube can remain Live: an interruption never promises End.
+Serious heat reduces overlay raster work without changing the media profile.
+
+On return, read-only reconciliation checks the original channel/event. Open the
+camera explicitly and check permissions, microphone, original profile and overlay.
+Choose **Resume same event…**, review the channel/event/visibility confirmation,
+then confirm Resume. The app requires the original dedicated inactive stream and
+starts a new local file before publishing. If ingestion is still active, wait or
+inspect Studio. An ended/replaced/ambiguous event cannot resume automatically.
+Unknown transition outcomes stay blocked until reconciliation resolves them.
+Older journals without admission profile/binding remain conservative and may need
+Studio resolution before a fresh session. No camera or upload resumes on launch.
+
+`SessionInterruptionTests` uses no camera/microphone/network: it drives the real
+MediaSession cleanup with synthetic encoded packets and fixture publishers,
+including append/finalize faults, held control operations, background expiry and
+idle-timer restoration. `BroadcastSessionTests` uses injected API responses for
+same-event resume, changed/terminal/active bindings, mutation barriers and late
+startup/reconnect results. Run:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -derivedDataPath /private/tmp/stream14-f9-tests \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -only-testing:Stream14Tests test
+```
+
+Native writer completion has a five-second control deadline; late completion does
+not silently change the conservative metadata. Background expiry immediately
+persists incomplete status and restores idle-timer ownership. Original files are
+retained, without cancelWriting, repair, transcode or routine cleanup. A persistent
+backup failure warning remains separate from healthy upload/remote Live status.
+Physical Home/lock, audio interruption, resumed-file/receiver inspection and real
+thermal evidence remain a separately attended acceptance run; this stage uses no
+phone or real service calls and does not establish the long qualification gates.
