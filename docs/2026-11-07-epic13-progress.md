@@ -99,3 +99,11 @@ adoption occurred. The reviewed five-minute routine phone-plan correction has no
 ## Owner correction — five-minute routine
 
 The owner rejected an hour-long connected-phone test session and requested about five minutes. The connected-phone plan now starts with a five-minute TOTAL timeline; its 50 rows are a backlog, not a single run. Laptop-only preparation/fixtures/Simulator checks happen beforehand; setup blockers stop the visit within budget, long-run criteria remain pending/unscheduled unless agreed. A fresh short-smoke agent is implementing one local-only opt-in two-profile test targeting 60–90 seconds actual execution. Do not claim that selector exists or passes before its source/build evidence. Root is updating PR #44 and will merge this correction forward into F5/F6 without rewriting history.
+
+## Coordinator checkpoint — short smoke ready (2026-11-08)
+
+Short-smoke runtime a7c18e5, evidence 0b92879, branch codex/short-connected-phone-smoke, worktree /private/tmp/stream14-epic13-short-smoke. Independent review fixed unsupported Release opt-in versus Debug-only isolation; focused re-review found no remaining material findings. Debug iOS test build and normal Release app build pass. Noncapturing normal regressions execute eight hosted checks plus two UI checks, with physical smoke skipped; final flag-enabled Simulator recheck executes two configuration checks and skips physical capture. No phone pass or measured five-minute runtime is claimed.
+
+The master plan records exact prebuild and Debug-only test-without-building commands. No phone was installed/launched; owner availability remains later.
+
+Pipeline integration is progressing in separate non-iCloud clone /private/tmp/stream14-epic13-f6-integration-repo, branch codex/issue-19-shared-media-integration, plan 4c07b75 from F6 predecessor 02dcc66. Native single encoder ownership is approved for draft work; root coordinates reviewed shared-clock patch and immutable fork pin before dependency adoption. Failed iCloud worktree remains preserved. Integration must include the short-smoke predecessor before its PR.
