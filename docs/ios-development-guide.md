@@ -173,6 +173,10 @@ User tokens and stream keys are secrets. Never put those secrets in Git or share
 them in screenshots. Use Keychain-backed runtime storage; use ignored local
 configuration for development-only values when needed.
 
+Owner update (2026-11-07): routine connected-phone validation targets five minutes TOTAL. Build/fixtures/Simulator checks run on the laptop beforehand; select a smoke path instead of the full backlog. Historical longer examples below do not authorize automatic extended runs.
+
+The [connected-iPhone test session plan](2026-11-07-connected-iphone-test-plan.md) consolidates the pending physical checks, exact existing opt-in commands, later-stage gates and per-run evidence sheet for one coordinated laptop/phone session. Run capture tests sequentially; long qualification remains separately agreed.
+
 ## 4. How we will build and test
 
 The root-level Stream14.xcodeproj is an ordinary SwiftUI/Swift 6 project with no
