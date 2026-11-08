@@ -688,6 +688,13 @@ combination and recovery/export behavior on the device. Keep incomplete files fo
 recovery or explicit deletion; never silently discard them. A crash can still lose
 the current fragment and must be described honestly.
 
+Early F11 laptop evidence (2026-11-08): [native MP4 recovery probe](2026-11-08-native-fragment-recovery-feasibility.md)
+reads and passthrough-remuxes completed ten-second fragments after SIGKILL of an
+owned synthetic H.264/AAC writer child; a pre-first-fragment file cannot be opened.
+Originals remain unchanged. This supports retaining MP4 as the recovery candidate,
+not production adoption or A5: repeat on the F6 compressed writer and physical
+13 mini, preserve truncated/interrupted status and disclose lost tail media.
+
 Storage reporting and forecasting are deferred improvements, not MVP requirements.
 There is no required free-space display, time-remaining estimate, periodic capacity
 polling, or fixed 1 GiB/250 MiB reserve policy. Do not implement those thresholds
