@@ -1683,3 +1683,15 @@ native nav/tab bounds. It logs that proof; unknown elements, fully visible text,
 controls and other audit types remain failures. This is a narrow native audit
 limitation, not a general contrast waiver or physical VoiceOver evidence. See the
 F10 handoff for exact retained failed/passing runs and independent review status.
+
+## Private synthetic RTMPS receiver checkpoint (2026-11-08)
+
+Use the [receiver procedure and actual measurements](2026-11-08-private-rtmps-receiver-validation.md)
+for normal-TLS laptop-only wire/receiver checks. It uses a fixed Debug Simulator-only
+localhost seam and generated media through the actual shared encoder, with no
+camera, Google request or physical-device trust change. The untrusted TLS rejection,
+trusted socket sends and corrected-header receiver decode were observed, but the
+receiver A/V alignment gate still fails. Do not treat the successful hosted test
+alone as receiver or physical qualification. The record preserves the remaining
+AAC timing investigation and a future five-minute TOTAL phone script using the
+existing Unlisted YouTube event and normal public trust, not a phone CA profile.
