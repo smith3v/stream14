@@ -8,8 +8,10 @@ export, A/V markers and long-run qualification remain pending.
 
 `QualificationDiagnostics.swift` contains the typed report allowlist, fixed-size
 transport aggregate and actor-owned checkpoint. `MediaSession` owns one ten-second
-observer per local recording; stop cancels it, snapshots existing owners before
-releasing the encoder, and saves a final snapshot after writer finalization.
+observer per encoded session, associated with its original recording. File stop or
+failure freezes file counters while observation continues for a surviving upload.
+Whole-session close cancels the observer after bounded transport shutdown and
+saves the final snapshot; unresolved sends remain explicit in the report.
 `QualificationExportView` reads only that report on explicit Load/Refresh and
 shares a fixed-name JSON Transferable. A recording-row action does not share media,
 authenticate, publish or request permissions. Selected-group deletion also removes
@@ -41,8 +43,8 @@ python3 Tools/qualification/verify-analysis.py /private/tmp/f12-analyze \
 
 Both output locations must be new when the tool requires it. The model probe
 compiles the actual report/checkpoint source under `-O`; only numeric media boundary
-types are stubbed. `/private/tmp/stream14-f12-model-probe/exported-summary.json` was
-inspected: 13,896 bytes, 120 recent observations, lifetime 1081/10800 seconds,
+types are stubbed. `/private/tmp/stream14-f12-model-final/exported-summary.json` was
+inspected: 13,952 bytes, 120 recent observations, lifetime 1081/10800 seconds,
 first elapsed 0, expected synthetic +2 bytes/second regression, no private strings.
 This is a synthetic three-hour numeric timeline, not a three-hour media run.
 
@@ -86,4 +88,16 @@ measurements, power/network/ambient controls and uncertainty. Longer runs need t
 owner's separate explicit agreement. Development harness cap remains 900 seconds;
 normal user recording stays unlimited. No originals are automatically deleted.
 
-Independent review and final validation: pending.
+## Independent review checkpoint
+
+A separate agent inspected the actual full diff against current main and focused
+F12 files. It identified a misplaced Transferable helper and displaced recording
+status modifiers; both were fixed before the final integrated build. It also
+identified that observation stopped when a healthy upload outlived its local file.
+The observer now continues through that condition, freezes file counters and saves
+a final report after bounded transport shutdown, including unresolved admitted
+sends. A deterministic production-owner fixture covers completed/failed file
+finalization, continued encoder/transport admissions, frozen file counts and
+whole-session close. Focused re-review and final affected validation are pending.
+No other privacy/original-deletion/native timestamp defects were found in that review.
+

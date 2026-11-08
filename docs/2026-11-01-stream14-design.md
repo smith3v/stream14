@@ -1327,7 +1327,9 @@ variables. Encoder admission updates existing finite intake counters. The file
 consumer tracks valid encoded offers, successful native appends, rejected packets,
 startup queue high water and video PTS gaps. Transport uses a fixed-size cumulative
 counter shared by reconnect generations; it counts admission, local send completion,
-pre-origin skips, rejection and admitted packets discarded on failure/stop. A local
+pre-origin skips, rejection and admitted packets discarded on failure/stop. Observation continues if upload outlives the local backup; file counters freeze
+when its writer is released. Final close follows bounded transport shutdown and
+reports unresolved admitted sends explicitly. A local
 send acknowledgment is not evidence of YouTube playback. The file's estimated
 missing 30 Hz intervals are an inference from PTS, not measured camera/pipeline drops.
 Raw PCM counts use PCM frames, encoded audio counts use AAC packets; do not add them.
@@ -1335,7 +1337,7 @@ Camera/HaishinKit pre-boundary drops and native internal codec/writer/socket que
 are not exposed by these counters. High water covers only the app-owned raw intake,
 file startup queue and transport retained queue including in-flight sends.
 
-One per-recording ten-second task samples `ContinuousClock` elapsed time,
+One per-session ten-second task, associated with the original recording, samples `ContinuousClock` elapsed time,
 `TASK_VM_INFO.phys_footprint`, resident mappings and thermal state outside callbacks.
 `phys_footprint` is charged memory for this task; resident mappings are a different
 measure, and neither establishes total device memory cost. WebKit runs in separate

@@ -48,16 +48,7 @@ nonisolated struct QualificationReport: Codable, Sendable {
         var unresolvedPackets = 0
         var highWaterBytes = 0
         var highWaterPackets = 0
-        mutating func add(_ other: Self) {
-            generations += other.generations
-            admittedPackets += other.admittedPackets
-            acknowledgedPackets += other.acknowledgedPackets
-            skippedBeforeOrigin += other.skippedBeforeOrigin
-            rejectedPackets += other.rejectedPackets
-            discardedAdmittedPackets += other.discardedAdmittedPackets
-            highWaterBytes = max(highWaterBytes, other.highWaterBytes)
-            highWaterPackets = max(highWaterPackets, other.highWaterPackets)
-        }
+
     }
     var schema = 1
     var diagnosticSession = UUID()
