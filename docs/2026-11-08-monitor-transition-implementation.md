@@ -73,3 +73,6 @@ Required remaining evidence: actual signed-phone/YouTube manual true/false and
 auto-start acceptance, receiver A/V, normal end, physical cancellation and longer
 qualification under separately agreed limits. Routine phone budget remains five
 minutes total; this stage used none. No local recordings were removed.
+
+
+Native result-bundle verification reports **151 passed, eight explicit opt-in skips, zero failed** (159 total). The eight skips are not counted as executed passes. The implementation and pre-binding race fix received independent actual-source review with no remaining material findings.
