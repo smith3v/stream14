@@ -1,6 +1,6 @@
 import Foundation
 
-/// Only unresolved remote identity is durable. No credentials, user metadata,
+/// Only unresolved remote identity and transition ambiguity are durable. No credentials, user metadata,
 /// overlay URLs or generation-specific readiness survive a process restart.
 nonisolated struct PendingRemoteBroadcast: Codable, Equatable, Sendable {
     let channelID: String

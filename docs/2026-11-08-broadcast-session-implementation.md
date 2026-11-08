@@ -40,7 +40,7 @@ Checked official Google references on 2026-11-08: [transition](https://developer
 
 ## Validation and remaining acceptance
 
-Implementation and validation pending. No phone, receiver, OAuth callback, real unlisted event, physical A/V sync/performance/CBR or long-run acceptance is claimed. Routine phone validation remains FIVE MINUTES TOTAL including setup/wrap-up; longer qualification needs separate agreement. Original recordings are retained.
+Implementation and laptop validation are recorded below. No phone, receiver, OAuth callback, real unlisted event, physical A/V sync/performance/CBR or long-run acceptance is claimed. Routine phone validation remains FIVE MINUTES TOTAL including setup/wrap-up; longer qualification needs separate agreement. Original recordings are retained.
 
 ## Implemented handoff
 
