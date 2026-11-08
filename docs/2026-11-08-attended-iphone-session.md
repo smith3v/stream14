@@ -8,8 +8,8 @@ Updated: 2026-11-08. Purpose: prepare the checks that need the owner's taps or o
 - Reviewed short-smoke code is in PR #47. Normally signed Debug app and embedded hosted test bundle are prepared.
 - The first phone invocation selected ZERO tests and made no camera recordings. Exit code zero was not a pass. The cause was a Swift Testing method selector missing parentheses.
 - Off-phone Xcode enumeration now confirms that suite selector Stream14Tests/ShortPhoneSmokeTests selects exactly one method: twoProfilesRetainComposedOriginals(). No tests ran during enumeration.
-- Actual short-smoke capture and physical timing remain pending. Codex must check one executed/passed test and zero skips after the real run, not just xcodebuild's exit code.
-- Public Google iOS client/callback are configured in ignored local build configuration; actual owner sign-in, SDK restore and API-returned channel have not been verified.
+- The corrected run has now passed on the phone: one executed pass, zero skips, ten-second test body; see the [attended results](2026-11-08-attended-device-results.md). End-to-end owner timing and newer shared-pipeline qualification remain unverified. Codex must check one executed/passed test and zero skips after the real run, not just xcodebuild's exit code.
+- Public Google iOS client/callback are configured in ignored local build configuration; owner sign-in/callback, SDK restore after relaunch and API-returned intended channel were verified in this session; see the attended results.
 - Broadcasting/reconnect/recovery UI is not ready for owner acceptance yet. Do not ask the owner to test missing Go Live/End/Recover controls or issue raw API commands.
 
 ## Suggested next five-minute visit
