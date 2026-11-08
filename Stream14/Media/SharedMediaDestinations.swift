@@ -31,7 +31,7 @@ nonisolated final class SharedMediaDestinations: Sendable {
 }
 
 extension RTMPSPublisher {
-    enum StartupFailure: Error { case recordingNotReady, cancelled, connection }
+    enum StartupFailure: Error { case recordingNotReady, cancelled, connection, contextChanged }
 
     /// F7 alone invokes this after explicit operator confirmation. Selection,
     /// preview and local recording never call it. The writer must already have

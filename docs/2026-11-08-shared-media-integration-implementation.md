@@ -216,3 +216,22 @@ VTCompressionProperties.h ConstantBitRate documentation describes padding,
 incompatible rate-control properties and unsupported-encoder errors. The
 canonical CBR starting target is preserved as pending receiver/device rate-control
 qualification, not silently marked satisfied. No strict CBR claim is made.
+
+### Whole-review fixes
+
+Independent whole-change review found two actionable startup/context gaps. The
+sender now rechecks closed/cancelled/writer-readiness immediately before opening
+the socket, after its awaited library settings calls. Retry admission now retains
+one RAM-only affinity: channel/event/stream/profile/authorization generation and
+validated endpoint must match the first admitted transport. The context contains
+no stream name/token, has redacted description/reflection and is never persisted.
+File-only restart preserves affinity; a new encoder/recording session with no
+existing transport epoch or whole capture stop may clear it. Strict generation
+matching is deliberate; same-channel reauthorization reconciliation is later F7/F8
+work, not a silent readiness bypass.
+
+The reviewer also corrected a nonblocking metadata claim: this pinned compressed
+path sends duration-only AMF onMetaData because the library populates profile
+fields only from raw outgoing input formats. Codec sequence headers carry the
+actual compressed formats. No receiver acceptance/profile-metadata result is
+claimed; a necessary future metadata change needs its own patch/tests/review.

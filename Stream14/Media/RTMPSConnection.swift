@@ -18,13 +18,16 @@ actor RTMPSConnection {
         let stream = RTMPStream(connection: connection)
         self.stream = stream
         do {
-            // Metadata only: no raw sample is ever appended to the stream's
-            // outgoing codecs, so these settings create no second encoder.
+            // Configure the requested profile, without appending raw samples to
+            // the stream's codecs or creating a second encoder. In this pinned
+            // compressed-only path onMetaData is duration-only; sequence headers
+            // carry actual formats. Full profile metadata needs receiver evidence.
             try await stream.setVideoSettings(VideoCodecSettings(videoSize: profile.size,
                 bitRate: profile.videoBitRate, maxKeyFrameIntervalDuration: Int32(profile.keyframeSeconds),
                 allowFrameReordering: false, expectedFrameRate: profile.frameRate))
             try await stream.setAudioSettings(AudioCodecSettings(bitRate: profile.audioBitRate,
                 downmix: false, sampleRate: profile.audioSampleRate))
+            guard !closed, !Task.isCancelled, canPublish() else { throw Failure.cancelled }
             _ = try await connection.connect(destination.endpoint.absoluteString)
             guard !closed, !Task.isCancelled, canPublish() else { throw Failure.cancelled }
             _ = try await stream.publish(destination.streamName)
@@ -39,12 +42,12 @@ actor RTMPSConnection {
 
     func send(_ sample: CMSampleBuffer, origin: CMTime) async throws {
         guard !closed, let stream else { throw Failure.cancelled }
-        if self.origin == nil {
-            try await stream.setCompressedTimestampOrigin(origin)
-            self.origin = origin
-        }
-        guard self.origin == origin else { throw Failure.invalidPacket }
         do {
+            if self.origin == nil {
+                try await stream.setCompressedTimestampOrigin(origin)
+                self.origin = origin
+            }
+            guard self.origin == origin else { throw Failure.invalidPacket }
             if sample.formatDescription?.mediaType == .video {
                 try await stream.sendCompressedVideo(sample)
             } else {
