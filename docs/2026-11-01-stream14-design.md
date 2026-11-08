@@ -706,7 +706,9 @@ an omitted read field: Codable retains missing/null monitor settings as unknown.
 An authoritative by-ID read with full contentDetails can supply a setting omitted
 from discovery; if still unknown, manual startup fails before binding/resource
 mutations or upload, retaining any healthy local file. A known confirmed setting
-must stay unchanged across preparation and startup reads.
+must stay unchanged across preparation and startup reads. F5 receives that resolved
+setting and checks each authoritative pre-insert/pre-bind read before mutating;
+a later changed or missing value cannot create/bind a stream before rejection.
 
 Manual startup sends testing only from ready with active ingestion, then waits
 for a separate read of testing before live; testStarting only polls. A testing
@@ -717,7 +719,8 @@ attempt. Read-confirmed testing permits the subsequent distinct live POST; an
 unconfirmed testing mutation remains pending across timeout/relaunch, with read-only
 reconciliation and explicit End/Studio available. Testing never displays Live.
 Cancellation, End and account change fence late testing responses just like live.
-No event settings, new resources, auto-start POSTs or recorder ownership change.
+The monitor phase adds no resources or event-setting changes and leaves auto-start
+POST behavior and recorder ownership unchanged.
 Offline fixture and native build results are recorded in the [correction handoff](2026-11-08-monitor-transition-implementation.md);
 actual attended YouTube acceptance remains separate.
 
