@@ -4,6 +4,132 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct BroadcastSessionTests {
+    @Test func monitorDecodingDoesNotInventAReadDefault() throws {
+        let decoder = JSONDecoder()
+        for (json, expected) in [("{}", nil), ("{\"monitorStream\":null}", nil),
+            ("{\"monitorStream\":{}}", nil), ("{\"monitorStream\":{\"enableMonitorStream\":null}}", nil),
+            ("{\"monitorStream\":{\"enableMonitorStream\":true}}", true),
+            ("{\"monitorStream\":{\"enableMonitorStream\":false}}", false)] as [(String, Bool?)] {
+            let details = try decoder.decode(YouTubeBroadcast.ContentDetails.self, from: Data(json.utf8))
+            #expect(details.monitorStream?.enableMonitorStream == expected)
+        }
+        #expect(throws: (any Error).self) {
+            try decoder.decode(YouTubeBroadcast.ContentDetails.self,
+                from: Data("{\"monitorStream\":{\"enableMonitorStream\":\"true\"}}".utf8))
+        }
+    }
+
+    @Test func manualMonitorPhaseIsRequiredButDisabledMonitorGoesDirectlyLive() async throws {
+        for enabled in [true, false] {
+            let h = try await Harness()
+            defer { h.cleanup() }
+            h.server.monitorEnabled = enabled
+            h.start(); await h.session.waitForOperation()
+            #expect(h.session.state == .live)
+            #expect(h.server.transitions == (enabled ? ["testing", "live"] : ["live"]))
+            if enabled {
+                let testing = try #require(h.timeline.firstIndex(of: "transition testing"))
+                let live = try #require(h.timeline.firstIndex(of: "transition live"))
+                #expect(h.timeline[(testing + 1)..<live].contains("GET liveBroadcasts"))
+            }
+        }
+    }
+
+    @Test func authoritativeRefreshResolvesOmittedSelectionAndUnknownManualSettingNeverPublishes() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.server.monitorEnabled = nil
+        h.session.requestConfirmation(channel: h.channel, event: h.server.event)
+        let intent = try #require(h.session.confirmation)
+        h.server.monitorEnabled = true
+        h.session.confirmStart(intent); await h.session.waitForOperation()
+        #expect(h.session.state == .live && h.server.transitions == ["testing", "live"])
+        let unknown = try await Harness()
+        defer { unknown.cleanup() }
+        unknown.server.monitorEnabled = nil
+        unknown.start(); await unknown.session.waitForOperation()
+        #expect(!unknown.uploaded && unknown.server.transitions.isEmpty)
+        #expect(unknown.snapshot.writerStarted && unknown.session.message.contains("monitor-stream setting"))
+        #expect(!unknown.server.requests.contains { $0.httpMethod == "POST" })
+    }
+
+    @Test func changedConfirmedMonitorSettingStopsBeforeBindingOrUpload() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.server.monitorEnabled = true
+        h.session.requestConfirmation(channel: h.channel, event: h.server.event)
+        let intent = try #require(h.session.confirmation)
+        h.server.monitorEnabled = false
+        h.session.confirmStart(intent); await h.session.waitForOperation()
+        #expect(!h.uploaded && h.server.transitions.isEmpty && h.snapshot.writerStarted)
+        #expect(!h.server.requests.contains { $0.url?.lastPathComponent == "liveStreams" })
+    }
+
+    @Test func alreadyTestingSkipsMonitorPOSTAndAutoStartNeverAddsManualPhases() async throws {
+        for auto in [true, false] {
+            let h = try await Harness(auto: auto)
+            defer { h.cleanup() }
+            h.server.monitorEnabled = true
+            h.server.stateAfterUpload = "testing"
+            h.start(); await h.session.waitForOperation()
+            #expect(h.session.state == .live)
+            #expect(h.server.transitions == (auto ? [] : ["live"]))
+        }
+    }
+
+    @Test func testStartingWaitsWithinOriginalDeadlineAndSurvivesRelaunch() async throws {
+        let h = try await Harness(startup: 0.07)
+        defer { h.cleanup() }
+        h.server.monitorEnabled = true; h.server.stallTesting = true
+        h.start(); await h.session.waitForOperation()
+        #expect(h.server.transitions == ["testing"])
+        #expect(h.session.state == .needsReconciliation && h.snapshot.writerStarted && !h.uploaded)
+        #expect(h.session.pendingRemote?.transition == .testing)
+        let resumed = h.makeSession()
+        resumed.reconcile(); await resumed.waitForOperation()
+        #expect(!resumed.canStart && !resumed.canResume && resumed.pendingRemote?.transition == .testing)
+        #expect(h.server.transitions == ["testing"])
+    }
+
+    @Test func uncertainTestingResponseAdvancesOnlyAfterTestingReadOrRetainsBarrier() async throws {
+        for failure in ["mutationTimeoutBefore", "mutationTimeoutAfter"] {
+            let h = try await Harness(startup: 0.07)
+            defer { h.cleanup() }
+            h.server.monitorEnabled = true; h.server.failure = failure
+            h.start(); await h.session.waitForOperation()
+            if failure == "mutationTimeoutAfter" {
+                #expect(h.session.state == .live && h.server.transitions == ["testing", "live"])
+            } else {
+                #expect(h.session.pendingRemote?.transition == .testing && h.server.transitions == ["testing"])
+                let resumed = h.makeSession()
+                resumed.reconcile(); await resumed.waitForOperation()
+                #expect(!resumed.canStart && resumed.pendingRemote?.transition == .testing)
+            }
+        }
+    }
+
+    @Test func heldTestingMutationCannotAdvanceAfterCancelEndOrAccountChange() async throws {
+        for action in ["cancel", "end", "account", "deadline"] {
+            let h = try await Harness(startup: 0.05, end: 0.03)
+            defer { h.cleanup() }
+            h.server.monitorEnabled = true; h.hold = "testing"
+            h.start(); try await h.until { h.pending != nil }
+            #expect(h.session.pendingRemote?.transition == .testing)
+            let saved = try PendingRemoteBroadcastStore(url: h.directory.appendingPathComponent("remote.json")).load()
+            #expect(saved?.transition == .testing && saved?.mutationID != nil)
+            if action == "cancel" { h.session.cancelStartup() }
+            if action == "end" { h.session.confirmEnd() }
+            if action == "account" { h.authorization.signOut(); h.session.accountChanged() }
+            await h.session.waitForOperation()
+            #expect(h.session.hasUnsettledMutation && h.session.state != .live)
+            h.session.reconcile(); await h.session.waitForOperation()
+            #expect(h.server.transitions == ["testing"])
+            h.release(); try await h.until { !h.session.hasUnsettledMutation }
+            #expect(h.server.transitions == ["testing"] && h.session.state != .live)
+            #expect(action == "end" || h.snapshot.writerStarted)
+        }
+    }
+
     @Test func interruptedLiveRequiresNewWriterAndExplicitSameEventConfirmation() async throws {
         let h = try await Harness(fastClock: true)
         defer { h.cleanup() }
@@ -699,6 +825,9 @@ import UIKit
     let auto: Bool
     var failure = ""
     var stallAuto = false
+    var monitorEnabled: Bool? = false
+    var stateAfterUpload: String?
+    var stallTesting = false
     var boundStreamID = "stream"
     var eventTitle = "Fixture scheduled event"
     var remoteState = "ready"
@@ -709,7 +838,8 @@ import UIKit
         YouTubeBroadcast(id: "event", snippet: .init(channelId: "channel", title: eventTitle,
             scheduledStartTime: "2026-11-08T12:00:00Z", isDefaultBroadcast: false),
             status: .init(lifeCycleStatus: remoteState, privacyStatus: "unlisted"),
-            contentDetails: .init(boundStreamId: boundStreamID, enableAutoStart: auto, enableAutoStop: false))
+            contentDetails: .init(boundStreamId: boundStreamID, enableAutoStart: auto, enableAutoStop: false,
+                monitorStream: monitorEnabled.map { .init(enableMonitorStream: $0) }))
     }
     func respond(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         requests.append(request)
@@ -729,6 +859,7 @@ import UIKit
             if failure == "channel" { status = 403 }
             data = try JSONEncoder().encode(["items": [h.channel]])
         case "liveBroadcasts":
+            if h.uploaded, let state = stateAfterUpload { remoteState = state; stateAfterUpload = nil }
             if h.uploaded, auto, !stallAuto { remoteState = "live" }
             if h.uploaded && failure == "unknown" { remoteState = "unknown-future-state" }
             if failure == "event" { status = 403 }
@@ -746,7 +877,12 @@ import UIKit
         case "transition":
             let target = query["broadcastStatus"]!
             transitions.append(target); h.timeline.append("transition " + target)
-            await h.pause(target == "live" ? "transition" : "complete")
+            await h.pause(target == "live" ? "transition" : target)
+            if target == "testing", stallTesting {
+                remoteState = "testStarting"
+                data = try JSONEncoder().encode(event)
+                break
+            }
             if failure == "mutationTimeoutBefore" { throw URLError(.timedOut) }
             if failure == "transition" || failure == "endReject" { status = 403 }
             else { remoteState = failure == "late" ? "liveStarting" : target }

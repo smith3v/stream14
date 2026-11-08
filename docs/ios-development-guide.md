@@ -1516,15 +1516,19 @@ local preview does not upload camera or microphone media.
    retains the actual local writer before any binding or upload; a writer startup
    failure publishes no media. Changed confirmation metadata requires review again.
 4. Watch the independent local recording, Upload and YouTube messages. Socket
-   connection is not Live. Manual events request live only after active ingestion;
-   auto-start events may become visible from the confirmed first upload and are
+   connection is not Live. Manual events wait for active ingestion. When the
+   existing event enables its monitor stream, the app automatically requests testing
+   and waits for YouTube to confirm it before requesting live, under the same Go Live
+   intent. Testing is not Live. Disabled monitor streams go directly to live. If the
+   monitor setting is unavailable on an authoritative refresh, no binding/upload
+   starts; refresh or inspect Studio. Auto-start events may become visible from the confirmed first upload and are
    polled without a redundant transition. Startup is bounded to 60 seconds.
 5. **Cancel YouTube startup** or a startup/API failure stops the upload while a
    healthy local file continues. **Stop recording** remains deliberate. A failed
    broadcast attempt never automatically deletes files. If the app requests
    reconciliation, use **Reconcile YouTube status** or **Open YouTube Studio**;
    reconciliation is read only and does not restart upload or repeat a mutation.
-   An uncertain Live request remains blocked even if an early read says upcoming;
+   An uncertain testing/Live request remains blocked even if an early read says upcoming;
    the earlier request could still apply. Resolve that exact event in Studio, then
    reconcile a confirmed live/finished state. The app never silently discards this
    transition barrier. While a previous request is still outstanding, wait for its
