@@ -203,3 +203,10 @@ F8 is independently committed in `/private/tmp/stream14-epic13-f8-reconnect`, br
 The consolidation at `d679d83` completed fresh independent actual-file/full-diff review with no material findings and is published as [PR #50](https://github.com/smith3v/stream14/pull/50) into main; it is not automatically merged. PR #49 now targets main and inherits that consolidation's documentation through a normal merge. All integration source remains unchanged from the prior reviewed runtime; no device rerun occurred.
 
 F8 review resumed and found two material lifecycle issues: file-only finalization temporarily changes MediaSession phase and could end remote supervision even while upload continues; a terminal-event stop request could be lost when MediaSession was busy. The F8 author is fixing both with deterministic held-operation regressions. F8 must not publish until affected checks and focused independent re-review pass. No epic child issue is closed; the acceptance audit remains current.
+
+
+## F7 reviewed PR published — 2026-11-08
+
+[PR #51](https://github.com/smith3v/stream14/pull/51) publishes the independently reviewed Go Live/End coordinator on top of held #49. Its source remains the reviewed F7 runtime after documentation-only inheritance; final prepublication merge is `86c96bb`. Keep #51 for code review and defer merge until its prerequisite and attended broadcast checks are ready. The next physical build must use this new shared pipeline, not reuse the older successful Short47 run as acceptance.
+
+[PR #50](https://github.com/smith3v/stream14/pull/50) is ready for review/merge into main to restore the already-reviewed #41–#48 stack. No child issue was closed after the requested audit: #14–#27 still have explicit unmet acceptance. No new camera test, live transition, binding or file deletion occurred during repository preparation.
