@@ -4,6 +4,8 @@ Updated: 2026-11-08. Owner request: make routine connected-iPhone testing take a
 
 Routine phone visits have a five-minute wall-clock budget, including installation, prompts, test execution and wrap-up. Do not turn this inventory into a one-hour session. Use the current integrated reviewed build; all checks remain pending until observed. The phone is not needed for fixture-driven development. Current availability: owner will connect it later.
 
+Latest [attended results](2026-11-08-attended-device-results.md): one physical smoke passed on the PR47 local-only path, and owner sign-in/channel/restore checks succeeded. The newer shared pipeline and broadcast gates remain pending.
+
 ## Default: one five-minute smoke check
 
 Run build/package resolution, deterministic fixtures/fault/race tests, Simulator UI checks and evidence-tool preparation on the laptop BEFORE asking for the phone. Prepare normally signed/branded products in advance. These do not consume connected-phone time.
