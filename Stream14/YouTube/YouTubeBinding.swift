@@ -135,6 +135,30 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         } catch { throw YouTubeBindingError.intentUnavailable }
     }
 
+    /// Resume never creates/rebinds resources. Inactive ingestion is required so
+    /// a different encoder cannot silently share the original event's stream.
+    func prepareResumeConfirmed(context: PendingRemoteBroadcast, profile: SessionProfile,
+                                generation: UInt64) async throws -> PreparedYouTubeIngestion {
+        guard context.transition == nil, let streamID = context.streamID,
+              context.profileName == profile.rawValue else { throw YouTubeBindingError.bindingConflict }
+        let channel = try await client.authorizedChannel(generation: generation)
+        guard channel.id == context.channelID else { throw YouTubeReadError.wrongChannel }
+        let event = try await client.broadcast(id: context.eventID, channelID: context.channelID, generation: generation)
+        guard ["created", "ready", "testing", "live"].contains(event.status?.lifeCycleStatus ?? ""),
+              event.contentDetails?.enableAutoStop == false, event.contentDetails?.enableAutoStart != nil,
+              event.contentDetails?.boundStreamId == streamID,
+              event.snippet?.isDefaultBroadcast != true, event.snippet?.title?.isEmpty == false,
+              event.scheduledStart != nil, ["public", "unlisted", "private"].contains(event.status?.privacyStatus ?? "") else {
+            throw YouTubeBindingError.ineligibleEvent
+        }
+        try await dedicated(streamID: streamID, eventID: event.id, channelID: channel.id, generation: generation)
+        let stream = try await checkedStream(streamID, channel.id, profile, generation, appCreated: false)
+        let latest = try await client.broadcast(id: event.id, channelID: channel.id, generation: generation)
+        guard latest == event else { throw YouTubeBindingError.bindingConflict }
+        return PreparedYouTubeIngestion(broadcast: event, streamID: streamID, profile: profile, generation: generation,
+            destination: try stream.destination(channelID: channel.id, profile: profile, appCreated: false))
+    }
+
     private func resolve(eventID: String, channelID: String, profile: SessionProfile, generation: UInt64) async throws -> PreparedYouTubeIngestion {
         let channel = try await client.authorizedChannel(generation: generation)
         guard channel.id == channelID else { throw YouTubeReadError.wrongChannel }

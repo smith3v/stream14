@@ -22,6 +22,11 @@ struct BroadcastControlsView: View {
                 Button("Cancel upload recovery") { broadcast.cancelReconnect() }
                     .frame(minHeight: 44)
             }
+            if broadcast.canResume {
+                Button("Resume same event…") { broadcast.requestResumeConfirmation() }
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("resumeBroadcast")
+            }
             if broadcast.canStart {
                 Button("Go Live", systemImage: "dot.radiowaves.left.and.right") {
                     broadcast.requestConfirmation(channel: selection.channel, event: selection.selected)
@@ -50,7 +55,7 @@ struct BroadcastControlsView: View {
                 get: { broadcast.confirmation != nil },
                 set: { if !$0 { broadcast.dismissConfirmation() } }), titleVisibility: .visible,
                 presenting: broadcast.confirmation) { intent in
-                    Button("Go Live — " + intent.event.visibility) { broadcast.confirmStart(intent) }
+                    Button((intent.isResume ? "Resume — " : "Go Live — ") + intent.event.visibility) { broadcast.confirmStart(intent) }
                     Button("Cancel", role: .cancel) { broadcast.dismissConfirmation() }
                 } message: { intent in
                     Text("Channel: \(intent.channel.title) (\(intent.channel.id))\nEvent: \(intent.event.title)\nVisibility: \(intent.event.visibility)\nProfile: \(intent.profile.label)\nThis starts local recording and uploads camera and microphone media to this event.")

@@ -5,6 +5,9 @@ import Foundation
 nonisolated struct PendingRemoteBroadcast: Codable, Equatable, Sendable {
     let channelID: String
     let eventID: String
+    var interrupted: Bool? = nil
+    var streamID: String? = nil
+    var profileName: String? = nil
     var transition: YouTubeBroadcastTransition? = nil
     var mutationID: UUID? = nil
 }

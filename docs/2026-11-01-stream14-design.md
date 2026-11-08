@@ -1215,6 +1215,44 @@ late admission and queues encoder-only cleanup behind the current operation.
 Deterministic held-finalization fixtures exercise both paths without capture or
 network media. This does not supply physical reconnect/continuity evidence.
 
+### F9 implementation — explicit interruption recovery (2026-11-08)
+
+`MediaSession.interrupt(_:)` reports the interruption synchronously to the existing
+`BroadcastSession` before cleanup. The coordinator invalidates startup/reconnect
+work and retains the pending event/transition barrier; interruption does not send
+remote Complete. Capture/audio/encoding failure, critical heat, background/lock
+and loss of microphone input stop both outputs. Serious heat reduces browser
+raster capture to once per three seconds; the selected resolution stays fixed.
+The media owner detaches and stops the publisher even while file control is busy.
+It restores the prior idle timer on final cleanup or exhausted background time.
+Expiry writes conservative failed metadata immediately; late writer completion
+cannot promote that file to complete. Writer finish waits at most five seconds;
+a timeout preserves the file and requires inspection, with no repair/transcode.
+
+Foreground/relaunch reconciliation reads only. Transient foreground inactivity
+never cancels a healthy session. Explicit camera reopen rechecks permissions and
+capture; the separate **Resume same event…** action reads the original channel,
+event and dedicated inactive ingestion binding, then presents title/visibility
+confirmation. Confirmation starts a new writer/UUID/timeline before upload.
+A live event is observed rather than transitioned live again. Resume requires
+no unsettled/ambiguous transition; unknown Complete remains a barrier. Unknown
+Live can reconcile only when Live or a terminal state is observed. No replacement
+event, resource creation or rebinding occurs in resume.
+
+The existing private journal additionally stores optional nonsecret stream ID,
+profile name and interruption intent. Existing journals remain readable; missing
+admission fields cannot authorize resume. Profile is checked across relaunch;
+credentials and overlay URL are never added to the journal. A presently active
+stream cannot be adopted after interruption; wait for inactive ingestion or inspect
+YouTube Studio. Fresh confirmation rechecks mutable event metadata and overlay.
+
+Append/finalization/status-save failure sets a persistent backup warning independent
+of upload/YouTube labels. An admitted healthy upload survives these writer-consumer
+failures. Initial writer admission failure still prevents first publication.
+Simulator fixtures exercise control/late-result decisions and injected native
+writer faults. Physical Home/lock/audio-route interruptions, real heat, final-file
+continuity/idle behavior and long-run qualification remain unverified for F9.
+
 
 ### Private receiver evidence checkpoint — 2026-11-08
 
