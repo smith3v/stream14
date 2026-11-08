@@ -65,6 +65,20 @@ import UIKit
         #expect(!h.server.requests.contains { $0.url?.lastPathComponent == "liveStreams" })
     }
 
+    @Test func bindingReadWithUnknownOrChangedMonitorCannotCreateResources() async throws {
+        for omit in [true, false] {
+            let h = try await Harness()
+            defer { h.cleanup() }
+            h.server.monitorEnabled = true; h.server.boundStreamID = ""
+            h.server.omitMonitorOnBindingRead = omit
+            h.server.changeMonitorOnBindingRead = !omit
+            h.start(); await h.session.waitForOperation()
+            #expect(!h.uploaded && h.snapshot.writerStarted)
+            #expect(h.server.eventReads == 2)
+            #expect(!h.server.requests.contains { $0.httpMethod == "POST" })
+        }
+    }
+
     @Test func alreadyTestingSkipsMonitorPOSTAndAutoStartNeverAddsManualPhases() async throws {
         for auto in [true, false] {
             let h = try await Harness(auto: auto)
@@ -828,6 +842,9 @@ import UIKit
     var monitorEnabled: Bool? = false
     var stateAfterUpload: String?
     var stallTesting = false
+    var omitMonitorOnBindingRead = false
+    var changeMonitorOnBindingRead = false
+    var eventReads = 0
     var boundStreamID = "stream"
     var eventTitle = "Fixture scheduled event"
     var remoteState = "ready"
@@ -859,6 +876,11 @@ import UIKit
             if failure == "channel" { status = 403 }
             data = try JSONEncoder().encode(["items": [h.channel]])
         case "liveBroadcasts":
+            if query["id"] != nil {
+                eventReads += 1
+                if eventReads == 2, omitMonitorOnBindingRead { monitorEnabled = nil }
+                if eventReads == 2, changeMonitorOnBindingRead { monitorEnabled = false }
+            }
             if h.uploaded, let state = stateAfterUpload { remoteState = state; stateAfterUpload = nil }
             if h.uploaded, auto, !stallAuto { remoteState = "live" }
             if h.uploaded && failure == "unknown" { remoteState = "unknown-future-state" }

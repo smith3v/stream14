@@ -207,7 +207,8 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             prepared = try await binding.prepareResumeConfirmed(context: context, profile: intent.profile, generation: intent.generation)
         } else {
             prepared = try await binding.prepareConfirmed(eventID: intent.event.id, channelID: intent.channel.id,
-                                                         profile: intent.profile, generation: intent.generation)
+                                                         profile: intent.profile, generation: intent.generation,
+                                                         expectedMonitorEnabled: monitorEnabled)
         }
         try check(intent, request)
         if intent.isResume { try sameBoundEvent(prepared.broadcast, intent, streamID: prepared.streamID) }
