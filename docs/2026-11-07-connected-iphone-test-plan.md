@@ -1,6 +1,6 @@
 # Connected-iPhone test session plan
 
-Updated: 2026-11-07. Owner request: make routine connected-iPhone testing take about FIVE MINUTES, with the full inventory retained as a coverage backlog.
+Updated: 2026-11-08. Owner request: make routine connected-iPhone testing take about FIVE MINUTES, with the full inventory retained as a coverage backlog.
 
 Routine phone visits have a five-minute wall-clock budget, including installation, prompts, test execution and wrap-up. Do not turn this inventory into a one-hour session. Use the current integrated reviewed build; all checks remain pending until observed. The phone is not needed for fixture-driven development. Current availability: owner will connect it later.
 
@@ -11,7 +11,7 @@ Run build/package resolution, deterministic fixtures/fault/race tests, Simulator
 | Wall-clock budget | Work |
 | --- | --- |
 | 0:00–0:45 | Install/launch the prepared build, verify version, handle permission/authorization readiness. If setup is blocked, record the blocker instead of extending the visit |
-| 0:45–2:15 | One short serialized harness: two approximately 6–8-second clips, 1080p and 720p, local changing alpha fixture, mute/hide/unhide/profile-lock checks and native original-file validation. This new opt-in harness is being implemented; do not invent a passing command before integration |
+| 0:45–2:15 | One short serialized harness: two approximately 6–8-second clips, 1080p and 720p, local changing alpha fixture, mute/hide/unhide/profile-lock checks and native original-file validation. The Debug-only opt-in harness is implemented, compiled and independently reviewed; physical execution/timing remain pending |
 | 2:15–3:15 | Brief actual-app check of changed controls/read-only channel/event state; do not repeat all accessibility cases or consent variants |
 | 3:15–4:15 | At most ONE relevant targeted manual case selected for this change. Otherwise inspect playback/Files export. A future real two-minute upload outage REPLACES other steps and needs its own budgeted variant; it is not added here |
 | 4:15–5:00 | Stop/finalize normally, retain/copy small originals, record the automated report and unmeasured criteria, reconcile remote state and restore settings |
@@ -21,6 +21,8 @@ This is a risk-based smoke check, not all 50 physical cases in five minutes. Mos
 First-time consent, trust/Developer Mode or permissions may consume the budget. Stop with BLOCKED/INCOMPLETE at five minutes and retain progress; do not hide setup outside the clock or promise first-time setup fits. Publishing still needs a prepared event and explicit operator action.
 
 The old multi-test camera harnesses below are targeted tools, not the default. Historical 600/900-second examples are not the routine. Longer development runs need explicit agreement; the existing 15-minute ceiling is a ceiling, not a target. The 30-minute/three-hour gates stay unverified and unscheduled unless separately agreed.
+
+For owner taps/observations and the next budgeted visit, use the [attended-session card](2026-11-08-attended-iphone-session.md).
 
 ## What the owner needs to do
 
@@ -165,22 +167,59 @@ device_test() {
 }
 ~~~
 
+### Preferred short smoke
+
+Prepare normally signed/branded Debug test products BEFORE connecting the phone. Use the SAME prepared DerivedData/evidence directory for both actions, not a fresh empty build directory at phone time. Local signing configuration must be present. Verify normal signing/branding before any reused test product is installed; this selected smoke is hosted in the normal app.
+
+~~~sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Debug \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath "$STREAM14_EVIDENCE/DerivedData" \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution -allowProvisioningUpdates \
+  -only-testing:Stream14Tests/ShortPhoneSmokeTests \
+  build-for-testing
+~~~
+
+When the phone is ready, run only this opt-in against the prepared products:
+
+~~~sh
+TEST_RUNNER_STREAM14_SHORT_DEVICE_SMOKE=1 xcodebuild \
+  -project Stream14.xcodeproj -scheme Stream14 -configuration Debug \
+  -destination "platform=iOS,id=$STREAM14_DEVICE_ID" \
+  -derivedDataPath "$STREAM14_EVIDENCE/DerivedData" \
+  -disableAutomaticPackageResolution \
+  -parallel-testing-enabled NO -test-timeouts-enabled YES \
+  -maximum-test-execution-time-allowance 90 \
+  -only-testing:Stream14Tests/ShortPhoneSmokeTests \
+  -resultBundlePath "$STREAM14_EVIDENCE/short-phone-smoke.xcresult" \
+  test-without-building
+~~~
+
+Before phone time, enumerate the prepared products and require exactly one enabled short-smoke test. The bare method selector without parentheses previously selected zero tests; use the suite selector above. After execution require one passed test and zero skips, not merely process exit zero.
+
+The harness requires pre-authorized camera/microphone and the physical 13 mini; it does not wait for permission prompts. Debug-only host isolation avoids saved overlay URLs and Google SDK/account initialization. Simulator, default and Release runs skip, so a skip is NOT a phone pass. Two clips share a 50-second internal deadline, a one-minute cooperative test limit and the configured 90-second runner watchdog. Native calls are not assumed interruptible; Codex still owns the overall five-minute wall-clock stop/report decision. Originals are retained. File/decoded-marker checks do not prove physical sync, audible unmute, real network behavior or endurance.
+
+See the [short-smoke handoff](2026-11-07-short-phone-smoke-implementation.md) for actual compile/regression evidence and limits. Do not run the legacy catalogue in addition to the smoke merely to fill coverage.
+
+### Legacy targeted catalogue
+
 Inspect each exit status/result before the next call; stop on an unexpected failure. Select at most one relevant short legacy command for a targeted visit; these examples are a catalogue, not a combined unattended script. Ensure camera/microphone permission prompts are resolved and owner/private scene are ready before camera checks.
 
 ~~~sh
 # Reference website only; no camera recording. Requires its current public fixture.
 TEST_RUNNER_STREAM14_REFERENCE_TEST=1 \
-  device_test Stream14Tests/WebOverlayRendererTests/referencePageReloadEvidence reference
+  device_test 'Stream14Tests/WebOverlayRendererTests/referencePageReloadEvidence()' reference
 
 # Short legacy reference sample plus changing-fixture/repeated-recording follow-ons.
 # This setting does NOT cover the two-minute outage/manual-hide sequence.
 TEST_RUNNER_STREAM14_DEVICE_RECORDING=1 \
 TEST_RUNNER_STREAM14_RECORDING_SECONDS=30 \
-  device_test Stream14Tests/MediaDeviceTests/combinedDeviceRecording local-composition
+  device_test 'Stream14Tests/MediaDeviceTests/combinedDeviceRecording()' local-composition
 
 # Separate short writer faults and notification-path interruption checks.
 TEST_RUNNER_STREAM14_DEVICE_FAILURES=1 \
-  device_test Stream14Tests/MediaDeviceTests/deviceWriterFailuresAndInterruption local-faults
+  device_test 'Stream14Tests/MediaDeviceTests/deviceWriterFailuresAndInterruption()' local-faults
 
 # Actual app UI camera/lens/short-record/playback check; iPhone 13 mini expectations.
 TEST_RUNNER_STREAM14_DEVICE_LENS_UI=1 \
@@ -198,7 +237,7 @@ The existing F1 private candidate is a separate OPTIONAL architecture experiment
 ~~~sh
 TEST_RUNNER_STREAM14_DUAL_OUTPUT=1 \
 TEST_RUNNER_STREAM14_DUAL_OUTPUT_SECONDS=30 \
-  device_test Stream14Tests/DualOutputFeasibilityTests/privateDeviceDualOutputCandidate f1-private-candidate
+  device_test 'Stream14Tests/DualOutputFeasibilityTests/privateDeviceDualOutputCandidate()' f1-private-candidate
 ~~~
 
 This candidate clamps its requested loop to 12–600 seconds and uses two encoders. Its one-second reconnect and isolated writer-failure probe are NOT proof of B08/B10, common encoded fan-out, finite socket queues or physical sync. Do not run it against an ordinary public event.

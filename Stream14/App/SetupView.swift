@@ -5,7 +5,7 @@ import SwiftUI
 struct SetupView: View {
     let authorization: YouTubeAuthorization
     let youtubeEvents: YouTubeEventSelection
-    @State private var experiment = MediaSession(profile: SessionProfile.saved())
+    @State private var experiment = Self.makeMediaSession()
     @State private var pendingDeletion: ExperimentSample?
     @State private var playback: PlaybackSelection?
     @State private var showingNotices = false
@@ -178,7 +178,7 @@ struct SetupView: View {
                 }
             }
             .task {
-                guard !runsOverlayRecoveryHarness else { return }
+                guard !runsIsolatedMediaHarness else { return }
                 experiment.setOverlayForeground(scenePhase != .background)
                 while !Task.isCancelled {
                     experiment.reconcileOverlay()
@@ -188,7 +188,7 @@ struct SetupView: View {
             }
             .onChange(of: experiment.cameraZoom.value) { _, value in zoomDraft = value }
             .onChange(of: scenePhase) { _, phase in
-                guard !runsOverlayRecoveryHarness else { return }
+                guard !runsIsolatedMediaHarness else { return }
                 if phase == .active { experiment.setOverlayForeground(true) }
                 if phase == .background {
                     experiment.setOverlayForeground(false)
@@ -258,11 +258,31 @@ struct SetupView: View {
         Task { await experiment.setCameraZoom(value) }
     }
 
+    /// Keep the short hosted test out of the owner's saved URL and preferences.
+    /// Normal app launches and Release retain the usual secure configuration.
+    private static func makeMediaSession() -> MediaSession {
+        if runsShortPhoneSmoke {
+            return MediaSession(readOverlayURL: { "" },
+                saveOverlayURL: { _ in throw CocoaError(.featureUnsupported) },
+                profile: .fullHD, persistProfile: { _ in }, authorizeCapture: { false })
+        }
+        return MediaSession(profile: SessionProfile.saved())
+    }
+
+    private static var runsShortPhoneSmoke: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["STREAM14_SHORT_DEVICE_SMOKE"] == "1"
+        #else
+        false
+        #endif
+    }
+
     /// The opt-in hosted media test supplies its own session/window. Do not run
     /// the owner's saved browser alongside it; Release never uses this test hook.
-    private var runsOverlayRecoveryHarness: Bool {
+    private var runsIsolatedMediaHarness: Bool {
         #if DEBUG
-        ProcessInfo.processInfo.environment["STREAM14_OVERLAY_RECOVERY_DEVICE"] == "1"
+        ProcessInfo.processInfo.environment["STREAM14_OVERLAY_RECOVERY_DEVICE"] == "1" ||
+        Self.runsShortPhoneSmoke
         #else
         false
         #endif
