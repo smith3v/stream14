@@ -3,6 +3,7 @@ import HaishinKit
 import SwiftUI
 
 struct SetupView: View {
+    let authorization: YouTubeAuthorization
     @State private var experiment = MediaSession()
     @State private var pendingDeletion: ExperimentSample?
     @State private var playback: PlaybackSelection?
@@ -92,6 +93,7 @@ struct SetupView: View {
                         Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
                             .disabled(experiment.phase == .stopping)
                     }
+                    YouTubeConnectionView(authorization: authorization)
                     ForEach(experiment.savedSamples) { sample in
                         RecordingRow(sample: sample, canDelete: experiment.canDeleteSamples,
                                      play: { playback = PlaybackSelection(url: $0) },
