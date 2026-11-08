@@ -101,3 +101,23 @@ cleanup never invokes cancelWriting, whose documented/observed behavior can
 remove output. Original export/deletion UI and the short-smoke test remain intact.
 No physical run, live receiver, transport attachment or fork pin is part of this
 checkpoint. `git diff --check` passes; independent source re-review remains due.
+
+### Observed checkpoint 2 validation
+
+The affected Simulator repeat actually executed 13 tests in three suites and
+passed at `/private/tmp/stream14-integration-local-2.xcresult` (27.259 seconds,
+log beside it). This includes the new persistent encoder's audible/changing-video
+midpoint decode, two passthrough files, byte comparison and exact normalized
+packet PTS. The older opt-in physical feasibility selector does not execute
+physical media without its explicit environment and a physical destination;
+its presence in the suite count is not device evidence. The actual new marker
+check passed video onset within 5 ms of 0.5 seconds and relative generated A/V
+onset within 35 ms. No physical/receiver or endurance conclusion follows.
+
+Independent review of common-origin artifact `fedc43b` reported no material
+findings. Its normal full Package.swift iOS RTMP product also compiles/links:
+`/private/tmp/stream14-integration-package-ios.log` ends TEST BUILD SUCCEEDED.
+The private validation app is `/private/tmp/stream14-integration-ios-validation`
+and references `/private/tmp/stream14-integration-full-package` locally. This
+absolute override exists only in that private experiment; committed production
+package references remain unchanged. Runtime socket/receiver evidence is pending.
