@@ -8,6 +8,11 @@ nonisolated final class LocalRecorder: Sendable {
     enum Failure: Error { case initialization, append, finalization, missingMedia }
     enum Injection: Sendable { case none, initialization, append, finalization }
     struct Metrics: Codable, Sendable {
+        var offeredVideo: Int? = 0
+        var offeredAudio: Int? = 0
+        var audioWritten: Int? = 0
+        var startupHighWaterBytes: Int? = 0
+        var startupHighWaterPackets: Int? = 0
         var videoReceived = 0
         var videoWritten = 0
         var missingOutputFrames: Int? = 0
@@ -65,13 +70,19 @@ nonisolated final class LocalRecorder: Sendable {
                   format.mediaSubType.rawValue == kCMVideoCodecType_H264 || format.mediaSubType.rawValue == kAudioFormatMPEG4AAC,
                   format.mediaType == .video || format.mediaType == .audio,
                   sample.presentationTimeStamp.isNumeric else { fail(&state); return }
+            let video = format.mediaType == .video
+            if video { state.metrics.offeredVideo = (state.metrics.offeredVideo ?? 0) + 1 }
+            else { state.metrics.offeredAudio = (state.metrics.offeredAudio ?? 0) + 1 }
             if !state.started {
                 let bytes = sample.dataBuffer.map { CMBlockBufferGetDataLength($0) } ?? sample.totalSampleSize
                 guard state.pending.count < 16, bytes <= 2 * 1024 * 1024 - state.pendingBytes else {
+                    if video { state.metrics.videoDropped += 1 } else { state.metrics.audioDropped += 1 }
                     fail(&state); return
                 }
                 state.pending.append(sample)
                 state.pendingBytes += bytes
+                state.metrics.startupHighWaterBytes = max(state.metrics.startupHighWaterBytes ?? 0, state.pendingBytes)
+                state.metrics.startupHighWaterPackets = max(state.metrics.startupHighWaterPackets ?? 0, state.pending.count)
                 guard let videoSample = state.pending.first(where: { $0.formatDescription?.mediaType == .video }),
                       let audioSample = state.pending.first(where: { $0.formatDescription?.mediaType == .audio }),
                       let videoFormat = videoSample.formatDescription, let audioFormat = audioSample.formatDescription else { return }
@@ -98,7 +109,11 @@ nonisolated final class LocalRecorder: Sendable {
     }
 
     private func append(_ sample: CMSampleBuffer, state: inout State) {
-        guard !state.failed, let writer = state.writer else { return }
+        guard !state.failed, let writer = state.writer else {
+            if sample.formatDescription?.mediaType == .video { state.metrics.videoDropped += 1 }
+            else { state.metrics.audioDropped += 1 }
+            return
+        }
         let isVideo = sample.formatDescription?.mediaType == .video
         let time = sample.presentationTimeStamp
         if isVideo {
@@ -116,6 +131,7 @@ nonisolated final class LocalRecorder: Sendable {
               input.isReadyForMoreMediaData, input.append(sample) else {
             // Dropping a compressed P frame can invalidate later references.
             // Fail this consumer explicitly; never stall or stop the uploader.
+            if isVideo { state.metrics.videoDropped += 1 } else { state.metrics.audioDropped += 1 }
             fail(&state); return
         }
         if isVideo {
@@ -129,6 +145,7 @@ nonisolated final class LocalRecorder: Sendable {
         } else {
             state.audioTime = time
             state.audioWritten += 1
+            state.metrics.audioWritten = state.audioWritten
         }
     }
 
@@ -141,6 +158,10 @@ nonisolated final class LocalRecorder: Sendable {
     private func fail(_ state: inout State) {
         guard !state.failed else { return }
         state.failed = true
+        for packet in state.pending {
+            if packet.formatDescription?.mediaType == .video { state.metrics.videoDropped += 1 }
+            else { state.metrics.audioDropped += 1 }
+        }
         state.pending.removeAll(); state.pendingBytes = 0
         failureContinuation.yield(.append)
     }

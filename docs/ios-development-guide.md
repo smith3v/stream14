@@ -1649,3 +1649,19 @@ See the [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) for producti
 codec/writer Mac evidence, exact commands, the measured native AAC-tail trim, and
 remaining physical process-termination/relaunch/playback/export checks. This is
 not A5 acceptance or evidence of three-hour recording/streaming reliability.
+
+## F12 qualification summaries and original analysis
+
+The delivered app collects private bounded numeric checkpoints for each new
+recording in Debug and Release. Load/export the qualification summary from that
+recording's row; exporting media remains a separate action. Old recordings can
+legitimately have no report. A checkpoint can be incomplete after termination;
+"stopped" describes the observer, not file/stream success. Check the latest
+checkpoint time and observation count before relying on the report.
+
+Follow the [qualification report template](qualification-report-template.md) for
+clap markers, native original-file analysis, receiver observation, overhead and
+power/network/ambient controls. The development device harness still clamps to
+900 seconds, while normal app recording remains unlimited. No 30-minute or
+three-hour run is implicitly authorized. Short instrumentation overhead on the
+13 mini and actual installed-app diagnostic export remain pending.

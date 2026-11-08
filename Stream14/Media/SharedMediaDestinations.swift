@@ -38,6 +38,7 @@ extension RTMPSPublisher {
     /// started unless this is a retry of a previously admitted transport session.
     @MainActor static func connected(to prepared: PreparedYouTubeIngestion,
         canPublish: @escaping @Sendable () -> Bool,
+        diagnostics: QualificationTransportCounter? = nil,
         failed: @escaping @Sendable (Failure) -> Void) async throws -> RTMPSPublisher {
         guard canPublish() else { throw StartupFailure.recordingNotReady }
         let sender = RTMPSConnection()
@@ -46,7 +47,7 @@ extension RTMPSPublisher {
             guard !Task.isCancelled, canPublish() else {
                 await sender.close(); throw StartupFailure.cancelled
             }
-            let publisher = RTMPSPublisher(send: { sample, origin in try await sender.send(sample, origin: origin) },
+            let publisher = RTMPSPublisher(diagnostics: diagnostics, send: { sample, origin in try await sender.send(sample, origin: origin) },
                 close: { await sender.close() }, failed: failed)
             publisher.activate()
             return publisher

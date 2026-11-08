@@ -19,6 +19,8 @@ nonisolated final class RTMPSPublisher: Sendable {
         var acknowledgedPackets = 0
         var skippedBeforeOrigin = 0
         var overflowCount = 0
+        var rejectedPackets = 0
+        var discardedAdmittedPackets = 0
     }
     private struct Packet {
         let sample: CMSampleBuffer
@@ -38,6 +40,7 @@ nonisolated final class RTMPSPublisher: Sendable {
         var pump: Task<Void, Never>?
         var abort: Task<Void, Never>?
     }
+    private let diagnostics: QualificationTransportCounter?
     private let limits: Limits
     private let state = Mutex(State())
     private let tasks = Mutex(Tasks())
@@ -49,10 +52,12 @@ nonisolated final class RTMPSPublisher: Sendable {
 
     /// Test seams correspond exactly to one acknowledged media send and closing
     /// that same connection. Call activate only after connect/publish succeed.
-    init(limits: Limits = Limits(),
+    init(limits: Limits = Limits(), diagnostics: QualificationTransportCounter? = nil,
          send: @escaping @Sendable (CMSampleBuffer, CMTime) async throws -> Void,
          close: @escaping @Sendable () async -> Void,
          failed: @escaping @Sendable (Failure) -> Void) {
+        self.diagnostics = diagnostics
+        diagnostics?.begin()
         self.limits = limits
         self.send = send; self.close = close; self.failed = failed
         let (wakes, wake) = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
@@ -84,10 +89,12 @@ nonisolated final class RTMPSPublisher: Sendable {
     @discardableResult
     func offer(_ sample: CMSampleBuffer) -> Bool {
         let result = state.withLock { state -> (Bool, Failure?) in
+            let old = state.metrics
+            defer { diagnostics?.update(from: old, to: state.metrics) }
             guard state.active, !state.ended else { return (false, nil) }
             guard let format = sample.formatDescription, sample.presentationTimeStamp.isNumeric,
                   format.mediaSubType.rawValue == kCMVideoCodecType_H264 || format.mediaSubType.rawValue == kAudioFormatMPEG4AAC,
-                  let block = sample.dataBuffer else { return (false, .invalidMedia) }
+                  let block = sample.dataBuffer else { state.metrics.rejectedPackets += 1; return (false, .invalidMedia) }
             let video = format.mediaType == .video
             if state.origin == nil {
                 guard video, Self.isKeyframe(sample) else {
@@ -96,7 +103,7 @@ nonisolated final class RTMPSPublisher: Sendable {
                 }
                 state.origin = sample.presentationTimeStamp
             }
-            guard let origin = state.origin else { return (false, .invalidMedia) }
+            guard let origin = state.origin else { state.metrics.rejectedPackets += 1; return (false, .invalidMedia) }
             guard sample.presentationTimeStamp >= origin else {
                 state.metrics.skippedBeforeOrigin += 1
                 return (false, nil)
@@ -105,6 +112,7 @@ nonisolated final class RTMPSPublisher: Sendable {
             guard bytes > 0, bytes <= limits.bytes - state.metrics.retainedBytes,
                   state.metrics.retainedPackets < limits.packets else {
                 state.metrics.overflowCount += 1
+                state.metrics.rejectedPackets += 1
                 return (false, .overflow)
             }
             state.queued.append(Packet(sample: sample, bytes: bytes, origin: origin))
@@ -131,8 +139,17 @@ nonisolated final class RTMPSPublisher: Sendable {
             guard let packet else { return }
             var success = false
             do { try await send(packet.sample, packet.origin); success = true }
-            catch { end(.transport) }
+            catch {
+                state.withLock { state in
+                    let old = state.metrics
+                    state.metrics.discardedAdmittedPackets += 1
+                    diagnostics?.update(from: old, to: state.metrics)
+                }
+                end(.transport)
+            }
             state.withLock { state in
+                let old = state.metrics
+                defer { diagnostics?.update(from: old, to: state.metrics) }
                 // In-flight charge survives close/overflow until send actually
                 // releases its retained media, even if cancellation is delayed.
                 state.inFlight = nil
@@ -145,8 +162,11 @@ nonisolated final class RTMPSPublisher: Sendable {
 
     private func end(_ failure: Failure) {
         let first = state.withLock { state in
+            let old = state.metrics
+            defer { diagnostics?.update(from: old, to: state.metrics) }
             guard !state.ended else { return false }
             state.ended = true; state.active = false; state.failure = failure
+            state.metrics.discardedAdmittedPackets += state.queued.count
             for packet in state.queued {
                 state.metrics.retainedBytes -= packet.bytes
                 state.metrics.retainedPackets -= 1
