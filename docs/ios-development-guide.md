@@ -173,6 +173,10 @@ User tokens and stream keys are secrets. Never put those secrets in Git or share
 them in screenshots. Use Keychain-backed runtime storage; use ignored local
 configuration for development-only values when needed.
 
+Owner update (2026-11-07): routine connected-phone validation targets five minutes TOTAL. Build/fixtures/Simulator checks run on the laptop beforehand; select a smoke path instead of the full backlog. Historical longer examples below do not authorize automatic extended runs.
+
+The [connected-iPhone test session plan](2026-11-07-connected-iphone-test-plan.md) consolidates the pending physical checks, exact existing opt-in commands, later-stage gates and per-run evidence sheet for one coordinated laptop/phone session. Run capture tests sequentially; long qualification remains separately agreed.
+
 ## 4. How we will build and test
 
 The root-level Stream14.xcodeproj is an ordinary SwiftUI/Swift 6 project with no
@@ -1211,6 +1215,63 @@ recording continued. Fixed by suspending only on `.background`, preserving
 `.inactive`, and reconciling on `.active`. Focused re-review of this fix, device
 harness corrections and docs found no remaining material code issues.
 
+## F2 Google authorization setup (2026-11-07)
+
+The app pins Google's supported [GoogleSignIn iOS SDK 10.1.0](https://github.com/google/GoogleSignIn-iOS/releases/tag/10.1.0)
+and uses its system-browser sign-in, callback and Keychain-managed credentials.
+Local preview/recording needs no Google account. Connecting does not upload media.
+No real Google client is included in source; an absent/mismatched client leaves
+YouTube disconnected with a setup explanation.
+
+After completing the Google Cloud/API/consent steps in section 3:
+
+1. In Google Auth Platform → Clients, create an **iOS** client with bundle identifier
+   `com.smith3v.stream14`. Use the app's normal Apple signing team if requested.
+   There is no backend/client secret. Enable YouTube Data API v3, include the
+   `https://www.googleapis.com/auth/youtube.force-ssl` scope in consent configuration,
+   and add the intended Google account under Audience → Test users while Testing.
+2. Copy the public iOS client ID, which ends in `.apps.googleusercontent.com`.
+   Create ignored `Config/Local.xcconfig` beside `Config/Google.xcconfig`:
+
+   ```xcconfig
+   GOOGLE_CLIENT_ID = YOUR_IOS_CLIENT_ID.apps.googleusercontent.com
+   GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.YOUR_IOS_CLIENT_ID
+   ```
+
+   Replace both placeholders with the same actual client prefix. These IDs are
+   public configuration; never paste a user token, stream key or client secret.
+   `Config/AppInfo.plist` expands the client ID and matching URL scheme. The
+   configuration loader rejects missing or mismatched values before invoking SDK.
+3. Build and normally sign the app, then choose **Connect YouTube**. The system
+   browser should show Google account choice and consent, then return to stream14.
+   Grant the requested YouTube permission. A successful F2 status says Google is
+   authorized; it does not yet prove the actual YouTube channel (F3 owns that).
+4. Test Cancel, Switch Google account, Sign out on this iPhone, Restore saved
+   connection after relaunch, and confirmed Revoke Google access. Local recordings
+   and overlay settings must survive. Sign-out alone is not server revocation;
+   a failed revoke is reported honestly. The app never resumes camera capture or
+   uploads because a Google session was restored.
+5. Google Testing users and TestFlight testers are separate lists. YouTube-scope
+   testing grants normally need reauthorization after seven days. Before external
+   distribution review current [Google verification requirements](https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance),
+   [branding](https://developers.google.com/identity/branding-guidelines), SDK privacy
+   manifests and the App Store Connect aggregate privacy disclosures. No external
+   consent verification, Google branding approval or signed-phone callback is
+   established by compiling this change.
+
+F2 API handoff: `YouTubeAuthorization.freshAccessToken(expectedGeneration:)`
+returns a short-lived in-memory token only for the current authorized account.
+Capture `generation` before API work and discard results if it changes. Cancellation
+of an API read preserves authorization; actual refresh failure clears readiness.
+`connect`, `restore`, `signOut` and `disconnect` invalidate old channel/event state
+through the generation. Later broadcast coordination must pass `broadcastActive`
+for account actions and disable account UI until end; F2 has no broadcast state.
+
+The owner reported on 2026-11-07 that Google setup is not complete. Supported
+browser callback, signed-device Keychain restoration, actual channel authorization,
+revocation and multi-account/Brand Account behavior remain pending. Unit tests use
+in-memory fixtures and never call Google or send camera media.
+
 ## Full app F1 dual-output feasibility checks (2026-11-07)
 
 The [F1 plan](2026-11-07-dual-output-implementation.md) and
@@ -1294,3 +1355,130 @@ must supply a common positive capture timeline, enforce per-track order and veri
 first-origin/A/V behavior after publish/reconnect; separate track-origin resets
 mean a positive bias alone does not prove initial A/V offset preservation. Neither
 idle state nor absent observer callbacks establish successful media acceptance.
+
+## Full-app F4: profiles and microphone/camera controls (2026-11-07)
+
+Choose the Session profile button before Open camera: 1080p30 at a requested
+14 Mbps, or 720p30 at 8 Mbps. Both use the same fixed landscape composition and
+H.264/AAC original MP4 path. Close camera to change profile; profile preference is
+saved without touching the Keychain overlay URL. The rear-lens dialog retains
+supported Ultra Wide/Wide/Telephoto choices for that profile. Preview and recording
+allow microphone mute and a zoom slider, which applies on release. Zoom is relative
+to the selected physical lens; the lens selector still supplies the owner's 0.5×
+Ultra Wide view. Input shows the actual system microphone route. The level display
+is an approximate peak of shared mixed audio, so it shows silence when muted.
+
+Verified public source boundaries at pinned HaishinKit 2.3.0:
+
+- `AudioMixerSettings.isMuted`, `MediaMixer.setAudioMixerSettings(_:)` and mixed
+  `MediaMixerOutput.audioTrackId == UInt8.max` apply mute before output fan-out.
+- `MediaMixer.configuration(video:configuration:)` permits throwing device zoom
+  configuration on its actor. No AVCaptureDevice crosses into UI ownership.
+- `.sdr` composition uses Rec.709 Core Image context and video-range NV12; the
+  writer requests Rec.709 tags. AVAssetWriter average bitrate is not proof of CBR.
+
+Reproduce the native checks from the F4 worktree, choosing a valid Simulator ID
+and fresh result path on another Mac. Build logs/results stay private local files:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath /tmp/stream14-f4-build \
+  -clonedSourcePackagesDirPath /tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -derivedDataPath /tmp/stream14-f4-simulator \
+  -clonedSourcePackagesDirPath /tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution -only-testing:Stream14Tests/SessionProfileTests \
+  -resultBundlePath /tmp/stream14-f4-profiles.xcresult test
+```
+
+Repeat focused regression suites with `-only-testing:Stream14Tests/LocalRecorderTests`,
+`WebOverlayRendererTests`, `WebOverlayCompositionTests`, `RearCameraLensTests`,
+`OverlayHealthTests` and `AppConfigurationTests`. Actual command/result paths and
+review status are recorded in the [stage handoff](2026-11-07-session-controls-implementation.md).
+Physical tests remain opt-in, wait for the owner to connect/unlock the 13 mini,
+retain originals, and never exceed 15 minutes for a development experiment.
+
+Pending physical F4 acceptance: record short changing alpha-overlay samples in
+both profiles and landscape orientations; confirm camera/writer dimensions,
+H.264/AAC, orientation, visible mute/unmute and audible silence/recovery, zoom,
+level/route/interruption behavior, profile/lens lock during recording, original
+playback/export, and ten-second overlay hide/recovery at 720p. Inspect originals;
+requested settings, callback counts and a Simulator are not substitute evidence.
+No new TestFlight build or long qualification run is established by F4.
+
+## F3 channel and scheduled-event checks (2026-11-07)
+
+After Google authorization succeeds, use **Refresh** in Scheduled YouTube event.
+The app displays the actual API-returned channel, then reads every upcoming-event
+page. Confirm the channel title/identifier before selecting a row; the Google email
+is not the channel identity. If the wrong channel/Brand Account is returned, reconnect
+using the intended channel. Schedule a dedicated encoder event in YouTube Studio,
+preferably unlisted, with auto-stop disabled. Refresh again. The row shows local
+date/time, visibility and any reason it cannot be selected. Missing/unknown essential
+metadata cannot silently become an eligible event. An enabled auto-start setting
+is disclosed after selection. There is no Go Live/media upload action in this stage.
+
+Account changes clear channel/event state. Refresh clears a disappeared or now
+ineligible selection. The selected event must be read again by ID before later
+binding/start work; an old selection is not proof of current eligibility. API metadata
+is memory-only, with no raw-response archive. Do not put access tokens, response
+bodies, ingestion details or screenshots of secrets into reports.
+
+The owner-controlled Google Cloud/API/iOS client/testing audience are prepared.
+Actual signed-phone sign-in, callback, channel/Brand Account identity, event listing
+and selection remain pending; Console setup and fixture tests do not establish them.
+
+Reproduce the focused fixture and authorization checks from the F3 worktree:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /private/tmp/stream14-f3-simulator \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f2-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/YouTubeClientTests \
+  -only-testing:Stream14Tests/YouTubeAuthorizationTests \
+  -only-testing:Stream14Tests/AppConfigurationTests \
+  -resultBundlePath /private/tmp/stream14-f3-tests.xcresult test
+```
+
+Choose a new result-bundle path for another run. The recorded run passed **26 tests
+in three suites** (13 F3, 11 authorization and two configuration tests), log
+`/private/tmp/stream14-f3-tests.log`. Fixtures under Stream14Tests/Fixtures/YouTube
+contain only invented channel/event data and a clearly fake stream name/address.
+No actual Google request, media publishing, phone recording or deletion occurred.
+The [F3 implementation handoff](2026-11-07-youtube-client-implementation.md) records
+build/integration/review status separately from live-owner acceptance.
+
+After merging F4, the combined F3/auth/config/profile run passed 32 hosted tests at
+`/private/tmp/stream14-f3-merged-tests.xcresult`. Final Release passed in
+`/private/tmp/stream14-f3-release-final-2.log`. The first portrait audit found low
+contrast on an unavailable disabled Refresh label; Refresh is now shown only
+after authorization, with an explicit 44-point target. The final recheck passed
+13 F3 tests and both portrait/largest-text landscape setup accessibility tests at
+`/private/tmp/stream14-f3-ui-recheck.xcresult`. Private screenshots were inspected;
+authenticated event rows and physical VoiceOver remain pending. The initial failed
+UI result is retained, and no audit issue was suppressed.
+
+## F5 safe ingestion preparation (2026-11-07)
+
+The [F5 handoff](2026-11-07-safe-ingestion-implementation.md) documents a
+write-once/reconcile component for the later confirmed Go Live flow. Merely
+connecting, refreshing/selecting an event or opening local preview does not
+create or bind streams. Auto-stop must already be disabled in YouTube Studio;
+this component never silently changes event settings.
+
+Pending mutation IDs and phases are stored in a small backup-excluded local
+journal. An ambiguous creation is not repeated blindly after retry/relaunch.
+If the app reports an unknown creation outcome, inspect streams in Studio and
+resolve the intended binding there; do not repeatedly create new resources.
+A known created ID survives binding failures and is reused on reconciliation.
+No stream key or token is stored in that journal, and no remote resources or
+recordings are automatically deleted.
+
+Fixture tests use no real Google service or camera. Actual signed-account
+acceptance requires a dedicated unlisted event and explicit operator action;
+F5 has no standalone phone runner or Go Live UI yet. The later F7 integration
+must make those checks executable before a connected-phone test is scheduled.

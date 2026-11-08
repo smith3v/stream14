@@ -22,6 +22,10 @@ F1/F2/F4 can begin independently. F3 follows F2; F5 follows F3; F6 follows F1/F4
 
 No new scope beyond the canonical full-product specification: no event creation/editor, visibility changes, chat, arbitrary RTMP destinations, extra cameras/layers, HDR/60 fps, background broadcasting, backend, analytics or storage forecasting. Preserve the owner’s confirmed per-file deletion, main/test icons and 15-minute development-experiment limit. A2/A7 long runs remain future agreed qualification, not an instruction to run them now.
 
+## Owner short-validation update — 2026-11-07
+
+Routine connected-phone validation has a five-minute TOTAL budget including installation/prompts/wrap-up. Run fixtures, fault/race tests and Simulator checks on the laptop first. A short two-profile smoke plus a selected risk-based case replaces an exhaustive hour-long phone batch. Use the [connected-phone plan](2026-11-07-connected-iphone-test-plan.md); future/long-run rows remain pending, not automatic work. Do not extend silently or treat smoke results as endurance proof. Longer qualification needs separate explicit agreement.
+
 ## Baseline and fresh-agent workflow
 
 The existing implementation is in Stream14/Media/MediaSession.swift, LocalRecorder.swift, WebOverlayRenderer.swift, WebOverlayLayer.swift and ExperimentSample.swift, with SwiftUI in Stream14/App/SetupView.swift. The baseline file writer owns one H.264/AAC encode of composed NV12/PCM. No shared compressed output or transport is established. Inspect prerequisite handoffs before choosing APIs or renaming experiment types.
