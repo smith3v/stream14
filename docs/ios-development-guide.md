@@ -1482,3 +1482,16 @@ Fixture tests use no real Google service or camera. Actual signed-account
 acceptance requires a dedicated unlisted event and explicit operator action;
 F5 has no standalone phone runner or Go Live UI yet. The later F7 integration
 must make those checks executable before a connected-phone test is scheduled.
+
+## F6 draft transport dependency (2026-11-08)
+
+The draft shared-media integration selects the owner-maintained HaishinKit fork
+at revision `8dc2ecce781d320ef0f2576ff5195411c91505ad`, based on upstream 2.3.0.
+See the canonical specification's F6 dependency selection and the
+[implementation/evidence record](2026-11-08-shared-media-integration-implementation.md).
+Only core and RTMP products are linked; original BSD notices remain in the app.
+An immutable revision and committed Package.resolved replace any local path or
+moving branch. Future fork updates require source review and regression checks.
+No production credentials, local package path or actual receiver acceptance is
+implied by this selection. F7's confirmed operator flow is still required before
+an upload; local rehearsal needs no internet connection or Google setup.

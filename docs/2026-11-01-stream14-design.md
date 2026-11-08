@@ -1068,3 +1068,36 @@ project/client/API/testing audience are now prepared, but signed-device OAuth,
 actual API-returned channel identity and an upcoming unlisted test event remain
 external acceptance work. See the [F3 handoff](2026-11-07-youtube-client-implementation.md)
 for reproducible commands and remaining evidence.
+
+### F6 draft dependency selection — 2026-11-08
+
+The draft selects [the owner-maintained HaishinKit fork](https://github.com/smith3v/HaishinKit.swift)
+at immutable revision `8dc2ecce781d320ef0f2576ff5195411c91505ad`, parent upstream
+2.3.0 `aa2149df822f2e965adf2410a106db959b2e1962`. The original Package.swift is
+unchanged. This contains only the independently reviewed bounded acknowledged
+output and explicit common-origin compressed publishing changes retained in
+`Experiments/HaishinKit-2.3.0-bounded-output/0001-bounded-output.patch` and
+`0002-common-origin.patch`. Normal full-manifest iOS RTMP product compile/link
+passed; 39 isolated package checks passed. These are adoption evidence for a
+draft, not proof of real receiver/physical reliability.
+
+Link core HaishinKit plus actually used RTMPHaishinKit, whose linked dependency
+remains Logboard 2.6.0. SRT, RTC, OpenSSL and libdatachannel products are not linked
+by the application. The full package may resolve/download those declared packages;
+resolution is distinct from binary footprint. BSD-3-Clause notices for HaishinKit
+and Logboard are retained. The native encoder uses Apple frameworks already in
+scope; the native alternative to the RTMP product would require implementing RTMP
+framing, handshake, AMF and socket lifecycle, which adds more code and protocol
+risk than these focused reviewed changes. The fork creates an explicit maintenance
+obligation: reconcile future upstream security/compatibility changes and repeat
+queue/clock/lifecycle and normal-product builds before changing the revision.
+No moving branch follows release builds.
+
+Initialize an empty appender for the SDK's RTMP logger before creating any
+connection; upstream trace/status/error messages can contain credentials. App
+transport diagnostics use only finite local enums/counters, never raw endpoint,
+stream name, server status description or underlying SDK error. TLS remains
+Network.framework normal certificate validation. A socket acknowledgment reports
+local processing, not receiver delivery. Actual writer startup must be observed
+before connection/publish, and no current preview/setup/UI action starts upload;
+F7 still owns operator confirmation and remote broadcast state.

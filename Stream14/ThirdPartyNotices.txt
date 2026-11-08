@@ -1,4 +1,7 @@
-HaishinKit 2.3.0
+HaishinKit and RTMPHaishinKit 2.3.0-derived
+Owner fork: https://github.com/smith3v/HaishinKit.swift
+Revision: 8dc2ecce781d320ef0f2576ff5195411c91505ad
+Includes bounded acknowledged output and common-origin compressed publishing changes.
 
 BSD 3-Clause License
 
