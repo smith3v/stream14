@@ -264,3 +264,20 @@ cancellation before attachment and after its keyframe await. A start/API error
 alone must leave healthy local recording running. requestStop is reserved for an
 intentional whole-session end or interruption. This explicit integration contract
 was confirmed by root for F7; no broader component API change was added.
+
+### Independent final review outcome
+
+Independent whole-diff review against main and focused predecessor delta found
+startup recheck and retry-context gaps; both are fixed. Focused re-review of
+source `1103a9d` plus documentation `0b35a1c` verified the actual strict context
+fields, permit-before-bypass, file-only preservation/new-session reset,
+admit-after-cancellation guards and redacted RAM-only privacy. The reviewer read
+the actual 11-test passing repeat and native build log and reported **no remaining
+material findings**. Receiver/physical/AMF metadata and F7 cancellation-contract
+limits remain explicit. A reviewed draft PR is ready for root-coordinated
+publication; no automatic merge or formal F1/F6 gate completion is authorized.
+
+Final local checks also pass: changed Markdown relative links, git diff --check,
+exact resolved checkout revision `8dc2ecce781d320ef0f2576ff5195411c91505ad`, and
+actual app Mach-O dependency inspection (RTMP/Logboard plus existing Apple
+frameworks, no SRT/RTC/OpenSSL framework linkage). Simulator lease is released.

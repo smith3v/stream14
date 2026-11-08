@@ -139,3 +139,13 @@ paths, earlier failures, current interfaces and review gates are in the
 [shared-media integration record](2026-11-08-shared-media-integration-implementation.md).
 Final whole-change review and noncapture UI/cancellation follow-up are pending.
 No physical or receiver test, F1/F6 completion, actual CBR or shipping claim follows.
+
+F6 final draft checkpoint: the immutable remote-fork-pinned app passes its generic
+iPhone SDK build and two noncapture UI checks. Whole independent source review
+found two startup/context gaps; both are resolved, and focused re-review reports
+no remaining material findings at source `1103a9d`/docs `0b35a1c`. After those fixes,
+11 affected checks execute/pass. Full hosted baseline is 96 passed, 7 explicit
+physical skips, 0 failed; the corrected context-test compile failure is retained,
+not counted as a pass. A reviewed draft PR is ready for root publication, with
+F1/F6 receiver/physical/CBR/AMF and later endurance criteria still open. No phone
+execution, media transmission or Google mutation occurred in this integration.
