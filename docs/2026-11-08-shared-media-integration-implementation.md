@@ -45,3 +45,19 @@ The reviewed bounded package candidate still independently rebases audio/video. 
 ## Outstanding owner/device evidence
 
 Phone availability is later. Routine connected-phone visits have FIVE MINUTES TOTAL including install, prompts and wrap-up; prepare builds/fixtures/Simulator first and stop on setup blockers. Longer qualification requires separate explicit agreement; development experiments otherwise remain capped at 15 minutes. Real camera/receiver markers, TLS/socket behavior, AAC reconnect, finite resource use, thermal/memory behavior and simultaneous independent-output qualification remain pending. No new owner decision is required to implement this draft; immutable dependency publication is root-coordinated after review.
+
+### Source checkpoint 1
+
+`SharedMediaEncoder.swift` now contains finite raw admission (including the current
+item), a signal-only coalesced wake stream, one actor consumer, one VT frame in
+flight and a persistent AAC converter with owned compressed packets/cookie/trim
+metadata. Five focused tests compile for both profiles, callback slicing, timeline
+errors and admission limits. It is deliberately not attached to MediaSession yet;
+this checkpoint adds no active second production encoder.
+
+Unsigned generic-iPhone SDK `build-for-testing` passed at
+`/private/tmp/stream14-integration-build-3.log`, using the native shared scheme,
+DerivedData `/private/tmp/stream14-integration-build` and the existing pinned
+packages. The first compile exposed one nonoptional AVAudioFormat initializer
+assumption; corrected before the passing build. Runtime tests await the root's
+Simulator lease. No realtime performance, receiver or physical result is claimed.
