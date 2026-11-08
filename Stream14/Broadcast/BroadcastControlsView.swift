@@ -32,7 +32,7 @@ struct BroadcastControlsView: View {
             }
             if broadcast.state == .needsReconciliation {
                 Button("Reconcile YouTube status") { broadcast.reconcile() }
-                    .disabled(broadcast.isWorking || !authorization.isAuthorized)
+                    .disabled(broadcast.isWorking || broadcast.hasUnsettledMutation || !authorization.isAuthorized)
                     .accessibilityIdentifier("reconcileBroadcast")
                 Link("Open YouTube Studio", destination: URL(string: "https://studio.youtube.com")!)
                     .frame(minHeight: 44)

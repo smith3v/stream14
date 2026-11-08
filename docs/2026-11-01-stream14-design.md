@@ -669,11 +669,17 @@ No optional testing transition is implemented. Unknown/late states or deadline
 expiry stop startup upload and require read reconciliation before a new start.
 
 A backup-excluded, protected local journal retains only unresolved channel/event
-IDs before any possible upload, including auto-start. Relaunch never reconnects or
+IDs before any possible upload, including auto-start, plus a transition type and
+operation ID before a live/complete mutation. Relaunch never reconnects or
 publishes; it offers read-only reconciliation using the current authorized channel.
 Corrupt/unwritable journal state disables Go Live rather than overwriting evidence.
 Pending IDs are cleared only after a confirmed terminal event or an upcoming event
-with inactive/ready ingestion. A confirmed still-live event remains pending and
+with inactive/ready ingestion and no ambiguous transition. A currently upcoming
+read cannot clear an uncertain live request: it may still apply later, including
+after relaunch. Resolve that exact event in Studio and reconcile its live/terminal
+state; the app supplies no blind reset/retry override. A RAM outstanding-request
+gate also prevents reconciliation or a second mutation while the original request
+is still awaiting a response after the UI deadline/cancellation. A confirmed still-live event remains pending and
 can be explicitly ended. Credentials, event metadata and overlay URLs are not
 written to this journal; F5's separate mutation journal remains authoritative for
 resource creation/binding ambiguity.

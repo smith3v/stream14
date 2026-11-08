@@ -1524,6 +1524,11 @@ local preview does not upload camera or microphone media.
    broadcast attempt never automatically deletes files. If the app requests
    reconciliation, use **Reconcile YouTube status** or **Open YouTube Studio**;
    reconciliation is read only and does not restart upload or repeat a mutation.
+   An uncertain Live request remains blocked even if an early read says upcoming;
+   the earlier request could still apply. Resolve that exact event in Studio, then
+   reconcile a confirmed live/finished state. The app never silently discards this
+   transition barrier. While a previous request is still outstanding, wait for its
+   outcome before reconciliation or another completion request.
 6. **End broadcast** requires confirmation naming the frozen event. It requests
    local capture/output stop immediately while remote completion is checked
    separately within 15 seconds. Local finalization status stays visible in the

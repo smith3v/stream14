@@ -241,6 +241,61 @@ import UIKit
         #expect(h.session.state != .live)
     }
 
+    @Test func heldLiveMutationCannotBeClearedByAnEarlyUpcomingReconciliation() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.hold = "transition"
+        h.start(); try await h.until { h.pending != nil }
+        h.session.cancelStartup(); await h.session.waitForOperation()
+        #expect(h.session.hasUnsettledMutation)
+        let reads = h.server.requests.count
+        h.session.reconcile(); await h.session.waitForOperation()
+        #expect(h.server.requests.count == reads)
+        #expect(h.session.pendingRemote?.transition == .live && !h.session.canStart)
+        h.release()
+        try await h.until { !h.session.hasUnsettledMutation }
+        h.session.reconcile(); await h.session.waitForOperation()
+        #expect(h.server.remoteState == "live")
+        #expect(h.session.pendingRemote != nil && !h.session.canStart)
+        #expect(h.session.state == .needsReconciliation)
+    }
+
+    @Test func heldCompleteMutationCannotBeRetriedWhileOriginalRequestIsOutstanding() async throws {
+        let h = try await Harness(end: 0.03)
+        defer { h.cleanup() }
+        h.start(); await h.session.waitForOperation()
+        h.hold = "complete"
+        h.session.confirmEnd(); try await h.until { h.pending != nil }
+        await h.session.waitForOperation()
+        #expect(h.session.hasUnsettledMutation)
+        h.session.confirmEnd(); await h.session.waitForOperation()
+        #expect(h.server.transitions == ["live", "complete"])
+        #expect(h.session.pendingRemote?.transition == .complete)
+        h.session.reconcile(); await h.session.waitForOperation()
+        #expect(h.session.pendingRemote != nil)
+        h.release(); try await h.until { !h.session.hasUnsettledMutation }
+        h.session.reconcile(); await h.session.waitForOperation()
+        #expect(h.session.state == .ended && h.session.pendingRemote == nil)
+    }
+
+    @Test func ambiguousLiveMutationRetainsDurableBarrierEvenWhenReadIsStillUpcomingAfterRelaunch() async throws {
+        let h = try await Harness(startup: 0.07)
+        defer { h.cleanup() }
+        h.server.failure = "mutationTimeoutBefore"
+        h.start(); await h.session.waitForOperation()
+        #expect(h.server.remoteState == "ready")
+        #expect(h.session.pendingRemote?.transition == .live)
+        h.session.reconcile(); await h.session.waitForOperation()
+        #expect(!h.session.canStart && h.session.pendingRemote?.transition == .live)
+        let resumed = h.makeSession()
+        resumed.reconcile(); await resumed.waitForOperation()
+        #expect(!resumed.canStart && resumed.pendingRemote?.transition == .live)
+        #expect(h.server.transitions == ["live"])
+        h.server.remoteState = "complete"
+        resumed.reconcile(); await resumed.waitForOperation()
+        #expect(resumed.state == .ended && resumed.pendingRemote == nil)
+    }
+
     @Test func cancelledLateReadCannotStopASeparatelyConfirmedNewIntent() async throws {
         let h = try await Harness()
         defer { h.cleanup() }
@@ -411,6 +466,7 @@ import UIKit
             let target = query["broadcastStatus"]!
             transitions.append(target); h.timeline.append("transition " + target)
             await h.pause(target == "live" ? "transition" : "complete")
+            if failure == "mutationTimeoutBefore" { throw URLError(.timedOut) }
             if failure == "transition" || failure == "endReject" { status = 403 }
             else { remoteState = failure == "late" ? "liveStarting" : target }
             if failure == "mutationTimeoutAfter" { throw URLError(.timedOut) }

@@ -70,6 +70,8 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     @ObservationIgnored private let store: PendingRemoteBroadcastStore
     @ObservationIgnored private var operation: Task<Void, Never>?
     private var epoch: UInt64 = 0
+    private var unsettledMutations: Set<UUID> = []
+    var hasUnsettledMutation: Bool { !unsettledMutations.isEmpty }
     private let startupSeconds: Double
     private let endSeconds: Double
     private let pollSeconds: Double
@@ -194,7 +196,9 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             try check(intent, request)
             try sameBoundEvent(current, intent, streamID: prepared.streamID)
             switch current.status?.lifeCycleStatus {
-            case "live": return
+            case "live":
+                try setPending(PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id))
+                return
             case "complete", "revoked": throw StartError.ended
             case "ready", "created", "testing", "testStarting", "liveStarting": break
             default: throw StartError.remoteUnknown
@@ -207,8 +211,8 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
                 transitionSent = true // claim before awaiting; ambiguous writes are never resent here
                 state = .goingLive; message = "Ingestion active. Requesting Live; waiting for YouTube confirmation…"
                 do {
-                    _ = try await client.transitionBroadcast(eventID: intent.event.id, channelID: intent.channel.id,
-                                                             to: .live, generation: intent.generation)
+                    _ = try await transition(PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id),
+                                             to: .live, generation: intent.generation)
                 } catch {
                     try check(intent, request)
                     // A rejection or lost response can race a remote transition.
@@ -254,7 +258,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         operation = Task {
             do {
                 // Retain the identity even when startup had not reached publish.
-                try setPending(context)
+                if pendingRemote == nil { try setPending(context) }
                 try await withBroadcastDeadline(seconds: endSeconds) {
                     try await self.endRemote(context, generation: generation, request: request)
                 }
@@ -277,8 +281,9 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         try checkGeneration(request, generation)
         if before.status?.lifeCycleStatus == "complete" { return }
         guard ["live", "liveStarting", "testing", "testStarting"].contains(before.status?.lifeCycleStatus ?? "") else { throw StartError.remoteUnknown }
+        guard !hasUnsettledMutation else { throw StartError.remoteUnknown }
         do {
-            _ = try await client.transitionBroadcast(eventID: context.eventID, channelID: context.channelID, to: .complete, generation: generation)
+            _ = try await transition(context, to: .complete, generation: generation)
         } catch { try checkGeneration(request, generation) }
         // A successful mutation response is not final confirmation. Always read.
         while true {
@@ -293,6 +298,10 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     /// Read only, including after relaunch. Never retries a mutation or reconnects.
     func reconcile() {
         guard !isWorking, let context = pendingRemote, authorization.isAuthorized else { return }
+        guard !hasUnsettledMutation else {
+            message = "A previous YouTube transition is still awaiting an outcome. Wait for it to settle, then reconcile; no new request was sent."
+            return
+        }
         epoch &+= 1
         let request = epoch; let generation = authorization.generation
         isWorking = true
@@ -317,10 +326,20 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
                     message = "YouTube confirms this event is finished. No upload was started."
                     media.lockConfiguration(false)
                 case "created", "ready":
+                    // An uncertain POST can apply after a currently-upcoming read,
+                    // including after process death. Keep its durable barrier.
+                    guard context.transition == nil else {
+                        state = .needsReconciliation
+                        message = "A previous YouTube transition has an unknown outcome. The event is currently upcoming; this does not prove the request cannot still apply. Resolve this event in YouTube Studio, then reconcile."
+                        break
+                    }
                     try setPending(nil); activeIntent = nil; state = .idle
                     message = "YouTube confirms the event is upcoming and ingestion inactive. Review and confirm Go Live again to start."
                     media.lockConfiguration(false)
                 case "live":
+                    if context.transition == .live {
+                        try setPending(PendingRemoteBroadcast(channelID: context.channelID, eventID: context.eventID))
+                    }
                     state = .needsReconciliation
                     message = "YouTube confirms the event is still Live. Upload is shown separately; confirm End or inspect YouTube Studio."
                 default: throw StartError.remoteUnknown
@@ -379,6 +398,32 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
               event.title == intent.event.title, event.status?.privacyStatus == intent.event.status?.privacyStatus,
               event.contentDetails?.enableAutoStart == intent.event.contentDetails?.enableAutoStart else { throw StartError.changed }
     }
+    /// Claim both a durable ambiguity marker and a RAM outstanding-request gate
+    /// before dispatch. A deadline cancels the caller but does not settle this
+    /// request; only its actual return removes the RAM gate. Unknown live writes
+    /// remain durable until a read observes live/terminal, even after relaunch.
+    private func transition(_ context: PendingRemoteBroadcast, to target: YouTubeBroadcastTransition,
+                            generation: UInt64) async throws -> YouTubeBroadcast {
+        guard !hasUnsettledMutation else { throw StartError.remoteUnknown }
+        let id = UUID()
+        var claimed = context
+        claimed.transition = target; claimed.mutationID = id
+        try setPending(claimed)
+        unsettledMutations.insert(id)
+        defer { unsettledMutations.remove(id) }
+        do {
+            return try await client.transitionBroadcast(eventID: context.eventID, channelID: context.channelID,
+                                                        to: target, generation: generation)
+        } catch {
+            if case YouTubeMutationError.rejected = error, pendingRemote?.mutationID == id {
+                // A definite HTTP rejection did not apply this write. An unknown
+                // outcome (timeout, lost response or cancelled read) keeps it.
+                try setPending(PendingRemoteBroadcast(channelID: context.channelID, eventID: context.eventID))
+            }
+            throw error
+        }
+    }
+
     private func setPending(_ context: PendingRemoteBroadcast?) throws {
         do { try store.save(context); pendingRemote = context; journalUnavailable = false }
         catch { journalUnavailable = true; throw StartError.journal }

@@ -5,6 +5,8 @@ import Foundation
 nonisolated struct PendingRemoteBroadcast: Codable, Equatable, Sendable {
     let channelID: String
     let eventID: String
+    var transition: YouTubeBroadcastTransition? = nil
+    var mutationID: UUID? = nil
 }
 
 @MainActor final class PendingRemoteBroadcastStore {
