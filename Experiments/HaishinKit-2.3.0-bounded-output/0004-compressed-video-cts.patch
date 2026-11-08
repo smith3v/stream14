@@ -1,0 +1,101 @@
+commit 497f742c5f2c04cf3ca085378e660a273e351788
+Author:     Slava Kuznetsov <kuznetsovvv@gmail.com>
+AuthorDate: Sun Nov 8 21:19:43 2026 +0100
+Commit:     Slava Kuznetsov <kuznetsovvv@gmail.com>
+CommitDate: Sun Nov 8 21:19:43 2026 +0100
+
+    Preserve explicit compressed video composition timestamps
+
+diff --git a/RTMPHaishinKit/Sources/RTMP/RTMPMessage.swift b/RTMPHaishinKit/Sources/RTMP/RTMPMessage.swift
+index 043b9494..3c4d29cd 100644
+--- a/RTMPHaishinKit/Sources/RTMP/RTMPMessage.swift
++++ b/RTMPHaishinKit/Sources/RTMP/RTMPMessage.swift
+@@ -529,7 +529,7 @@ struct RTMPVideoMessage: RTMPMessage {
+         }
+     }
+ 
+-    init?(streamId: UInt32, timestamp: UInt32, sampleBuffer: CMSampleBuffer?) {
++    init?(streamId: UInt32, timestamp: UInt32, sampleBuffer: CMSampleBuffer?, compositionTimeOffset: TimeInterval = Self.ctsOffset) {
+         guard let sampleBuffer, let data = try? sampleBuffer.dataBuffer?.dataBytes() else {
+             return nil
+         }
+@@ -538,13 +538,13 @@ struct RTMPVideoMessage: RTMPMessage {
+         let keyframe = !sampleBuffer.isNotSync
+         switch sampleBuffer.formatDescription?.mediaSubType {
+         case .h264:
+-            let compositionTime = sampleBuffer.getCompositionTime(Self.ctsOffset)
++            let compositionTime = sampleBuffer.getCompositionTime(compositionTimeOffset)
+             var buffer = Data([((keyframe ? RTMPFrameType.key.rawValue : RTMPFrameType.inter.rawValue) << 4) | RTMPVideoCodec.avc.rawValue, RTMPAVCPacketType.nal.rawValue])
+             buffer.append(contentsOf: compositionTime.bigEndian.data[1..<4])
+             buffer.append(data)
+             payload = buffer
+         case .hevc:
+-            let compositionTime = sampleBuffer.getCompositionTime(Self.ctsOffset)
++            let compositionTime = sampleBuffer.getCompositionTime(compositionTimeOffset)
+             var buffer = Data([0b10000000 | ((keyframe ? RTMPFrameType.key.rawValue : RTMPFrameType.inter.rawValue) << 4) | RTMPVideoPacketType.codedFrames.rawValue, 0x68, 0x76, 0x63, 0x31])
+             buffer.append(contentsOf: compositionTime.bigEndian.data[1..<4])
+             buffer.append(data)
+diff --git a/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift b/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift
+index b7287f29..fe57c2ad 100644
+--- a/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift
++++ b/RTMPHaishinKit/Sources/RTMP/RTMPStream.swift
+@@ -750,7 +750,10 @@ extension RTMPStream: _Stream {
+         let delta = try timestamp.update(time, video: true)
+         compressedTimestamp = timestamp
+         videoFormat = sampleBuffer.formatDescription // header enters same FIFO first
+-        guard let message = RTMPVideoMessage(streamId: id, timestamp: delta, sampleBuffer: sampleBuffer) else {
++        // Explicit compressed input already supplies its DTS/PTS relationship.
++        // Do not add the legacy raw-encoder latency compensation to this clock.
++        guard let message = RTMPVideoMessage(streamId: id, timestamp: delta,
++            sampleBuffer: sampleBuffer, compositionTimeOffset: 0) else {
+             throw Error.unsupportedCodec
+         }
+         try await connection.sendAcknowledged(.one, chunkStreamId: .video, message: message)
+diff --git a/RTMPHaishinKit/Tests/RTMP/RTMPCompressedCompositionTimeTests.swift b/RTMPHaishinKit/Tests/RTMP/RTMPCompressedCompositionTimeTests.swift
+new file mode 100644
+index 00000000..a382ad2f
+--- /dev/null
++++ b/RTMPHaishinKit/Tests/RTMP/RTMPCompressedCompositionTimeTests.swift
+@@ -0,0 +1,42 @@
++import AVFoundation
++import Testing
++@testable import RTMPHaishinKit
++
++@Suite struct RTMPCompressedCompositionTimeTests {
++    @Test func explicitCompressedTimePreservesExactPTSMinusDTSAndLegacyDefault() throws {
++        let equal = try sample(pts: 1, dts: 1)
++        let explicit = try #require(RTMPVideoMessage(streamId: 1, timestamp: 0,
++            sampleBuffer: equal, compositionTimeOffset: 0))
++        #expect(Array(explicit.payload[2..<5]) == [0, 0, 0])
++        let reordered = try #require(RTMPVideoMessage(streamId: 1, timestamp: 0,
++            sampleBuffer: sample(pts: 1.1, dts: 1), compositionTimeOffset: 0))
++        #expect(Array(reordered.payload[2..<5]) == [0, 0, 100])
++        let legacy = try #require(RTMPVideoMessage(streamId: 1, timestamp: 0, sampleBuffer: equal))
++        #expect(Array(legacy.payload[2..<5]) == [0, 0, 66])
++        #expect(explicit.payload.suffix(6) == legacy.payload.suffix(6))
++    }
++
++    private func sample(pts: Double, dts: Double) throws -> CMSampleBuffer {
++        var block: CMBlockBuffer?
++        let bytes: [UInt8] = [0, 0, 0, 2, 0x65, 0x88]
++        try #require(CMBlockBufferCreateWithMemoryBlock(allocator: nil, memoryBlock: nil,
++            blockLength: bytes.count, blockAllocator: nil, customBlockSource: nil,
++            offsetToData: 0, dataLength: bytes.count, flags: 0, blockBufferOut: &block) == noErr)
++        let data = try #require(block)
++        try #require(bytes.withUnsafeBytes { CMBlockBufferReplaceDataBytes(with: $0.baseAddress!,
++            blockBuffer: data, offsetIntoDestination: 0, dataLength: $0.count) } == noErr)
++        var description: CMVideoFormatDescription?
++        try #require(CMVideoFormatDescriptionCreate(allocator: nil, codecType: kCMVideoCodecType_H264,
++            width: 1280, height: 720, extensions: nil, formatDescriptionOut: &description) == noErr)
++        var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: 30),
++            presentationTimeStamp: CMTime(seconds: pts, preferredTimescale: 1000),
++            decodeTimeStamp: CMTime(seconds: dts, preferredTimescale: 1000))
++        var length = bytes.count
++        var result: CMSampleBuffer?
++        try #require(CMSampleBufferCreateReady(allocator: nil, dataBuffer: data,
++            formatDescription: description, sampleCount: 1, sampleTimingEntryCount: 1,
++            sampleTimingArray: &timing, sampleSizeEntryCount: 1, sampleSizeArray: &length,
++            sampleBufferOut: &result) == noErr)
++        return try #require(result)
++    }
++}
