@@ -1000,3 +1000,25 @@ Actual socket/TLS
 receiver behavior, shared initial A/V origin, keyframe-safe reconnect and physical
 13 mini memory/thermal/queue qualification remain gates. F1/F6 acceptance is open;
 production retains the existing local-only writer and capture/composition path.
+
+
+## F12 delivered-build private measurements — 2026-11-08
+
+The app now has bounded typed diagnostic checkpoints and deliberate per-record
+summary sharing in ordinary Release, with no analytics or new dependency. Existing
+encoder/file/transport owners supply numeric counters; one observer survives a
+stopped/failed backup while encoding/upload continues, freezing terminal file
+counters and ending only with the encoded session. The original-file analyzer
+uses native compressed PTS plus whole-track A/V decode; empty marker buffers and
+batched audio timings are handled separately. No repair or re-encode occurs.
+
+See the [F12 handoff](2026-11-08-f12-qualification-handoff.md) for exact APIs,
+independent review fixes, 27 passing focused tests, Release/privacy audit,
+Simulator Load/Share check, inspected synthetic JSON and native read-only fixture
+results. The [report template](qualification-report-template.md) maps A1–A9 and
+physical markers/receiver/power/network/ambient controls. Own-task charged footprint
+is separate from resident mappings and does not cover all WebKit/GPU/media charges.
+A bounded recent window plus lifetime counts/peaks/regression is not physical
+memory stability. Short 13 mini overhead, actual phone export, physical A/V sync,
+long-run qualification and F11's remaining physical recovery evidence are pending.
+No historical MVP result is upgraded by these new hooks.

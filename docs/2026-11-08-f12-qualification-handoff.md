@@ -63,7 +63,7 @@ First integration checkpoint: unsigned Release build passed in
 `/private/tmp/stream14-f12-release.log`; 21 tests in five focused suites passed in
 `/private/tmp/stream14-f12-tests.log` / `stream14-f12-focused.xcresult`.
 Those precede final F11/current-main integration and two extra checkpoint rejection
-assertions. Final affected results and independent review must be recorded below.
+assertions. Final affected results and independent review are recorded below.
 
 Final source inherits F11 checkpoint `52b52dd` by normal merge and current main
 `f454e9b89e4fd30ac1d41672507ed88a15723004`, including reviewed media fork
@@ -75,7 +75,9 @@ The first Release bundle's privacy manifest retained SystemBootTime 35F9.1,
 FileTimestamp C617.1 and UserDefaults CA92.1, tracking false, collected-data list
 empty. The app exports only elapsed intervals between in-app events, never boot
 or host epochs. Apple reason wording was checked against the official reference
-linked in the specification. Final package audit/F13 submission review remain distinct.
+linked in the specification. The final reviewed Release bundle again retained these declarations and compiled
+both qualification source files through the ordinary Release target. F13 full
+dependency/submission review remains distinct.
 
 ## Remaining acceptance
 
@@ -98,6 +100,43 @@ The observer now continues through that condition, freezes file counters and sav
 a final report after bounded transport shutdown, including unresolved admitted
 sends. A deterministic production-owner fixture covers completed/failed file
 finalization, continued encoder/transport admissions, frozen file counts and
-whole-session close. Focused re-review and final affected validation are pending.
-No other privacy/original-deletion/native timestamp defects were found in that review.
+whole-session close. Focused re-review found all three findings resolved and no
+further material issues. No other privacy/original-deletion/native timestamp
+defects were found in that review.
 
+## Final affected checks
+
+- Current-main/new-pin hosted fixture pass: **27 tests in six suites**, including
+  the continued-upload observer lifecycle for both completed and failed local
+  files. Log `/private/tmp/stream14-f12-final-tests.log`, result
+  `/private/tmp/stream14-f12-final-focused.xcresult`; xcodebuild exited 0.
+- Unsigned reviewed Release build passed after the lifetime fix. Log
+  `/private/tmp/stream14-f12-release-reviewed.log`; ordinary Release compilation
+  included `QualificationDiagnostics.swift` and `QualificationExportView.swift`.
+  The actual app bundle retained all three reason declarations, tracking false
+  and an empty collected-data list.
+- Offline Simulator UI test **testQualificationSummaryLoadsAndDeliberateShareOpens**
+  passed in 28.198 seconds. It loaded a new expendable numeric checkpoint, opened
+  Share and observed Save to Files, without camera, microphone or publishing.
+  Log `/private/tmp/stream14-f12-ui-actual.log`, result
+  `/private/tmp/stream14-f12-ui-actual.xcresult`. Screenshot visually inspected at
+  `/private/tmp/stream14-f12-ui-attachments/EAD4FEA0-1511-4A9D-94C6-5693661E44EC.png`:
+  summary actions and numeric checkpoint text fit the small portrait screen.
+  This does not prove an actual saved phone-export artifact or physical VoiceOver.
+- The shared scheme branded the runner `s14 UI Tests` with
+  `Stream14UITestIcon60x60`; its normal Simulator signature verified with
+  `codesign --verify --deep --strict`. No installed app was uninstalled/reset.
+- The final native analysis verification again passed after changing the original
+  hash check to stream 1 MiB chunks. All track timing/decode results remained
+  healthy and the secret-shaped missing input did not appear in failure output.
+  `/private/tmp/stream14-f12-native-analysis-reviewed.json` retains the result.
+- `git diff --check` and Python AST syntax checks passed. No phone actions or
+  long media experiments were performed. Per-session resource bounds are model
+  and source evidence; on-device overhead remains pending.
+
+The first attempt to configure UI testing assumed Xcode's newer xctestrun schema
+and stopped before any test launched. It was corrected to the actual format and
+the passing result above is the resulting run. An earlier ordinary-sandbox build
+could not access Xcode caches/codec services; approved native checks supplied the
+reported passes. None of these infrastructure failures was treated as media
+acceptance or caused deletion of an original.

@@ -12,8 +12,8 @@ simulator, source, output = sys.argv[1:]
 container = Path(subprocess.check_output(['xcrun', 'simctl', 'get_app_container', simulator,
     'com.smith3v.stream14', 'data'], text=True).strip())
 assert f'/CoreSimulator/Devices/{simulator}/data/Containers/Data/Application/' in str(container)
+assert Path(source).stat().st_size <= 128 * 1024
 data = Path(source).read_bytes()
-assert len(data) <= 128 * 1024
 json.loads(data)
 directory = container / 'Library/Application Support/MediaExperiments'
 directory.mkdir(parents=True, exist_ok=True)

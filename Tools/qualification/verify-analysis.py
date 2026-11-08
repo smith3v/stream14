@@ -8,7 +8,13 @@ import json
 import subprocess
 import sys
 binary, fixture, output = map(Path, sys.argv[1:])
-before = hashlib.sha256(fixture.read_bytes()).digest()
+def digest(path):
+    value = hashlib.sha256()
+    with path.open('rb') as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b''):
+            value.update(chunk)
+    return value.digest()
+before = digest(fixture)
 result = subprocess.run([str(binary), str(fixture)], capture_output=True)
 if result.returncode != 0:
     raise SystemExit('nativeAnalysisFailed')
@@ -24,7 +30,7 @@ secret = '/private/tester-secret/overlay?token=fixture-secret&stream-key=fixture
 failed = subprocess.run([str(binary), secret], capture_output=True)
 if failed.returncode == 0 or b'fixture-secret' in failed.stdout + failed.stderr or secret.encode() in failed.stdout + failed.stderr:
     raise SystemExit('failurePrivacyFailed')
-if hashlib.sha256(fixture.read_bytes()).digest() != before:
+if digest(fixture) != before:
     raise SystemExit('originalChanged')
 output.write_bytes(result.stdout)
 print('nativeFullReadTimingFailurePrivacyOriginalPreservationPassed')
