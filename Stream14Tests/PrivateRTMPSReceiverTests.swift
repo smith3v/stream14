@@ -4,7 +4,7 @@ import Synchronization
 import Testing
 @testable import Stream14
 
-#if DEBUG
+#if DEBUG && targetEnvironment(simulator)
 /// Explicit laptop-only fixture: no camera, microphone, Google API or real key.
 /// Destination is fixed inside the Debug-only adapter seam, never environment-supplied.
 @Suite(.serialized, .enabled(if: ProcessInfo.processInfo.environment["STREAM14_PRIVATE_RECEIVER"] == "1"))

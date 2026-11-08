@@ -18,7 +18,7 @@ actor RTMPSConnection {
             profile: profile, canPublish: canPublish)
     }
 
-    #if DEBUG
+    #if DEBUG && targetEnvironment(simulator)
     /// Fixed local synthetic receiver only; never compiled into Release.
     func connectPrivateFixture(profile: SessionProfile) async throws {
         try await connect(endpoint: URL(string: "rtmps://localhost:19360/fixture")!,
