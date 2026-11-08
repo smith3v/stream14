@@ -35,7 +35,7 @@ TEST_RUNNER_STREAM14_SHORT_DEVICE_SMOKE=1 xcodebuild \
   -disableAutomaticPackageResolution -allowProvisioningUpdates \
   -parallel-testing-enabled NO -test-timeouts-enabled YES \
   -maximum-test-execution-time-allowance 90 \
-  -only-testing:Stream14Tests/ShortPhoneSmokeTests/twoProfilesRetainComposedOriginals \
+  -only-testing:Stream14Tests/ShortPhoneSmokeTests \
   -resultBundlePath "$STREAM14_EVIDENCE/short-phone-smoke.xcresult" test
 ~~~
 
@@ -64,3 +64,7 @@ Independent review found that physical Release tests could have enabled capture 
 No phone was installed, launched or recorded. Actual physical duration, camera/file marker checks, audio audibility and physical synchronization remain pending. The one-minute test target and 90-second runner watchdog are design limits, not measured physical performance or a guarantee that installation fits the owner’s total five-minute visit.
 
 The ShortPhoneSmokeTests selector is supported only after permission setup, normal Debug signing and branding. The source host deliberately does not load the saved overlay URL/preferences or construct Google's SDK driver under its opt-in flag; it never signs out or revokes the owner's authorization. Normal app/Release paths retain their usual configuration. The fixture contains no network resources and the test session uses independent empty-URL/nonpersisting configuration.
+
+## First connected attempt and selector correction — 2026-11-08
+
+Signed Debug app and embedded test signature checks pass. The first phone invocation matched zero tests because its bare Swift Testing method filter omitted parentheses. It is not a pass; no camera clips were made. Off-phone Xcode enumeration verifies suite selector Stream14Tests/ShortPhoneSmokeTests selects exactly one method, twoProfilesRetainComposedOriginals(). Commands now use the suite selector. Require one executed/passed physical test and zero skips; installation/runtime and device assertions remain pending. See the attended-session card for operator actions and the next five-minute visit.
