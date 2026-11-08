@@ -1631,3 +1631,21 @@ backup failure warning remains separate from healthy upload/remote Live status.
 Physical Home/lock, audio interruption, resumed-file/receiver inspection and real
 thermal evidence remain a separately attended acceptance run; this stage uses no
 phone or real service calls and does not establish the long qualification gates.
+
+## F11 recording review and separate recovery
+
+The Recordings library retains original completed/interrupted/failed provenance.
+It also shows duration, readable-start review and distinct recovered/failed-copy
+states. UUID files remain visible if metadata is absent or malformed. A readable
+start is a lightweight native audio/video decode check, not proof of whole-file
+integrity; inspect playback. Use **Try recovery to separate copy** on an incomplete
+recording to request native passthrough remux. It may preserve only completed
+fragments, omit the tail or fail before the first ten-second fragment. The original
+is always retained, including after failed recovery. Export originals/copies
+explicitly. Confirm deletion for a selected copy or the complete selected group.
+App deletion still loses files held only inside the app.
+
+See the [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) for production
+codec/writer Mac evidence, exact commands, the measured native AAC-tail trim, and
+remaining physical process-termination/relaunch/playback/export checks. This is
+not A5 acceptance or evidence of three-hour recording/streaming reliability.

@@ -1252,3 +1252,40 @@ failures. Initial writer admission failure still prevents first publication.
 Simulator fixtures exercise control/late-result decisions and injected native
 writer faults. Physical Home/lock/audio-route interruptions, real heat, final-file
 continuity/idle behavior and long-run qualification remain unverified for F9.
+
+### F11 implementation — persistent review and native recovery (2026-11-08)
+
+The selected compressed MP4 `LocalRecorder` configures a ten-second fragment
+interval before writing. `ExperimentSample` keeps backward-compatible optional
+schema/profile/duration/byte-count metadata, original writer status, a distinct
+readability review and recovery-attempt status. UUID media and partial recovery
+copies remain visible when sidecars are missing or malformed. Malformed original
+metadata is preserved; a separate `.review.json` records subsequent review.
+Inactive pending originals become interrupted on relaunch, never completed.
+
+`RecordingRecovery` owns native reads and passthrough export on its actor. Launch
+review decodes a first video/audio sample and reads duration; this is a readable
+start check, not a full integrity or synchronization guarantee. Explicit recovery
+exports to a distinct UUID MP4 with `AVAssetExportPresetPassthrough`, validates a
+readable start, and preserves the original's interrupted/failed provenance. Each
+attempt is persisted before export. Failed/pending partial copies remain visible
+and exportable if present; no cancellation or cleanup removes originals. A
+recovered copy can omit unfinished fragments and native export can trim its tail.
+Operators must inspect playback before relying on it. Deletion is confirmed for
+the selected recording group or an individual recovery copy; metadata is saved or
+deleted last so partial failure remains retryable.
+
+The production codec/writer body was repeated off-phone at 1920×1080/30 fps,
+44.1 kHz stereo using synthetic video/tone, not the earlier 320×180/48 kHz mono
+writer-owned encoding probe. A normal 25-second file decoded 750 video frames and
+1,102,500 PCM frames. SIGKILL before the first fragment at five seconds remained
+unreadable. Post-fragment termination at 25 seconds preserved 600 video frames
+(20 seconds) and 880,576 PCM frames in the original. Native passthrough retained
+identical compressed payload hashes/bytes and video count, with 880,530 decoded
+PCM frames in the copy: 46 trailing PCM frames (~1.04 ms) were trimmed by native
+export metadata. All originals remained byte-identical. The finish-request race
+had the same result; it does not prove the exact writer-finalization instruction
+was interrupted. This supports a useful native prefix, not lossless recovery.
+See the [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) for reproducible
+commands and limits. Physical force termination/relaunch, playback/export and A5
+remain pending; no phone or YouTube session was used for this evidence.

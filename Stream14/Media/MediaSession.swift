@@ -195,7 +195,7 @@ final class MediaSession {
 
     func recoverSample(_ selected: ExperimentSample) async {
         guard canDeleteSamples, recoveringSampleID == nil,
-              var sample = savedSamples.first(where: { $0.id == selected.id }), sample.status != .completed else { return }
+              var sample = savedSamples.first(where: { $0.id == selected.id }), (sample.status != .completed || sample.review != .readable) else { return }
         recordingReviewTask?.cancel()
         recoveringSampleID = sample.id
         defer { recoveringSampleID = nil; refreshSamples() }
