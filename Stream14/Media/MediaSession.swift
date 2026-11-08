@@ -3,6 +3,21 @@ import HaishinKit
 import Observation
 import UIKit
 
+nonisolated enum SessionInterruption: CaseIterable {
+    case background, camera, audio, captureFailure, encoderFailure, criticalHeat, audioUnavailable
+    var message: String {
+        switch self {
+        case .background: "The app left the foreground."
+        case .camera: "Camera capture was interrupted."
+        case .audio: "Audio capture was interrupted."
+        case .captureFailure: "Camera capture failed."
+        case .encoderFailure: "Media encoding failed."
+        case .criticalHeat: "The device is too hot."
+        case .audioUnavailable: "The microphone input is unavailable."
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class MediaSession {
@@ -65,6 +80,9 @@ final class MediaSession {
     private var stopRequested = false
     private var failure = false
     private var interrupted = false
+    var onInterruption: (@MainActor (SessionInterruption) -> Void)?
+    private var interruptionReported = false
+    var backupWarning: String { recordingFailed ? "Backup failed. Saved footage is retained as incomplete; healthy upload continues independently." : "" }
     private var previousIdleTimerDisabled: Bool?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
@@ -209,6 +227,7 @@ final class MediaSession {
         stopRequested = false
         failure = false
         interrupted = false
+        interruptionReported = false
         defer { finishOperation() }
         do {
             guard await authorizeCapture() else {
@@ -244,7 +263,9 @@ final class MediaSession {
             routeTask = Task { [weak self] in
                 for await _ in NotificationCenter.default.notifications(named: AVAudioSession.routeChangeNotification) {
                     guard !Task.isCancelled else { return }
-                    self?.updateAudioRoute()
+                    guard let self else { return }
+                    self.updateAudioRoute()
+                    if AVAudioSession.sharedInstance().currentRoute.inputs.isEmpty { self.interrupt(.audioUnavailable) }
                 }
             }
             // Register interruption streams before capture begins.
@@ -252,13 +273,13 @@ final class MediaSession {
             interruptionTask = Task { [weak self] in
                 for await value in interruptions {
                     guard !Task.isCancelled else { return }
-                    if value { self?.requestStop(interruption: true) }
+                    if value { self?.interrupt(.camera) }
                 }
             }
             audioInterruptionTask = Task { [weak self] in
                 for await _ in NotificationCenter.default.notifications(named: AVAudioSession.didBecomeInactiveNotification) {
                     guard !Task.isCancelled else { return }
-                    self?.requestStop(interruption: true)
+                    self?.interrupt(.audio)
                 }
             }
             runtimeErrorTask = Task { [weak self] in
@@ -266,7 +287,7 @@ final class MediaSession {
                     guard !Task.isCancelled else { return }
                     self?.failure = true
                     self?.message = "Camera capture failed. The recording is retained; reopen the camera to retry."
-                    self?.requestStop()
+                    self?.interrupt(.captureFailure)
                 }
             }
             updateThermalState()
@@ -276,6 +297,7 @@ final class MediaSession {
                     self?.updateThermalState()
                 }
             }
+            guard !stopRequested else { return }
             await mixer.startRunning()
             overlayTask = Task { [weak self] in
                 while !Task.isCancelled {
@@ -334,14 +356,16 @@ final class MediaSession {
         phase = .preview
     }
 
-    private func updateThermalState() {
-        switch ProcessInfo.processInfo.thermalState {
+    private func updateThermalState() { applyThermalState(ProcessInfo.processInfo.thermalState) }
+
+    func applyThermalState(_ state: ProcessInfo.ThermalState) {
+        switch state {
         case .serious:
             thermalWarning = "Device is hot. Overlay captures are reduced to protect camera recording."
             renderer.captureInterval = 3
         case .critical:
             thermalWarning = "Device is too hot. Recording is stopping; let it cool before restarting."
-            requestStop(interruption: true)
+            interrupt(.criticalHeat)
         default:
             thermalWarning = ""
             renderer.captureInterval = 1
@@ -386,7 +410,7 @@ final class MediaSession {
                     guard !Task.isCancelled else { return }
                     self?.failure = true
                     self?.message = "Media encoding failed. Saved footage is retained as incomplete."
-                    self?.requestStop()
+                    self?.interrupt(.encoderFailure)
                 }
             }
             await encoder.start()
@@ -403,23 +427,49 @@ final class MediaSession {
         }
     }
 
+    func interrupt(_ reason: SessionInterruption) {
+        if !interruptionReported {
+            interruptionReported = true
+            onInterruption?(reason)
+        }
+        requestStop(interruption: true)
+    }
+
+    /// Expiry is not writer success. Persist the conservative status immediately
+    /// because iOS may suspend us before an awaited finish callback returns.
+    func backgroundTimeExpired() {
+        failure = true
+        recordingFailed = recorder != nil || recordingFailed
+        interrupted = true
+        message = "Background time expired. Saved footage remains incomplete; YouTube end is unconfirmed."
+        sample?.status = .failed
+        if let sample, let directory { try? sample.save(in: directory) }
+        restoreIdleTimer()
+        if backgroundTask != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTask)
+            backgroundTask = .invalid
+        }
+    }
+
     /// Background/interruption wins over in-flight setup/start without racing writer state.
     func requestStop(interruption: Bool = false) {
-        if interruption { renderer.stop() }
+        if interruption {
+            renderer.stop()
+            if !interruptionReported {
+                interruptionReported = true
+                onInterruption?(.camera)
+            }
+        }
         guard phase != .idle || busy else { return }
         interrupted = interrupted || interruption
         if UIApplication.shared.applicationState == .background && backgroundTask == .invalid {
             backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Finish local sample") { [weak self] in
-                guard let self else { return }
-                self.failure = true
-                self.message = "Background time expired. Sample remains incomplete."
-                if self.backgroundTask != .invalid {
-                    UIApplication.shared.endBackgroundTask(self.backgroundTask)
-                    self.backgroundTask = .invalid
-                }
+                self?.backgroundTimeExpired()
             }
         }
         stopRequested = true
+        uploadStopGeneration &+= 1
+        mediaDestinations?.detachPublisher()
         if !busy { Task { await close() } }
     }
 
@@ -549,6 +599,17 @@ final class MediaSession {
         phase = .recording
         uploadState = .connected
     }
+    func installWriterFixture(_ recorder: LocalRecorder, sample: ExperimentSample, directory: URL) {
+        precondition(self.recorder == nil && !busy)
+        self.recorder = recorder
+        self.sample = sample
+        self.directory = directory
+        mediaDestinations = SharedMediaDestinations(recorder: recorder)
+        if let publisher { mediaDestinations?.attachPublisher(publisher) }
+        previousIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
+        UIApplication.shared.isIdleTimerDisabled = true
+    }
+    func failWriterFixture() async { await handleRecorderFailure() }
     func holdFileFinalizationFixture(_ hold: @MainActor () async -> Void) async {
         precondition(!busy)
         busy = true
@@ -585,7 +646,7 @@ final class MediaSession {
         }
         mediaDestinations?.detachRecorder()
         do {
-            let metrics = try await recorder.finish()
+            let metrics = try await withBroadcastDeadline(seconds: 5) { try await recorder.finish() }
             sample?.metrics = metrics
             guard let sample, let directory else { throw ExperimentError.emptySample }
             let url = directory.appendingPathComponent(sample.fileName)
@@ -604,6 +665,7 @@ final class MediaSession {
             }
         } catch {
             failure = true
+            recordingFailed = true
             message = "Sample did not finish or has missing audio/video. Partial files are retained."
         }
         sample?.metrics = recorder.metrics
@@ -611,6 +673,7 @@ final class MediaSession {
         if let sample, let directory {
             do { try sample.save(in: directory) } catch {
                 failure = true
+                recordingFailed = true
                 message = "Could not save sample status. Files remain pending and are retained."
             }
         }
@@ -628,7 +691,7 @@ final class MediaSession {
     }
 
     private func close() async {
-        guard !busy else { return }
+        guard !busy, phase != .idle else { return }
         busy = true
         stopRequested = false
         phase = .stopping
@@ -665,7 +728,9 @@ final class MediaSession {
             UIApplication.shared.endBackgroundTask(backgroundTask)
             backgroundTask = .invalid
         }
-        await uploadClosing?.value
+        if let uploadClosing {
+            _ = try? await withBroadcastDeadline(seconds: 3) { await uploadClosing.value }
+        }
         uploadAffinity.endCaptureSession()
         uploadState = .idle
         phase = .idle

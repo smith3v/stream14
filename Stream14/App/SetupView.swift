@@ -73,6 +73,9 @@ struct SetupView: View {
                         get: { experiment.renderer.health.manuallyHidden },
                         set: { experiment.renderer.setManuallyHidden($0) }))
                     if !experiment.thermalWarning.isEmpty { Text(experiment.thermalWarning).accessibilityLabel("Thermal warning: " + experiment.thermalWarning) }
+                    if !experiment.backupWarning.isEmpty {
+                        Text(experiment.backupWarning).accessibilityIdentifier("backupWarning")
+                    }
                     Text(experiment.message)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("mediaStatus")
@@ -183,6 +186,7 @@ struct SetupView: View {
             .task {
                 guard !runsIsolatedMediaHarness else { return }
                 experiment.setOverlayForeground(scenePhase != .background)
+                if scenePhase == .active { broadcast.foregroundReturned() }
                 while !Task.isCancelled {
                     experiment.reconcileOverlay()
                     do { try await Task.sleep(for: .seconds(1)) } catch { break }
@@ -192,10 +196,13 @@ struct SetupView: View {
             .onChange(of: experiment.cameraZoom.value) { _, value in zoomDraft = value }
             .onChange(of: scenePhase) { _, phase in
                 guard !runsIsolatedMediaHarness else { return }
-                if phase == .active { experiment.setOverlayForeground(true) }
+                if phase == .active {
+                    experiment.setOverlayForeground(true)
+                    broadcast.foregroundReturned()
+                }
                 if phase == .background {
                     experiment.setOverlayForeground(false)
-                    experiment.requestStop(interruption: true)
+                    experiment.interrupt(.background)
                 }
             }
         }
