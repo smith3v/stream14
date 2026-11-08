@@ -1132,3 +1132,13 @@ still leads video by about59–70ms across two generations, exceeding35ms. AAC
 priming/trim versus receiver normalization remains unresolved; no guessed delay,
 production pin adoption, physical sync or full-app gate completion is authorized by
 this evidence. The app's existing immutable fork pin remains unchanged here.
+
+
+The focused receiver correction selects owned-fork revision
+`497f742c5f2c04cf3ca085378e660a273e351788`: canonical native AAC-LC sequence headers
+and zero added CTS for the explicit compressed-video path. Encoder output, AAC
+priming compensation, payloads, shared clock and queue limits are unchanged.
+Independent source review and native package regressions support these narrow fixes;
+receiver-file A/V alignment and physical YouTube markers remain pending. The private
+localhost fixture is compiled only into Debug Simulator products. Historical evidence
+for earlier revisions is not retroactively reclassified.

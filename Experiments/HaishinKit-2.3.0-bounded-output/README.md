@@ -169,6 +169,9 @@ compensation only from the explicit compressed video API. Native payload regress
 and the reduced full-source suite pass40 tests in18 suites. See the
 [actual receiver record](../../docs/2026-11-08-private-rtmps-receiver-validation.md)
 for the original protocol rejection, normal TLS proof, two receiver recordings,
-remaining decoded59–70ms audio lead and exact scope. These are isolated local
-candidates, not a new published/adopted pin; root coordinates independent review
-and immutable publication. No network alignment or physical gate is claimed.
+remaining decoded59–70ms audio lead and exact scope. The focused main-based correction now selects published immutable revision
+`497f742c5f2c04cf3ca085378e660a273e351788` from the existing owned fork. Independent
+actual-source review found no material fork issues; the app fixture scope finding
+was resolved by restricting its entry points to Debug Simulator builds. Historical
+sections above preserve the original experiment status. No wire/playback alignment
+or physical RTMPS qualification is claimed.

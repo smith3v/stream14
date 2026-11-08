@@ -1500,7 +1500,7 @@ an upload; local rehearsal needs no internet connection or Google setup.
 ## Private synthetic RTMPS receiver checkpoint (2026-11-08)
 
 Use the [receiver procedure and actual measurements](2026-11-08-private-rtmps-receiver-validation.md)
-for normal-TLS laptop-only wire/receiver checks. It uses a fixed Debug-only
+for normal-TLS laptop-only wire/receiver checks. It uses a fixed Debug Simulator-only
 localhost seam and generated media through the actual shared encoder, with no
 camera, Google request or physical-device trust change. The untrusted TLS rejection,
 trusted socket sends and corrected-header receiver decode were observed, but the

@@ -150,8 +150,9 @@ or adopted replacement revision. No host trust or physical device was changed.
 `0003-native-aac-header.patch` and `0004-compressed-video-cts.patch` in the existing
 HaishinKit experiment directory reproduce the two independently reviewable fork
 candidates. Root coordinates independent review, any immutable fork publication and
-app pin update from current main. This stage publishes/merges nothing and does not
-authorize the future phone/YouTube slot until the remaining sync issue is resolved.
+app pin update from current main. The original isolated stage did not publish or merge. A later diagnostic phone/YouTube
+run needs a prepared signed candidate and explicit operator publishing confirmation;
+it can measure the pending physical alignment and does not imply qualification.
 
 ## Raw encoder versus container timestamps: finite follow-up
 
@@ -184,3 +185,21 @@ show that encoder packet PTS, MP4 normalization, decoder priming and the actual 
 wire clock must be assessed separately. Normal TLS, real socket sends, independent
 H264/AAC receiver parsing and decode are established for this synthetic case; actual
 wire/playback A/V alignment and physical YouTube marker acceptance remain pending.
+
+
+## Reviewed focused main correction
+
+The two fork changes passed separate actual-source review and were published to the
+existing owned fork at exact revision `497f742c5f2c04cf3ca085378e660a273e351788`.
+The focused `codex/fix-native-rtmps-media` branch starts at main `eaf9389`; it imports
+only the fixture, tools, patches and evidence changes, not the later F7 lifecycle
+implementation. Both the project requirement and Package.resolved select this exact
+revision; other package pins and dependency footprint are unchanged.
+
+Review's sole app-scope finding was fixed: the localhost helper and private fixture
+compile only for `DEBUG && targetEnvironment(simulator)`. Release and physical Debug
+products retain only the validated YouTube entry point. Normal TLS and all publishing
+authorization guards remain unchanged. The normal iPhone SDK Release build passed;
+final hosted regression status is recorded in the PR handoff. No recording or
+credential was deleted or exported. Receiver-file marker assertions remain failed
+as described above; no encoder timestamp or guessed audio-delay correction was added.
