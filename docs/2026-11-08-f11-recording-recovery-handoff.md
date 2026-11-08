@@ -127,3 +127,33 @@ review are still pending. The existing first 12-test pass and Release pass prece
 that selective deletion test and the final refresh predicate, which now reinspects
 incomplete originals on each library reconciliation instead of trusting an older
 readable-start review forever. No process is left running at this checkpoint.
+
+## Independent review fixes — source only, NOT RUN
+
+Review of `52b52dd` found two material issues. The five-second nonjoining deadline
+released MediaSession's recording reference while AVAssetWriter could still be
+finalizing; listing then permitted inspection/recovery/deletion of a changing
+original. Structural track/duration validation also incorrectly persisted the
+stronger decoded-start `readable` claim.
+
+The source fix adds the concrete `RecordingFinalization` owner. It retains one
+UUID/task until the actual `LocalRecorder.finish()` returns; the UI timeout only
+ends its waiter. A held finalizer blocks another writer and all library mutations,
+and its UUID is excluded from both pre-read and post-await review decisions.
+Original playback/export is disabled while protected. LocalRecorder also rejects
+restart while its actual native finalization is in flight. Late completion releases
+protection and permits exact native inspection; it does not promote the timed-out
+record's original failed status to complete.
+
+Structural writer validation now records duration/size with `review = nil`. Only
+the exact `RecordingRecovery.inspect` path can persist `.readable`. Writer success
+provenance and decoded-start review remain separate.
+
+`RecordingFinalizationTests` adds held-operation/deadline coverage (one native task,
+retained UUID after timeout, rejected replacement finalizer, late callback release),
+MediaSession admission/protection/recovery policy, and persisted structural-review
+semantics. These are authored deterministic tests, not executed results. Native
+build/test/UI jobs are **NOT RUN** for this fix: automatic approval review was
+blocked by account usage limits. No reroute or retry of that rejected native job
+was attempted. The prior 13-test and Release results precede these changes and do
+not validate them. Focused source re-review and native validation remain required.

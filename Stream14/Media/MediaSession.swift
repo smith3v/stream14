@@ -53,6 +53,8 @@ final class MediaSession {
     private var overlayForeground = false
     var canEditOverlayURL: Bool { !broadcastConfigurationLocked && !busy && !stopRequested && (phase == .idle || phase == .preview) }
     private var recorder: LocalRecorder?
+    private let fileFinalization = RecordingFinalization()
+    var protectedRecordingID: UUID? { recordingID ?? fileFinalization.recordingID }
     private var sharedEncoder: SharedMediaEncoder?
     private var mediaDestinations: SharedMediaDestinations?
     private var publisher: RTMPSPublisher?
@@ -89,8 +91,8 @@ final class MediaSession {
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     var canSelectLens: Bool { !broadcastConfigurationLocked && !busy && !stopRequested && (phase == .idle || phase == .preview) }
-    var canRecord: Bool { phase == .preview && !busy && !stopRequested && recoveringSampleID == nil }
-    var canDeleteSamples: Bool { !busy && recoveringSampleID == nil && (phase == .idle || phase == .preview) }
+    var canRecord: Bool { phase == .preview && !busy && !stopRequested && recoveringSampleID == nil && fileFinalization.recordingID == nil }
+    var canDeleteSamples: Bool { !busy && recoveringSampleID == nil && fileFinalization.recordingID == nil && (phase == .idle || phase == .preview) }
     var recordingID: UUID? { recorder == nil ? nil : sample?.id }
     var recordingMetrics: LocalRecorder.Metrics? { recorder?.metrics }
     var isRecording: Bool { phase == .recording && recorder != nil && !recordingFailed }
@@ -166,13 +168,13 @@ final class MediaSession {
     func refreshSamples(clearFeedback: Bool = true) {
         recordingReviewTask?.cancel()
         do {
-            savedSamples = try ExperimentSample.loadAll(activeID: recordingID)
+            savedSamples = try ExperimentSample.loadAll(activeID: protectedRecordingID)
             if clearFeedback { recordingsMessage = "" }
         }
         catch { recordingsMessage = "Saved recordings could not be listed. Files are retained."; return }
         guard recoveringSampleID == nil else { return }
         let candidates = savedSamples.filter {
-            $0.id != recordingID && ($0.review == nil || $0.status != .completed)
+            $0.id != protectedRecordingID && ($0.review == nil || $0.status != .completed)
         }
         recordingReviewTask = Task { [weak self] in
             guard let self, let directory = try? ExperimentSample.directory() else { return }
@@ -191,7 +193,7 @@ final class MediaSession {
                         sample.review = .unreadable
                     }
                 }
-                guard !Task.isCancelled, sample.id != recordingID,
+                guard !Task.isCancelled, sample.id != protectedRecordingID,
                       let index = savedSamples.firstIndex(where: { $0.id == sample.id }) else { continue }
                 do { try sample.save(in: directory); savedSamples[index] = sample }
                 catch { recordingsMessage = "Recording review could not be saved. Originals are retained." }
@@ -688,7 +690,7 @@ final class MediaSession {
         uploadState = .connected
     }
     func installWriterFixture(_ recorder: LocalRecorder, sample: ExperimentSample, directory: URL) {
-        precondition(self.recorder == nil && !busy)
+        precondition(self.recorder == nil && !busy && fileFinalization.recordingID == nil)
         self.recorder = recorder
         self.sample = sample
         self.directory = directory
@@ -698,6 +700,12 @@ final class MediaSession {
         UIApplication.shared.isIdleTimerDisabled = true
     }
     func failWriterFixture() async { await handleRecorderFailure() }
+    /// Exercise the production deadline/ownership boundary without native IO.
+    func holdNativeFinalizationFixture(id: UUID, deadline: Double = 0,
+        operation: @escaping @MainActor @Sendable () async throws -> LocalRecorder.Metrics) async throws {
+        _ = try await fileFinalization.finish(id: id, deadline: deadline, operation: operation,
+            released: { [weak self] in self?.refreshSamples(clearFeedback: false) })
+    }
     func holdFileFinalizationFixture(_ hold: @MainActor () async -> Void) async {
         precondition(!busy)
         busy = true
@@ -734,7 +742,10 @@ final class MediaSession {
         }
         mediaDestinations?.detachRecorder()
         do {
-            let metrics = try await withBroadcastDeadline(seconds: 5) { try await recorder.finish() }
+            guard let id = sample?.id else { throw ExperimentError.emptySample }
+            let metrics = try await fileFinalization.finish(id: id,
+                operation: { try await recorder.finish() },
+                released: { [weak self] in self?.refreshSamples(clearFeedback: false) })
             sample?.metrics = metrics
             guard let sample, let directory else { throw ExperimentError.emptySample }
             let url = directory.appendingPathComponent(sample.fileName)
@@ -746,9 +757,8 @@ final class MediaSession {
             guard !videos.isEmpty, !audios.isEmpty, duration.seconds > 0 else {
                 throw ExperimentError.emptySample
             }
-            self.sample?.duration = duration.seconds
-            self.sample?.byteCount = sample.fileSize(in: directory)
-            self.sample?.review = .readable
+            self.sample?.recordStructuralValidation(duration: duration.seconds,
+                                                    byteCount: sample.fileSize(in: directory))
             sampleURL = url
             if !failure {
                 message = interrupted ? "Interrupted recording finalized. Inspect playback before using it." :
@@ -757,7 +767,9 @@ final class MediaSession {
         } catch {
             failure = true
             recordingFailed = true
-            message = "Sample did not finish or has missing audio/video. Partial files are retained."
+            message = fileFinalization.recordingID == nil
+                ? "Sample did not finish or has missing audio/video. Partial files are retained."
+                : "Finalization exceeded the wait limit. Original is retained and protected while native writing continues."
         }
         sample?.metrics = recorder.metrics
         sample?.status = failure ? .failed : (interrupted ? .interrupted : .completed)

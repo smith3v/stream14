@@ -35,6 +35,14 @@ nonisolated struct ExperimentSample: Codable, Identifiable, Sendable {
         self.status = status
     }
 
+    /// Writer track/duration validation establishes provenance, not decoding.
+    /// A later RecordingRecovery.inspect result owns the readable-start claim.
+    mutating func recordStructuralValidation(duration: Double, byteCount: Int64?) {
+        self.duration = duration
+        self.byteCount = byteCount
+        review = nil
+    }
+
     func recoveryFileName(_ recovery: Recovery) -> String {
         id.uuidString + ".recovered." + recovery.id.uuidString + ".mp4"
     }
