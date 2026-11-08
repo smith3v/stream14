@@ -120,6 +120,7 @@ final class SetupScreenTests: XCTestCase {
                 let previous = hide.value as? String
                 hide.tap()
                 XCTAssertNotEqual(hide.value as? String, previous)
+                Thread.sleep(forTimeInterval: 0.4) // Let the native Hide/Show label crossfade settle.
                 let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
                 screenshot.name = "Session landscape \(orientation.rawValue) largest text \(large)"
                 screenshot.lifetime = .keepAlways
@@ -353,17 +354,7 @@ final class SetupScreenTests: XCTestCase {
                 XCTAssertFalse(app.buttons["exportRecording-" + missingID].isEnabled)
                 XCTAssertTrue(app.buttons["deleteRecording-" + missingID].isEnabled)
                 XCTAssertTrue(app.staticTexts["recordingMetadata-" + missingID].label.contains("File size unavailable"))
-                app.tabBars.buttons["Preparation"].tap()
-                let privacy = app.descendants(matching: .any).matching(identifier: "privacyPolicy").firstMatch
-                scrollTo(privacy, in: app)
-                XCTAssertTrue(privacy.exists)
-                let notices = app.buttons["thirdPartyNotices"]
-                scrollTo(notices, in: app)
-                let footer = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-                footer.name = "Footer \(orientation.rawValue) large text \(largeText)"
-                footer.lifetime = .keepAlways
-                add(footer)
-                try auditInterface(app)
+
             }
         }
     }
@@ -393,7 +384,7 @@ final class SetupScreenTests: XCTestCase {
 
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(element.waitForExistence(timeout: 5))
-        for attempt in 0..<24 {
+        for attempt in 0..<64 {
             let scroll = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.collectionViews.firstMatch
             let raw = scroll.frame.intersection(app.frame)
             let top = max(raw.minY, app.navigationBars.firstMatch.frame.maxY)
@@ -453,20 +444,7 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertEqual(profile.value as? String, "720p30 · 8 Mbps")
         for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight] {
             XCUIDevice.shared.orientation = orientation
-            let scroll = app.scrollViews.firstMatch
-            for _ in 0..<20 {
-                let top = app.navigationBars["stream14"].frame.maxY + 8
-                let visible = CGRect(x: scroll.frame.minX, y: top, width: scroll.frame.width,
-                                     height: scroll.frame.maxY - top - 8)
-                let frame = profile.frame
-                if visible.contains(frame), !frame.isEmpty, profile.isHittable { break }
-                // Full-screen flicks overshoot compact controls at very large text.
-                // Bounded drags move toward the center without alternating past it.
-                let delta = max(-70, min(70, frame.midY - visible.midY))
-                let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.6))
-                let end = start.withOffset(CGVector(dx: 0, dy: -delta))
-                start.press(forDuration: 0.05, thenDragTo: end)
-            }
+            scrollTo(profile, in: app)
             XCTAssertTrue(profile.isHittable)
             XCTAssertGreaterThanOrEqual(profile.frame.height, 44)
             let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -505,7 +483,8 @@ final class SetupScreenTests: XCTestCase {
         screenshot.name = "Setup portrait"
         screenshot.lifetime = .keepAlways
         add(screenshot)
-        try app.performAccessibilityAudit()
+        scrollTo(app.buttons["openSession"], in: app)
+        try auditInterface(app)
     }
 
     func testOverlaySettingsAreAccessibleWithoutStartingCapture() throws {
@@ -596,6 +575,14 @@ final class SetupScreenTests: XCTestCase {
         screenshot.name = "Setup landscape accessibility XXXL"
         screenshot.lifetime = .keepAlways
         add(screenshot)
-        try app.performAccessibilityAudit()
+        scrollTo(app.buttons["openSession"], in: app)
+        try auditInterface(app)
+        let privacy = app.descendants(matching: .any).matching(identifier: "privacyPolicy").firstMatch
+        scrollTo(privacy, in: app)
+        XCTAssertGreaterThanOrEqual(privacy.frame.height, 44)
+        let notices = app.buttons["thirdPartyNotices"]
+        scrollTo(notices, in: app)
+        XCTAssertGreaterThanOrEqual(notices.frame.height, 44)
+        try auditInterface(app)
     }
 }
