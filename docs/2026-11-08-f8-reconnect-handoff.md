@@ -59,3 +59,10 @@ Unverified: actual phone outage/handover; remote receiver gaps; actual SDK recon
 under network loss; physical file continuity and long-session performance. Owner
 baseline physical smoke predates this pipeline and is not F8 evidence. No phone,
 Google credentials, external API mutation, real media upload or broadcast occurred.
+
+Final hosted rerun after all code/test changes: **135 total, 128 passed, 7 skipped,
+0 failed**, 24 suites, including **29 BroadcastSession tests passed**. Final log:
+`/private/tmp/stream14-f8-tests-final.log`; result bundle under
+`/private/tmp/stream14-f8-tests/Logs/Test/`. Release build remained passed with the
+same runtime. Independent review and final parent inheritance remain coordinated
+by the root agent before publication.
