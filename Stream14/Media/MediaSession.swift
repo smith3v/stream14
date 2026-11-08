@@ -451,7 +451,7 @@ final class MediaSession {
         uploadState = .connecting
         uploadMessage = "Connecting upload"
         defer {
-            if publisher == nil { uploadState = .failed }
+            if publisher == nil, uploadState == .connecting { uploadState = Task.isCancelled ? .idle : .failed }
             finishOperation()
         }
         let recordingID = sample?.id
@@ -459,7 +459,7 @@ final class MediaSession {
         let publisher = try await RTMPSPublisher.connected(to: prepared,
             canPublish: { retry || recorder?.hasStarted == true },
             failed: { failure in continuation.yield(failure); continuation.finish() })
-        guard !stopRequested, phase == .recording, sample?.id == recordingID else {
+        guard !Task.isCancelled, !stopRequested, phase == .recording, sample?.id == recordingID else {
             await publisher.stop()
             throw RTMPSPublisher.StartupFailure.cancelled
         }
@@ -467,6 +467,13 @@ final class MediaSession {
         transportWasStarted = true
         mediaDestinations.attachPublisher(publisher)
         await sharedEncoder.requestKeyframe()
+        guard !Task.isCancelled, !stopRequested else {
+            mediaDestinations.detachPublisher()
+            self.publisher = nil
+            await publisher.stop()
+            uploadState = .idle
+            throw RTMPSPublisher.StartupFailure.cancelled
+        }
         uploadState = .connected
         uploadMessage = "Upload connected; waiting for YouTube confirmation"
         publisherErrorTask = Task { [weak self, weak publisher] in

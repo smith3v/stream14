@@ -1108,3 +1108,13 @@ Network.framework normal certificate validation. A socket acknowledgment reports
 local processing, not receiver delivery. Actual writer startup must be observed
 before connection/publish, and no current preview/setup/UI action starts upload;
 F7 still owns operator confirmation and remote broadcast state.
+
+The F6 draft requests VideoToolbox AverageBitRate at the existing 14/8 Mbps
+profile targets and two-second keyframes. It does **not** claim constant bitrate.
+The installed iOS 27.2 SDK's VTCompressionProperties.h (ConstantBitRate section)
+says strict CBR adds padding in low-motion scenes, is not recommended for general
+streaming, is mutually exclusive with AverageBitRate and can be unsupported by
+an encoder. The owner/root explicitly retained the existing average target for
+this draft after reviewing that evidence. The initial CBR target in section 2
+remains an unmet starting criterion pending actual receiver/device rate-control
+qualification and a final default decision; no physical performance is inferred.

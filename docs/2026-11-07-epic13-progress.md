@@ -114,6 +114,28 @@ Early F11 native research is committed at 8503510 in /private/tmp/stream14-epic1
 
 The Mac-only generated H.264/AAC test uses 320×180 video and mono 48 kHz, not the app profile. Ten-second fragments preserve about 20 of 25 submitted seconds after own-child termination; distinct native passthrough copies preserve compressed payload hashes and decoded counts, originals unchanged. Before-first-fragment files remain unreadable and are retained honestly. See the native recovery report and exact private evidence paths there.
 
-Draft actual F6 pipeline work continues in /private/tmp/stream14-epic13-f6-integration-repo: single native persistent encoder and passthrough migration pass 13 generated-media checks, including independent decoded midpoint markers; current local checkpoint d50d4e5 reviewed with no material findings. Concrete bounded uploader queue ae313e4 has four checks; adapter and full-PR review remain pending. Common-origin patch fedc43b passed separate review, 39 package checks and original-manifest iOS product compilation.
+Draft actual F6 pipeline work continues in /private/tmp/stream14-epic13-f6-integration-repo: single native persistent encoder and passthrough migration pass 12 executed generated-media checks plus one explicit physical skip, including independent decoded midpoint markers; current local checkpoint d50d4e5 reviewed with no material findings. Concrete bounded uploader queue ae313e4 has four checks; adapter and full-PR review remain pending. Common-origin patch fedc43b passed separate review, 39 package checks and original-manifest iOS product compilation.
 
 The reviewed minimal fork is now published at https://github.com/smith3v/HaishinKit.swift.git revision 8dc2ecce781d320ef0f2576ff5195411c91505ad, parent official 2.3.0 aa2149df822f2e965adf2410a106db959b2e1962. Root verified all eight changed/new source/test files byte-for-byte against reviewed/validated sources and original Package.swift unchanged. No upstream PR was sent. App adoption must pin that exact revision, document maintenance/notices, run full affected regressions and independent full integration review; no live media or physical acceptance is implied.
+
+
+## F6 actual shared-media integration — 2026-11-08 draft
+
+The isolated integration branch has merged reviewed short-smoke #47 and native
+recovery-feasibility #48 normally. Its normal Xcode project now pins the reviewed
+owner fork `8dc2ecce781d320ef0f2576ff5195411c91505ad` with committed resolved graph,
+links only core/RTMP products, and uses one persistent native encoder followed by
+compressed MP4 passthrough and an independently bounded RTMPS pump. Preview/setup
+still start no upload; F7 owns the explicit operator flow. All original files and
+the five-minute TOTAL phone visit constraint remain intact.
+
+Actual remote-pinned iPhone SDK build-for-testing passes. Eighteen focused
+encoder/recorder/pump/integration checks execute and pass, including this new
+persistent converter's decoded audible/video marker and packet readback, writer
+failure surviving upload, upload failure surviving writing, actual writer-startup
+admission and finite stalled-send accounting. Full hosted regression reports
+96 passed, 7 explicit physical skips, 0 failed (103 total, 22 suites). Evidence
+paths, earlier failures, current interfaces and review gates are in the
+[shared-media integration record](2026-11-08-shared-media-integration-implementation.md).
+Final whole-change review and noncapture UI/cancellation follow-up are pending.
+No physical or receiver test, F1/F6 completion, actual CBR or shipping claim follows.

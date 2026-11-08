@@ -193,3 +193,26 @@ writer blocks the actual connection factory before socket creation; and the
 actual AAC adapter copies one packet's exact bytes and rejects PCM. No socket,
 YouTube mutation or physical capture was performed. Full hosted and noncapture
 UI regression, final native compile and whole-change independent review remain due.
+
+### Final regression checkpoint (review still in progress)
+
+Full hosted tests passed at `/private/tmp/stream14-integration-hosted-1.xcresult`:
+xcresulttool reports **96 passed, 7 explicitly skipped physical opt-in checks,
+0 failed**, 103 total in 22 suites. The focused local-2 bundle was independently
+checked with xcresulttool: 12 passed, 1 physical skip, 0 failed (13 total).
+Native VT/reader fixtures emit QoS-priority-inversion runtime warnings; no main
+thread media processing or physical performance qualification is established by
+these tests. Receiver/thermal/resource and later endurance evidence remain due.
+
+A self-review adds cancellation checks immediately before publisher attachment
+and after awaiting a forced keyframe; a cancelled start detaches/closes that
+publisher and throws a sanitized cancellation. Native compile/noncapture UI and
+focused tests after this small hardening are due before handoff. Root arranged
+whole-diff independent review; earlier chunk reviews are not substituted for it.
+
+The owner/root explicitly selected continued AverageBitRate 14/8 Mbps for this
+draft, preserving the existing F4 baseline. Installed iOS 27.2 SDK
+VTCompressionProperties.h ConstantBitRate documentation describes padding,
+incompatible rate-control properties and unsupported-encoder errors. The
+canonical CBR starting target is preserved as pending receiver/device rate-control
+qualification, not silently marked satisfied. No strict CBR claim is made.
