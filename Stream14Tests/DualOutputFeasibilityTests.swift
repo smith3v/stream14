@@ -1,7 +1,6 @@
 import AVFoundation
 import HaishinKit
 import RTMPHaishinKit
-import Logboard
 import Synchronization
 import Testing
 import UIKit
@@ -18,14 +17,6 @@ private final class RawStreamProbe: StreamOutput, Sendable {
     func stream(_ stream: some StreamConvertible, didOutput video: CMSampleBuffer) {
         counts.withLock { if video.imageBuffer == nil { $0.compressed += 1 } else { $0.raw += 1 } }
     }
-}
-
-/// Logboard's exported NullAppender has an internal initializer in pinned 2.6.0.
-private final class DiscardTransportLogs: LBLoggerAppender {
-    func append(_ logboard: LBLogger, level: LBLogger.Level, message: [Any],
-                file: StaticString, function: StaticString, line: Int) {}
-    func append(_ logboard: LBLogger, level: LBLogger.Level, format: String, arguments: any CVarArg,
-                file: StaticString, function: StaticString, line: Int) {}
 }
 
 @Suite(.serialized)
@@ -232,10 +223,9 @@ struct DualOutputFeasibilityTests {
               let key = environment["STREAM14_PRIVATE_STREAM_KEY"], !key.isEmpty else {
             throw CandidateFailure.missingPrivateConfiguration
         }
-        let transportLogger = LBLogger.with(kRTMPHaishinKitIdentifier)
-        let previousAppender = transportLogger.appender
-        transportLogger.appender = DiscardTransportLogs()
-        defer { transportLogger.appender = previousAppender }
+        // Explicitly configure the shared redacting sink before ANY direct
+        // legacy RTMPConnection, independent of the new sender factory.
+        RTMPPrivacy.configure()
         // This private candidate has fixed 1080p fixtures/transport settings.
         let session = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in }, profile: .fullHD)
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)

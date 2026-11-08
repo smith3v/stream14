@@ -104,13 +104,13 @@ checkpoint. `git diff --check` passes; independent source re-review remains due.
 
 ### Observed checkpoint 2 validation
 
-The affected Simulator repeat actually executed 13 tests in three suites and
+The affected Simulator repeat reports 13 tests in three suites (12 executed,
+one explicitly skipped physical selector) and
 passed at `/private/tmp/stream14-integration-local-2.xcresult` (27.259 seconds,
 log beside it). This includes the new persistent encoder's audible/changing-video
 midpoint decode, two passthrough files, byte comparison and exact normalized
-packet PTS. The older opt-in physical feasibility selector does not execute
-physical media without its explicit environment and a physical destination;
-its presence in the suite count is not device evidence. The actual new marker
+packet PTS. The older opt-in physical feasibility selector was explicitly skipped by its
+environment guard; its presence in the reported suite count is not device evidence. The actual new marker
 check passed video onset within 5 ms of 0.5 seconds and relative generated A/V
 onset within 35 ms. No physical/receiver or endurance conclusion follows.
 
@@ -144,3 +144,39 @@ upstream-pinned app still compiles: generic iPhone build-for-testing passes at
 checks. The prior migration reviewer reported no actionable material findings;
 actual writer startup must be confirmed before a future publisher starts because
 codec hints/startWriting are deferred beyond LocalRecorder.start returning.
+
+### Source checkpoint 4 — immutable fork and real adapter (runtime regression pending)
+
+The normal project now pins the reviewed owner fork revision
+`8dc2ecce781d320ef0f2576ff5195411c91505ad` and commits Xcode's resolved graph.
+RTMPHaishinKit is linked to the app because RTMPSConnection now actually calls
+its compressed acknowledged publishing API. App startup configures the SDK
+redacting appender before any connection; the disabled legacy physical candidate
+also explicitly calls that setup before its direct connection. No underlying
+SDK response/error text is propagated into application errors.
+
+`SharedMediaDestinations` fans the same immutable encoded packets into independently
+owned writer/publisher references. `MediaSession.startUpload(_:)` is an explicit
+future-F7 entry point, not invoked by any current UI. First admission requires
+LocalRecorder.hasStarted (actual startWriting, no failure), checked again before
+publish. A previously admitted transport may retry after backup failure without
+restarting/stopping the continuous encoder. Writer failure finalizes/detaches that
+consumer with a persistent recordingFailed state; healthy upload remains attached.
+Transport failure detaches only upload; healthy file encoding continues. The new
+control-operation serialization and fault paths still require the upcoming runtime
+regression and independent whole-change review.
+
+The public-to-F7 surface is MainActor/Observable MediaSession:
+`startUpload(PreparedYouTubeIngestion) async throws`, `stopUpload() async`,
+`stopRecording() async`, `requestStop(interruption:)` (ends capture/both outputs),
+`hasUpload`, `isRecording`, `recordingFailed`, `uploadState` (idle/connecting/
+connected/failed), `uploadMessage` and `phase`. Connected is socket publishing,
+never YouTube Live. Publisher failures use an internal one-element AsyncStream
+of RTMPSPublisher.Failure; the queue metrics are finite local counters. F7 owns
+operator confirmation, prepared-event/account reconciliation and YouTube state.
+
+The actual remote-pinned normal project generic-iOS build-for-testing passed at
+`/private/tmp/stream14-integration-fork-build-2.log` before the final small typed
+state additions; compile/runtime repeat is due next. This supersedes only the
+prior private local-reference compile experiment, not receiver/physical gates.
+The F6 application branch is not yet published and must not be merged automatically.

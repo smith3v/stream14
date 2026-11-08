@@ -56,6 +56,8 @@ actor SharedMediaEncoder: MediaMixerOutput {
         self.failed = failed
     }
 
+    func requestKeyframe() { core.requestKeyframe() }
+
     func start() {
         guard worker == nil, !terminal else { return }
         worker = Task { [weak self, wakes] in

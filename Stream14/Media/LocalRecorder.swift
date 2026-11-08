@@ -188,4 +188,5 @@ nonisolated final class LocalRecorder: Sendable {
     }
 
     var metrics: Metrics { state.withLock { $0.metrics } }
+    var hasStarted: Bool { state.withLock { $0.started && !$0.failed && $0.writer?.status == .writing } }
 }
