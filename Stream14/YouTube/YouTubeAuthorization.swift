@@ -56,6 +56,15 @@ enum YouTubeAuthorizationError: Error, Equatable {
             "YouTube setup is needed. Configure the Google iOS client; local recording is available."
     }
 
+    #if DEBUG
+    static func interfaceFixture() -> YouTubeAuthorization {
+        let value = YouTubeAuthorization(driver: nil, configured: true)
+        value.account = GoogleAuthorizationAccount(id: "fixture-account", grantedScopes: [requiredScope])
+        value.message = "Fixture YouTube connection. No Google requests."
+        return value
+    }
+    #endif
+
     convenience init(bundle: Bundle = .main) {
         let config = GoogleAuthorizationConfiguration(info: bundle.infoDictionary ?? [:])
         self.init(driver: config.map { GoogleAuthorizationDriver(configuration: $0) }, configured: config != nil)

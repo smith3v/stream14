@@ -19,6 +19,14 @@ import Observation
         self.client = client ?? YouTubeClient(authorization: authorization)
     }
 
+    #if DEBUG
+    func installInterfaceFixture(channel: YouTubeChannel, event: YouTubeBroadcast) {
+        loadedGeneration = authorization.generation
+        storedChannel = channel; storedEvents = [event]; selectedID = event.id
+        message = "Fixture event selected. Nothing is being uploaded."
+    }
+    #endif
+
     // Computed guards hide stale metadata immediately, even before SwiftUI's
     // account-change callback has had a chance to clear the stored values.
     var channel: YouTubeChannel? { isCurrent ? storedChannel : nil }

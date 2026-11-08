@@ -1253,6 +1253,36 @@ Simulator fixtures exercise control/late-result decisions and injected native
 writer faults. Physical Home/lock/audio-route interruptions, real heat, final-file
 continuity/idle behavior and long-run qualification remain unverified for F9.
 
+### F10 native operator interface (2026-11-08, issue #23)
+
+Native Preparation, Session and Recordings tabs share the existing main-actor
+MediaSession/BroadcastSession owners. Tab selection opens no camera, requests no
+Google mutation and publishes no media. Preparation shows profile, camera/input
+readiness, overlay state, the actual API channel and eligible scheduled events;
+the existing coordinator still performs all preflight and frozen-intent checks.
+Go Live/Resume confirmation retains channel title/ID, event title, visibility and
+profile. Session shows the frozen active event alongside separate recording,
+upload, YouTube and overlay labels, persistent backup/thermal warnings, duration,
+mute/levels, zoom, manual overlay visibility and reload, file Record/Stop and
+confirmed broadcast End. Native controls remain outside the MTHKView composition.
+
+At normal text sizes landscape gives the letterboxed full-canvas preview its own
+column and a separately scrolling control column. Accessibility text uses one
+scrolling column so controls remain reachable. URL settings remain inspectable
+while edits are locked; they explain the lock. Applying an empty URL remains the
+explicit disable action, and reload/manual hide remain independent of URL editing.
+Preparation includes account disconnect/revoke, privacy/notices and session help.
+Recordings retain date/size, pending/failed status, original-file playback/export
+and deliberate confirmed per-file deletion with the exported-copy explanation.
+There is no file migration, automatic cleanup, Photos permission or storage estimate.
+
+Debug-only UI fixtures isolate Google, overlay loading and capture, using injected
+failing service closures and presentation state. They exercise the actual native
+views, preflight/confirmation and locked settings without claiming live media
+acceptance. Physical VoiceOver, the smallest phone in hand, actual receiver/file
+control exclusion, keyboard/permission operation and long qualification remain
+separate pending evidence; Simulator snapshots cannot establish them.
+
 ### F11 implementation — persistent review and native recovery (2026-11-08)
 
 The selected compressed MP4 `LocalRecorder` configures a ten-second fragment

@@ -1632,6 +1632,49 @@ Physical Home/lock, audio interruption, resumed-file/receiver inspection and rea
 thermal evidence remain a separately attended acceptance run; this stage uses no
 phone or real service calls and does not establish the long qualification gates.
 
+## F10 preparation, session and recordings interface (issue #23)
+
+Use Preparation for profile, YouTube connection/channel/event and help/privacy.
+Open Session to open the camera, rehearse or record locally without Google. Choosing
+a tab, event or settings does not publish. Go Live shows the channel title/ID,
+event, visibility and profile for explicit confirmation. While active, profile and
+URL edits remain locked; Overlay settings explains the lock while Session retains
+manual hide and Reload overlay. Watch the distinct Recording, Upload, YouTube and
+Overlay messages. A backup warning is independent of upload; uncertain End offers
+read-only reconciliation and Studio. Interrupted sessions require the F9 explicit
+camera reopen and same-event Resume confirmation.
+
+Recordings keeps the original MP4, status, date and size, with Play, Export and
+confirmed Delete. Cancel preserves the file. Exported copies remain after deletion;
+deleting the app loses originals still contained in the app. No migration or
+recovery claim is added by this interface stage.
+
+Safe Debug UI fixture mode uses `STREAM14_INTERFACE_FIXTURE` only in the test
+launch environment (`idle`, `ready`, `overlay-unavailable`, `reconnecting`,
+`backup-failed`, `unknown-end`, `ended`). It is compiled out of Release and never
+opens capture, Google, WebKit networking or a publisher. Do not infer actual
+recording/receiver behavior from those presentation fixtures. Reproduce the focused
+native interface suite using the shared scheme and a fresh result path:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -derivedDataPath /private/tmp/stream14-f10-simulator \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14UITests/SetupScreenTests/testNativeDestinationsNeverStartCaptureOrPublishing \
+  -only-testing:Stream14UITests/SetupScreenTests/testPreflightBlockersAndExactPublishingConfirmation \
+  -only-testing:Stream14UITests/SetupScreenTests/testPersistentFailureStatesAndLockedSettings \
+  -only-testing:Stream14UITests/SetupScreenTests/testSessionLayoutsAndManualOverlayAtLargestText \
+  -resultBundlePath /private/tmp/stream14-f10-ui-new.xcresult test
+```
+
+Normally signed branded UI runner is required. Actual test results and screenshots
+are recorded in the [F10 stage handoff](2026-11-08-integrated-interface-implementation.md).
+No phone or actual Google/media publishing was used for this interface work.
+Physical VoiceOver/13 mini acceptance and actual file/receiver exclusion remain
+pending; preserve the owner's five-minute total routine phone budget.
+
 ## F11 recording review and separate recovery
 
 The Recordings library retains original completed/interrupted/failed provenance.
