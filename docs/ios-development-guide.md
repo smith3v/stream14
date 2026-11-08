@@ -1674,3 +1674,12 @@ are recorded in the [F10 stage handoff](2026-11-08-integrated-interface-implemen
 No phone or actual Google/media publishing was used for this interface work.
 Physical VoiceOver/13 mini acceptance and actual file/receiver exclusion remain
 pending; preserve the owner's five-minute total routine phone budget.
+
+F10 Simulator contrast diagnostics can point to static text outside the visible
+scroll area (for example the YouTube heading at y709 on a 375-point landscape
+screen). The focused UI helper excludes only uniquely matched static text proven
+vertically clipped/offscreen in both captured and callback geometries within the
+native nav/tab bounds. It logs that proof; unknown elements, fully visible text,
+controls and other audit types remain failures. This is a narrow native audit
+limitation, not a general contrast waiver or physical VoiceOver evidence. See the
+F10 handoff for exact retained failed/passing runs and independent review status.

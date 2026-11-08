@@ -31,3 +31,63 @@ Pending implementation and focused native checks. Physical smallest-screen use, 
 ### Initial checkpoint (before stable F9 handoff)
 
 Preparation/Session/Recordings native tabs and normal-text landscape two-column layout are implemented in SetupView only. The existing overlay host, file actions and lifecycle callbacks are retained. Settings stays inspectable when URL edits are locked; active overlay reload/manual visibility are exposed. `git diff --check` passes. This is an incomplete stage checkpoint: existing UI tests still assume the old single screen and require navigation updates; F9 backup warning/foreground resume hooks must be inherited from its final reviewed commit. Build is running at `/private/tmp/stream14-f10-build.log` (initial sandboxed invocation stopped after native service restriction; authorized native invocation is compiling/resolving packages). No Simulator UI, phone, API or publishing validation has run. Do not publish/merge this checkpoint as completed F10.
+
+## Reviewed implementation and native evidence
+
+Product source `fa3140e` is independently reviewed with no remaining material
+findings. Review identified that moving recordings off the original page hid
+list/deletion errors. `MediaSession.recordingsMessage` now keeps that feedback in
+Recordings; a real nonregular-file Simulator fixture verifies confirmed deletion
+fails conservatively, retains the row and explains retry. The row is extracted to
+`Stream14/App/RecordingRow.swift` with the original sample/play/delete contract
+for F11. No original-file migration or cleanup was added.
+
+Each native tab owns its NavigationStack; only the selected screen is instantiated.
+One attached overlay host and one MediaSession remain above the screen boundary.
+Navigation content is bounded to its viewport. MTHKView receives explicit dimensions
+computed from 16:9, because relying only on UIViewRepresentable aspectRatio allowed
+UIKit sizing to escape its proposed bounds. Session normal landscape uses the
+preview/control columns; accessibility text uses one scroll column. Microphone and
+manual overlay visibility use native buttons with 44-point minimum label targets,
+explicit state values and SF Symbols. Native label transitions are allowed to settle
+before retained screenshots. URL settings stay inspectable while mutation is locked.
+
+Passed evidence on Xcode 27.2/iOS 27.2 Simulator:
+
+- `/private/tmp/stream14-f10-release-final-2.log`: unsigned generic-iOS Release build
+  passed. Binary inspection finds none of STREAM14_INTERFACE_FIXTURE,
+  fixture-account, fixture-channel or invented-fixture-token.
+- `/private/tmp/stream14-f10-ui-11.xcresult`: one native test covers both landscape
+  directions at normal and largest accessibility text. Actual 16:9 frame assertions,
+  44-point microphone target, actual renderer manual Hide/Show state and accessibility
+  audits pass. This run used no audit exclusions. Its screenshot attachments capture
+  the native label crossfade; the subsequent test-only settling delay improves QA
+  artifacts without changing product behavior.
+- `/private/tmp/stream14-f10-regression-1.log`: hosted phase completed 148 cases
+  (seven physical opt-in skips); confirmed Delete/Cancel, failed deletion with retry
+  feedback, native no-implicit-publish destinations, URL draft discard/invalid Apply,
+  overlay settings accessibility, persistent reconnect/backup/unknown-end/ended states,
+  and exact preflight/publishing confirmation pass. The combined run was stopped
+  during obsolete legacy profile gestures; it is not an overall passing UI bundle.
+- `/private/tmp/stream14-f10-ui-final.xcresult`: original playback/export passes;
+  old unscoped contrast audits report offscreen/clipped static text. The known
+  landscape example is the YouTube heading at y709.7 on a 375-point screen, outside
+  the actual y86–303 viewport. Portrait similarly reports the event-status paragraph
+  at y772.7 below the y729 tab boundary, and recording metadata at y784.3 below that
+  boundary. These are retained diagnostic results, not visible-contrast passes.
+
+The final test-only audit handler follows the earlier recording audit's geometric
+approach more narrowly: it can exclude contrast only for the same uniquely matched
+static text whose nonempty, horizontally contained frame is vertically clipped or
+offscreen both before audit and in its callback. Fully visible text, control nodes,
+unknown elements and every other audit category still fail normally. Each exception
+logs both frames and the native nav/tab-bounded viewport. The final focused affected
+run is recorded separately; do not call the whole suite unfiltered after this change.
+Independent focused review of this exact test geometry and settled screenshots is
+required before handoff publication. No native product colors or labels are hidden
+to satisfy an audit heuristic.
+
+Physical smallest-screen use, spoken VoiceOver, real camera/receiver exclusion of
+controls, OAuth/publishing, numerical A/V sync and long qualification remain pending.
+There was no physical phone use or real Google/publishing action in F10. The five-minute
+TOTAL routine phone budget and separate long qualification agreement remain intact.
