@@ -44,6 +44,8 @@ final class MediaSession {
     private var encoderErrorTask: Task<Void, Never>?
     private var uploadAffinity = RTMPSUploadAffinity()
     private var pendingWriterFailure = false
+    private var pendingUploadCleanup = false
+    private var uploadStopGeneration: UInt64 = 0
     private(set) var recordingFailed = false
     enum UploadState { case idle, connecting, connected, failed }
     private(set) var uploadState: UploadState = .idle
@@ -81,6 +83,7 @@ final class MediaSession {
         AVCaptureDevice.authorizationStatus(for: .video) == .authorized &&
         AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     }
+    var broadcastPipelineRunning: Bool { sharedEncoder != nil && !stopRequested }
     var broadcastOverlayReady: Bool {
         overlayURL.isEmpty || (renderer.healthy && renderer.image != nil)
     }
@@ -453,7 +456,7 @@ final class MediaSession {
 
     /// Explicit F7 integration entry point; no setup/preview action invokes it.
     func startUpload(_ prepared: PreparedYouTubeIngestion) async throws {
-        guard phase == .recording, !busy, !stopRequested, publisher == nil,
+        guard phase == .recording, !busy, !stopRequested, !pendingUploadCleanup, publisher == nil,
               prepared.profile == profile, let sharedEncoder, let mediaDestinations else {
             throw RTMPSPublisher.StartupFailure.recordingNotReady
         }
@@ -468,19 +471,20 @@ final class MediaSession {
             if publisher == nil, uploadState == .connecting { uploadState = Task.isCancelled ? .idle : .failed }
             finishOperation()
         }
+        let stopGeneration = uploadStopGeneration
         let recordingID = sample?.id
         let (failures, continuation) = AsyncStream<RTMPSPublisher.Failure>.makeStream(bufferingPolicy: .bufferingNewest(1))
         let publisher = try await RTMPSPublisher.connected(to: prepared,
             canPublish: { retry || recorder?.hasStarted == true },
             failed: { failure in continuation.yield(failure); continuation.finish() })
-        guard !Task.isCancelled, !stopRequested, phase == .recording, sample?.id == recordingID else {
+        guard !Task.isCancelled, !stopRequested, stopGeneration == uploadStopGeneration, phase == .recording, sample?.id == recordingID else {
             await publisher.stop()
             throw RTMPSPublisher.StartupFailure.cancelled
         }
         self.publisher = publisher
         mediaDestinations.attachPublisher(publisher)
         await sharedEncoder.requestKeyframe()
-        guard !Task.isCancelled, !stopRequested else {
+        guard !Task.isCancelled, !stopRequested, stopGeneration == uploadStopGeneration else {
             mediaDestinations.detachPublisher()
             self.publisher = nil
             await publisher.stop()
@@ -511,25 +515,56 @@ final class MediaSession {
     }
 
     func stopUpload() async {
-        guard !busy else { return }
-        busy = true
-        defer { finishOperation() }
+        // Admission/detachment never waits behind a writer or camera-control
+        // await. A stopped remote event must not keep receiving media while busy.
+        uploadStopGeneration &+= 1
         let publisher = self.publisher
         self.publisher = nil
         mediaDestinations?.detachPublisher()
         publisherErrorTask?.cancel(); publisherErrorTask = nil
-        await publisher?.stop()
         uploadState = .idle
         uploadMessage = "Upload stopped"
+        if busy {
+            pendingUploadCleanup = true
+            await publisher?.stop()
+            return
+        }
+        busy = true
+        pendingUploadCleanup = false
+        defer { finishOperation() }
+        await publisher?.stop()
         if recorder == nil, sharedEncoder != nil {
             await finishRecording()
             phase = .preview
         }
     }
 
+#if DEBUG
+    /// Deterministic no-capture fixture for busy-control/finalization races. The
+    /// supplied encoder has no media input and the publisher uses fixture I/O.
+    func installBroadcastFixture(encoder: SharedMediaEncoder, publisher: RTMPSPublisher) {
+        precondition(sharedEncoder == nil && self.publisher == nil && !busy)
+        sharedEncoder = encoder
+        self.publisher = publisher
+        phase = .recording
+        uploadState = .connected
+    }
+    func holdFileFinalizationFixture(_ hold: @MainActor () async -> Void) async {
+        precondition(!busy)
+        busy = true
+        phase = .stopping
+        await hold()
+        phase = .recording
+        finishOperation()
+    }
+#endif
+
     private func finishOperation() {
         busy = false
         if stopRequested { Task { await close() } }
+        else if pendingUploadCleanup {
+            Task { await stopUpload() }
+        }
         else if pendingWriterFailure {
             pendingWriterFailure = false
             Task { await handleRecorderFailure() }

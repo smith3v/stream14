@@ -1561,6 +1561,35 @@ OAuth/setup blockers stop within that budget, and longer qualification requires 
 separate agreement. No actual receiver, A/V sync, CBR, thermal/memory or three-hour
 broadcast acceptance follows from a native build or fixture run.
 
+## F8 same-event reconnect fixtures (2026-11-08)
+
+`BroadcastSession.reconnectStatus` distinguishes monitoring, waiting, connecting,
+exhausted, authorization attention and stopped recovery. `retryUpload()` only
+retries the same RAM-admitted context after the finite outage budget; it cannot
+create/rebind or repeat Go Live. `cancelReconnect()` cancels owned transport work
+without requesting whole-session stop. `MediaSession.broadcastPipelineRunning`
+lets supervision ignore temporary file-control busy state and overlay outages.
+
+Run laptop fixtures without physical media or Google calls:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /private/tmp/stream14-f8-tests \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -only-testing:Stream14Tests test
+```
+
+The controllable monotonic `ReconnectClock` supplies now/sleep/jitter for outage,
+budget and cancellation fixtures. Physical two-minute outage, Wi-Fi/cellular
+handover and receiver/file continuity checks are deferred to a separately attended
+run; this stage uses no physical device or real YouTube API/media calls.
+
+F8's held-finalization regressions use DEBUG-only fixture installation of an
+encoder with no media input and a publisher with fixture I/O. They verify actual
+MediaSession upload detachment while busy and supervision across temporary writer
+`.stopping`, without installing on a phone or opening a network connection.
+
 
 ## Private synthetic RTMPS receiver checkpoint (2026-11-08)
 

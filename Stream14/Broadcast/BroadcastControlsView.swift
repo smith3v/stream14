@@ -14,6 +14,14 @@ struct BroadcastControlsView: View {
                 .accessibilityIdentifier("broadcastStatus")
             Text("Upload: " + media.uploadMessage)
                 .accessibilityIdentifier("uploadStatus")
+            if broadcast.reconnectStatus == .exhausted {
+                Button("Retry upload to same event") { broadcast.retryUpload() }
+                    .frame(minHeight: 44)
+            }
+            if broadcast.reconnectStatus == .waiting || broadcast.reconnectStatus == .connecting {
+                Button("Cancel upload recovery") { broadcast.cancelReconnect() }
+                    .frame(minHeight: 44)
+            }
             if broadcast.canStart {
                 Button("Go Live", systemImage: "dot.radiowaves.left.and.right") {
                     broadcast.requestConfirmation(channel: selection.channel, event: selection.selected)

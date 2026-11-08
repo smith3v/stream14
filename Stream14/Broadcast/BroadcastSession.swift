@@ -23,6 +23,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         var overlayURL: String
         var overlayReady: Bool
         var uploadFailed: Bool
+        var pipelineRunning: Bool = true
     }
     let snapshot: () -> Snapshot
     let record: () async -> Void
@@ -36,7 +37,8 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             Snapshot(captureReady: session.broadcastCaptureReady, canRecord: session.canRecord,
                 writerStarted: session.hasStartedWriting, isRecording: session.isRecording,
                 profile: session.profile, overlayURL: session.overlayURL,
-                overlayReady: session.broadcastOverlayReady, uploadFailed: session.uploadState == .failed)
+                overlayReady: session.broadcastOverlayReady, uploadFailed: session.uploadState == .failed,
+                pipelineRunning: session.broadcastPipelineRunning)
         }
         record = { await session.record() }
         startUpload = { try await session.startUpload($0) }
@@ -63,6 +65,13 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     private(set) var pendingRemote: PendingRemoteBroadcast?
     private(set) var isWorking = false
     private(set) var journalUnavailable = false
+    enum ReconnectStatus: Equatable { case inactive, monitoring, waiting, connecting, exhausted, authorizationRequired, stopped }
+    private(set) var reconnectStatus: ReconnectStatus = .inactive
+    private(set) var reconnectAttempts = 0
+    @ObservationIgnored private var supervision: Task<Void, Never>?
+    @ObservationIgnored private var readNotBefore: Double = 0
+    @ObservationIgnored private var admitted: PreparedYouTubeIngestion?
+    @ObservationIgnored private let reconnectClock: ReconnectClock
     @ObservationIgnored private let authorization: YouTubeAuthorization
     @ObservationIgnored private let client: YouTubeClient
     @ObservationIgnored private let binding: YouTubeBinding
@@ -79,10 +88,11 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
 
     init(authorization: YouTubeAuthorization, client: YouTubeClient, binding: YouTubeBinding,
          media: BroadcastMedia, store: PendingRemoteBroadcastStore = PendingRemoteBroadcastStore(),
-         startupSeconds: Double = 60, endSeconds: Double = 15, pollSeconds: Double = 2, writerSeconds: Double = 5) {
+         startupSeconds: Double = 60, endSeconds: Double = 15, pollSeconds: Double = 2, writerSeconds: Double = 5, reconnectClock: ReconnectClock = ReconnectClock()) {
         self.authorization = authorization; self.client = client; self.binding = binding
         self.media = media; self.store = store; self.startupSeconds = startupSeconds
         self.endSeconds = endSeconds; self.pollSeconds = pollSeconds; self.writerSeconds = writerSeconds
+        self.reconnectClock = reconnectClock
         do {
             pendingRemote = try store.load()
             if pendingRemote != nil {
@@ -144,6 +154,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
                 guard request == epoch else { return }
                 state = .live
                 message = "YouTube confirmed Live. Check the receiver picture and sound."
+                beginSupervision(intent, request: request)
             } catch {
                 guard request == epoch else { return }
                 await media.stopUpload()
@@ -187,6 +198,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         message = "Connecting upload; YouTube has not confirmed Live."
         try await media.startUpload(prepared)
         try check(intent, request)
+        admitted = prepared
         state = .waitingForIngestion
         var transitionSent = false
         while true {
@@ -227,6 +239,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     /// Startup cancellation preserves a healthy recording. It is not End broadcast.
     func cancelStartup() {
         guard isWorking, state != .ending else { return }
+        cancelSupervision()
         epoch &+= 1
         let request = epoch
         let previous = operation
@@ -247,6 +260,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     /// Whole-session stop is dispatched before remote work and never awaits it.
     func confirmEnd() {
         guard state != .ending, let context = pendingRemote ?? activeIntent.map({ PendingRemoteBroadcast(channelID: $0.channel.id, eventID: $0.event.id) }) else { return }
+        cancelSupervision()
         epoch &+= 1
         let request = epoch
         operation?.cancel()
@@ -302,6 +316,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             message = "A previous YouTube transition is still awaiting an outcome. Wait for it to settle, then reconcile; no new request was sent."
             return
         }
+        cancelSupervision()
         epoch &+= 1
         let request = epoch; let generation = authorization.generation
         isWorking = true
@@ -356,6 +371,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     func accountChanged() {
         confirmation = nil
         guard let intent = activeIntent, intent.generation != authorization.generation else { return }
+        cancelSupervision()
         epoch &+= 1
         operation?.cancel()
         isWorking = false
@@ -368,6 +384,151 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             activeIntent = nil; media.lockConfiguration(false); state = .idle
         } else { state = .needsReconciliation }
         message = "The YouTube account changed. Upload stopped; healthy local recording continues. Reconnect to the original channel and reconcile any attempted upload."
+    }
+
+    /// Explicit retry repeats transport only, with the original frozen identity.
+    func retryUpload() {
+        guard !isWorking, !hasUnsettledMutation, reconnectStatus == .exhausted,
+              let intent = activeIntent, admitted != nil,
+              intent.generation == authorization.generation, authorization.isAuthorized else { return }
+        guard reconnectClock.now() >= readNotBefore else {
+            message = "YouTube requested a longer wait. Upload retry is paused; healthy local recording continues."
+            return
+        }
+        beginSupervision(intent, request: epoch)
+    }
+
+    func cancelReconnect() {
+        let previous = supervision
+        cancelSupervision()
+        reconnectStatus = .stopped
+        message = "Upload recovery stopped. Healthy local recording continues; End and Stop recording remain available."
+        let request = epoch
+        supervision = Task {
+            await previous?.value
+            guard request == epoch else { return }
+            await media.stopUpload()
+        }
+    }
+
+    private func cancelSupervision() {
+        supervision?.cancel(); supervision = nil
+        reconnectStatus = .inactive
+    }
+
+    private func beginSupervision(_ intent: BroadcastIntent, request: UInt64) {
+        supervision?.cancel()
+        reconnectAttempts = 0
+        reconnectStatus = .monitoring
+        supervision = Task { await supervise(intent, request: request) }
+    }
+
+    private func supervise(_ intent: BroadcastIntent, request: UInt64) async {
+        guard let original = admitted else { return }
+        var nextRead = reconnectClock.now() + 10
+        var outageStart: Double?
+        var readFailures = 0
+        do {
+            while true {
+                try checkGeneration(request, intent.generation)
+                let snapshot = media.snapshot()
+                guard snapshot.pipelineRunning, snapshot.profile == intent.profile,
+                      snapshot.overlayURL == intent.overlayURL else { throw StartError.changed }
+                let failed = snapshot.uploadFailed
+                if failed, outageStart == nil { outageStart = reconnectClock.now() }
+                if failed {
+                    guard reconnectAttempts < 12, reconnectClock.now() - outageStart! < 180 else {
+                        reconnectStatus = .exhausted
+                        message = "Upload retries exhausted. Healthy local recording continues. Retry upload to the same event, or stop recording."
+                        return
+                    }
+                    reconnectStatus = .waiting
+                    let delay = ReconnectClock.delay(attempt: reconnectAttempts, jitter: reconnectClock.jitter())
+                    reconnectAttempts += 1
+                    message = "Upload interrupted. Retrying the same YouTube event (\(reconnectAttempts)/12). Healthy local recording continues."
+                    try await reconnectClock.sleep(delay)
+                    try checkGeneration(request, intent.generation)
+                } else if reconnectClock.now() < nextRead {
+                    try await reconnectClock.sleep(1)
+                    continue
+                }
+                do {
+                    let prepared = try await reconnectDestination(intent, original: original, request: request)
+                    readFailures = 0
+                    if failed {
+                        guard reconnectClock.now() - outageStart! < 180 else { continue }
+                        reconnectStatus = .connecting
+                        try await media.startUpload(prepared)
+                        try checkGeneration(request, intent.generation)
+                        outageStart = nil; reconnectAttempts = 0
+                        message = "Upload reconnected to the same event. YouTube status was read separately; check the receiver."
+                    }
+                    reconnectStatus = .monitoring
+                    nextRead = reconnectClock.now() + 10
+                } catch {
+                    try checkGeneration(request, intent.generation)
+                    if isPermanentSupervisionError(error) { throw error }
+                    readFailures += 1
+                    let serverDelay = (error as? YouTubeReadBackoff)?.seconds ?? 0
+                    readNotBefore = reconnectClock.now() + serverDelay
+                    let delay = max(serverDelay, min(60, 10 * pow(2, Double(min(readFailures - 1, 3)))))
+                    message = "YouTube status is temporarily unavailable. Healthy upload and local recording continue independently."
+                    // Respect server delay without an unbounded automatic reconnect.
+                    if failed, reconnectClock.now() + delay - outageStart! >= 180 {
+                        try await reconnectClock.sleep(max(0, 180 - (reconnectClock.now() - outageStart!)))
+                        reconnectAttempts = 12
+                    } else {
+                        try await reconnectClock.sleep(delay)
+                    }
+                    nextRead = reconnectClock.now()
+                }
+            }
+        } catch is CancellationError { return }
+        catch {
+            guard request == epoch else { return }
+            let auth = (error as? YouTubeReadError) == .authorizationRequired
+            reconnectStatus = auth ? .authorizationRequired : .stopped
+            if !auth || media.snapshot().uploadFailed { await media.stopUpload() }
+            guard request == epoch else { return }
+            state = .needsReconciliation
+            message = auth
+                ? "YouTube authorization needs attention. Automatic retries stopped; an existing healthy upload and local recording are preserved. No sign-in opens automatically."
+                : "The original YouTube event ended, disappeared or changed. Upload stopped; healthy local recording continues. Inspect YouTube Studio and reconcile."
+        }
+    }
+
+    private func reconnectDestination(_ intent: BroadcastIntent, original: PreparedYouTubeIngestion,
+                                      request: UInt64) async throws -> PreparedYouTubeIngestion {
+        try await checkRemote(PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id),
+                              generation: intent.generation, request: request)
+        let event = try await client.broadcast(id: intent.event.id, channelID: intent.channel.id, generation: intent.generation)
+        try checkGeneration(request, intent.generation)
+        if ["complete", "revoked"].contains(event.status?.lifeCycleStatus ?? "") { throw StartError.ended }
+        try sameBoundEvent(event, intent, streamID: original.streamID)
+        guard ["ready", "testing", "testStarting", "liveStarting", "live"].contains(event.status?.lifeCycleStatus ?? "") else { throw StartError.remoteUnknown }
+        let stream = try await client.ingestionStream(id: original.streamID, channelID: intent.channel.id, generation: intent.generation)
+        try checkGeneration(request, intent.generation)
+        // This is an already-admitted stream. Active ingestion is expected during
+        // recovery; the initial preparation's inactive-only gate is inappropriate.
+        guard ["inactive", "ready", "active"].contains(stream.status?.streamStatus ?? ""),
+              stream.cdn?.ingestionType == "rtmp",
+              (stream.cdn?.resolution == "variable" && stream.cdn?.frameRate == "variable") ||
+                (stream.cdn?.resolution == (intent.profile == .hd ? "720p" : "1080p") && stream.cdn?.frameRate == "30fps") else { throw StartError.changed }
+        let destination = try YouTubeIngestionDestination(address: stream.cdn?.ingestionInfo?.rtmpsIngestionAddress,
+                                                         streamName: stream.cdn?.ingestionInfo?.streamName)
+        guard destination.endpoint == original.destination.endpoint, destination.streamName == original.destination.streamName else { throw StartError.changed }
+        // A socket never establishes Live. This value comes only from this read.
+        if event.status?.lifeCycleStatus == "live" { state = .live }
+        else { state = .waitingForIngestion }
+        return PreparedYouTubeIngestion(broadcast: event, streamID: original.streamID, profile: intent.profile,
+                                        generation: intent.generation, destination: destination)
+    }
+
+    private func isPermanentSupervisionError(_ error: any Error) -> Bool {
+        if let error = error as? StartError { return error == .ended || error == .changed }
+        if let error = error as? YouTubeBindingError { return error == .invalidDestination }
+        guard let error = error as? YouTubeReadError else { return false }
+        return ![.network, .rateLimited, .unavailable, .malformedResponse].contains(error)
     }
 
     func waitForOperation() async { await operation?.value }
@@ -442,5 +603,15 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         case .ended: return "YouTube reports the event has finished. Upload stopped; choose no replacement automatically." + suffix
         default: return "YouTube startup could not be confirmed. Check YouTube Studio and reconcile any attempted upload." + suffix
         }
+    }
+}
+
+/// Focused monotonic scheduling seam. No wall-clock persistence or retry framework.
+@MainActor struct ReconnectClock {
+    var now: () -> Double = { ProcessInfo.processInfo.systemUptime }
+    var sleep: (Double) async throws -> Void = { try await Task.sleep(for: .seconds($0)) }
+    var jitter: () -> Double = { Double.random(in: 0.8...1.2) }
+    nonisolated static func delay(attempt: Int, jitter: Double) -> Double {
+        min(30, pow(2, Double(min(max(0, attempt), 5))) * min(1.2, max(0.8, jitter)))
     }
 }

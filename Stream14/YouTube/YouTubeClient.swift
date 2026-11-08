@@ -142,6 +142,9 @@ nonisolated struct YouTubeClient: Sendable {
                     continue
                 }
             }
+            if [.rateLimited, .unavailable].contains(failure), response.value(forHTTPHeaderField: "Retry-After") != nil {
+                throw YouTubeReadBackoff(seconds: Self.retryDelay(response, fallback: 10), reason: failure)
+            }
             throw failure
         }
     }
@@ -279,4 +282,10 @@ private nonisolated final class YouTubeReadSessionDelegate: NSObject, URLSession
                     newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         completionHandler(nil)
     }
+}
+
+nonisolated struct YouTubeReadBackoff: Error, LocalizedError, Sendable {
+    let seconds: Double
+    let reason: YouTubeReadError
+    var errorDescription: String? { reason.localizedDescription }
 }

@@ -1180,6 +1180,41 @@ this draft after reviewing that evidence. The initial CBR target in section 2
 remains an unmet starting criterion pending actual receiver/device rate-control
 qualification and a final default decision; no physical performance is inferred.
 
+### F8 same-event supervision implementation (2026-11-08)
+
+After F7 confirms remote Live, `BroadcastSession` owns a cancellable supervision
+Task. A one-second transport check uses the existing compressed-send/overflow
+failure → publisher failure stream → `MediaSession.uploadState.failed` path.
+Remote channel/event/ingestion is read about every ten seconds, with bounded API
+read retries and longer service backoff. Status-read failures preserve healthy
+transport and local writing. SDK responses and ingestion credentials are not logged.
+
+Recovery is limited to twelve attempts and a 180-second elapsed outage budget;
+positive 0.8–1.2 jitter applies to exponential delays capped at 30 seconds.
+Before every reconnect, read the authorized channel, frozen event ID and binding,
+stream profile and destination. Active ingestion is allowed only for this already
+admitted RAM context. Changed binding/profile/destination, missing or completed
+event stops upload/retry and preserves healthy local recording. Socket success
+never implies Live. Recovery never creates/binds streams or sends transitions.
+Exhaustion exposes explicit same-event Retry upload; Stop recording remains
+independent. Server Retry-After survives exhaustion in RAM and blocks early Retry.
+
+End/account replacement/cancel owns task cancellation and rejects late results by
+epoch/generation. Same-channel reauthorization does not bypass the strict original
+generation. Authorization-required reads stop automatic work while preserving an
+already healthy transport where possible; no sign-in opens over capture. Relaunch
+and explicit reconciliation remain read-only; there is no automatic resume.
+Overlay visibility/source recovery, including manual hiding, remains independent.
+Fixture/native-build evidence does not establish physical internet-outage recovery,
+receiver cadence, or full F8 acceptance; those checks remain deferred.
+
+F8 independent review resolved writer-finalization races: pipeline lifetime uses
+the encoder rather than transient `.stopping` file state. A terminal upload-stop
+request detaches transport immediately even during busy media controls, invalidates
+late admission and queues encoder-only cleanup behind the current operation.
+Deterministic held-finalization fixtures exercise both paths without capture or
+network media. This does not supply physical reconnect/continuity evidence.
+
 
 ### Private receiver evidence checkpoint — 2026-11-08
 
