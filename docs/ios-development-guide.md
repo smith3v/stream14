@@ -1584,3 +1584,8 @@ The controllable monotonic `ReconnectClock` supplies now/sleep/jitter for outage
 budget and cancellation fixtures. Physical two-minute outage, Wi-Fi/cellular
 handover and receiver/file continuity checks are deferred to a separately attended
 run; this stage uses no physical device or real YouTube API/media calls.
+
+F8's held-finalization regressions use DEBUG-only fixture installation of an
+encoder with no media input and a publisher with fixture I/O. They verify actual
+MediaSession upload detachment while busy and supervision across temporary writer
+`.stopping`, without installing on a phone or opening a network connection.

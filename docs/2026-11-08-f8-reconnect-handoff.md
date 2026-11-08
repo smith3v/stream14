@@ -66,3 +66,26 @@ Final hosted rerun after all code/test changes: **135 total, 128 passed, 7 skipp
 `/private/tmp/stream14-f8-tests/Logs/Test/`. Release build remained passed with the
 same runtime. Independent review and final parent inheritance remain coordinated
 by the root agent before publication.
+
+## Independent review fixes
+
+Independent review found two material lifecycle races: a file-only finalization's
+transient `.stopping` phase incorrectly ended supervision, and a remote-terminal
+upload stop was silently dropped while a media operation was busy. Fix `2f456dd`
+uses encoder lifetime rather than writer phase. `stopUpload()` now invalidates
+in-flight admission and detaches the publisher immediately, while serializing
+encoder-only cleanup after busy work. Pending cleanup blocks a new upload; whole
+capture stop retains priority. This keeps file ownership independent.
+
+Two deterministic regressions hold the actual MediaSession in file-finalization
+busy state with a real encoder receiving no input and fixture publisher I/O. A
+supervision tick preserves upload while `.stopping`; a remote-complete read stops
+the publisher before the held operation releases, then cleans up the encoder.
+Focused run: **31/31 passed**, log `/private/tmp/stream14-f8-reviewfix-tests.log`.
+Final parent `e22a04c` was inherited with a normal merge (`f168649`), preserving
+attended baseline results without claiming them as F8 evidence.
+
+Post-fix validation on merged parent: **137 total, 130 passed, 7 physical-only
+skipped, 0 failed**, 24 suites; **31 BroadcastSession tests passed**. Full log:
+`/private/tmp/stream14-f8-postreview-full.log`. Native unsigned Release build passed:
+`/private/tmp/stream14-f8-postreview-release.log`. `git diff --check` passed.
