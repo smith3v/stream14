@@ -107,3 +107,11 @@ Short-smoke runtime a7c18e5, evidence 0b92879, branch codex/short-connected-phon
 The master plan records exact prebuild and Debug-only test-without-building commands. No phone was installed/launched; owner availability remains later.
 
 Pipeline integration is progressing in separate non-iCloud clone /private/tmp/stream14-epic13-f6-integration-repo, branch codex/issue-19-shared-media-integration, plan 4c07b75 from F6 predecessor 02dcc66. Native single encoder ownership is approved for draft work; root coordinates reviewed shared-clock patch and immutable fork pin before dependency adoption. Failed iCloud worktree remains preserved. Integration must include the short-smoke predecessor before its PR.
+
+## Connected attempt and attended preparation — 2026-11-08
+
+Owner connected the 13 mini, set Auto-Lock to Never and confirmed unlocked/ready. Prepared normally signed Short47 Debug products; initial signature preflight used the wrong sibling test-bundle path, corrected to embedded app/PlugIns. Initial test invocation then selected ZERO tests: missing parentheses in Swift Testing method selector. Exit0 is not pass; no camera clips were recorded. Stopped the attempt within the selected budget, no actual Google/lock/revoke tests.
+
+Off-phone Xcode enumeration /private/tmp/stream14-short-smoke-enumeration-20261108.json has no errors and exactly one enabled identifier for suite Stream14Tests/ShortPhoneSmokeTests. Commands now use that suite, with explicit one-pass/zero-skip acceptance. Swift Testing method catalogue examples use quoted enumerated identifiers with parentheses; XCTest UI selectors unchanged.
+
+The owner will be available soon for attended tests. The new attended-session card documents exact owner taps, a five-minute local-smoke + sign-in/channel agenda, alternatives and future/not-runnable gates. No additional physical test started while preparing it. Current private attempt evidence /private/tmp/stream14-short-phone-20261108-084609; source8af669f, zero executed tests. Broader integration agents/reviewer most recently hit usage limits; F6 source9097f1e retry-context fix awaits final focused review/results, F7 work remains checkpointed separately.

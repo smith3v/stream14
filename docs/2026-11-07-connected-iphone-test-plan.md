@@ -22,6 +22,8 @@ First-time consent, trust/Developer Mode or permissions may consume the budget. 
 
 The old multi-test camera harnesses below are targeted tools, not the default. Historical 600/900-second examples are not the routine. Longer development runs need explicit agreement; the existing 15-minute ceiling is a ceiling, not a target. The 30-minute/three-hour gates stay unverified and unscheduled unless separately agreed.
 
+For owner taps/observations and the next budgeted visit, use the [attended-session card](2026-11-08-attended-iphone-session.md).
+
 ## What the owner needs to do
 
 Connect the iPhone 13 mini by USB, unlock it, trust the Mac/enable Developer Mode if requested, and keep it available for permission and Google consent prompts. Codex builds, signs, installs, runs the commands, copies private evidence and analyzes files; the owner does not need to write code or learn Xcode.
@@ -175,7 +177,7 @@ xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Debug \
   -derivedDataPath "$STREAM14_EVIDENCE/DerivedData" \
   -clonedSourcePackagesDirPath /private/tmp/stream14-f2-packages \
   -disableAutomaticPackageResolution -allowProvisioningUpdates \
-  -only-testing:Stream14Tests/ShortPhoneSmokeTests/twoProfilesRetainComposedOriginals \
+  -only-testing:Stream14Tests/ShortPhoneSmokeTests \
   build-for-testing
 ~~~
 
@@ -189,10 +191,12 @@ TEST_RUNNER_STREAM14_SHORT_DEVICE_SMOKE=1 xcodebuild \
   -disableAutomaticPackageResolution \
   -parallel-testing-enabled NO -test-timeouts-enabled YES \
   -maximum-test-execution-time-allowance 90 \
-  -only-testing:Stream14Tests/ShortPhoneSmokeTests/twoProfilesRetainComposedOriginals \
+  -only-testing:Stream14Tests/ShortPhoneSmokeTests \
   -resultBundlePath "$STREAM14_EVIDENCE/short-phone-smoke.xcresult" \
   test-without-building
 ~~~
+
+Before phone time, enumerate the prepared products and require exactly one enabled short-smoke test. The bare method selector without parentheses previously selected zero tests; use the suite selector above. After execution require one passed test and zero skips, not merely process exit zero.
 
 The harness requires pre-authorized camera/microphone and the physical 13 mini; it does not wait for permission prompts. Debug-only host isolation avoids saved overlay URLs and Google SDK/account initialization. Simulator, default and Release runs skip, so a skip is NOT a phone pass. Two clips share a 50-second internal deadline, a one-minute cooperative test limit and the configured 90-second runner watchdog. Native calls are not assumed interruptible; Codex still owns the overall five-minute wall-clock stop/report decision. Originals are retained. File/decoded-marker checks do not prove physical sync, audible unmute, real network behavior or endurance.
 
@@ -205,17 +209,17 @@ Inspect each exit status/result before the next call; stop on an unexpected fail
 ~~~sh
 # Reference website only; no camera recording. Requires its current public fixture.
 TEST_RUNNER_STREAM14_REFERENCE_TEST=1 \
-  device_test Stream14Tests/WebOverlayRendererTests/referencePageReloadEvidence reference
+  device_test 'Stream14Tests/WebOverlayRendererTests/referencePageReloadEvidence()' reference
 
 # Short legacy reference sample plus changing-fixture/repeated-recording follow-ons.
 # This setting does NOT cover the two-minute outage/manual-hide sequence.
 TEST_RUNNER_STREAM14_DEVICE_RECORDING=1 \
 TEST_RUNNER_STREAM14_RECORDING_SECONDS=30 \
-  device_test Stream14Tests/MediaDeviceTests/combinedDeviceRecording local-composition
+  device_test 'Stream14Tests/MediaDeviceTests/combinedDeviceRecording()' local-composition
 
 # Separate short writer faults and notification-path interruption checks.
 TEST_RUNNER_STREAM14_DEVICE_FAILURES=1 \
-  device_test Stream14Tests/MediaDeviceTests/deviceWriterFailuresAndInterruption local-faults
+  device_test 'Stream14Tests/MediaDeviceTests/deviceWriterFailuresAndInterruption()' local-faults
 
 # Actual app UI camera/lens/short-record/playback check; iPhone 13 mini expectations.
 TEST_RUNNER_STREAM14_DEVICE_LENS_UI=1 \
@@ -233,7 +237,7 @@ The existing F1 private candidate is a separate OPTIONAL architecture experiment
 ~~~sh
 TEST_RUNNER_STREAM14_DUAL_OUTPUT=1 \
 TEST_RUNNER_STREAM14_DUAL_OUTPUT_SECONDS=30 \
-  device_test Stream14Tests/DualOutputFeasibilityTests/privateDeviceDualOutputCandidate f1-private-candidate
+  device_test 'Stream14Tests/DualOutputFeasibilityTests/privateDeviceDualOutputCandidate()' f1-private-candidate
 ~~~
 
 This candidate clamps its requested loop to 12–600 seconds and uses two encoders. Its one-second reconnect and isolated writer-failure probe are NOT proof of B08/B10, common encoded fan-out, finite socket queues or physical sync. Do not run it against an ordinary public event.
