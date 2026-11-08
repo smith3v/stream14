@@ -68,6 +68,32 @@ import UIKit
         }
     }
 
+    @Test func overlayAndBackupFailureDoNotStopAdmittedUpload() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start(); await h.session.waitForOperation()
+        h.snapshot.overlayReady = false; h.snapshot.writerStarted = false
+        h.snapshot.isRecording = false; h.snapshot.captureReady = false
+        try await h.until { h.elapsed >= 25 }
+        #expect(h.uploaded && h.session.reconnectStatus == .monitoring)
+        #expect(!h.timeline.contains("stopAll"))
+    }
+
+    @Test func longRetryAfterCannotBeBypassedByExplicitRetry() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start(); await h.session.waitForOperation()
+        h.server.failure = "backoff"
+        h.snapshot.uploadFailed = true; h.uploaded = false
+        try await h.until { h.session.reconnectStatus == .exhausted }
+        let requests = h.server.requests.count
+        h.session.retryUpload()
+        try await Task.sleep(for: .milliseconds(5))
+        #expect(h.server.requests.count == requests)
+        #expect(h.session.message.contains("longer wait"))
+        #expect(h.snapshot.isRecording)
+    }
+
     @Test func cancelRecoveryRejectsHeldLateReadAndNeverReconnects() async throws {
         let h = try await Harness(fastClock: true)
         defer { h.cleanup() }
@@ -563,7 +589,9 @@ import UIKit
             } else { data = try JSONEncoder().encode(event) }
         default: throw YouTubeReadError.malformedResponse
         }
-        return (data, HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!)
+        if failure == "backoff" { status = 503 }
+        return (data, HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil,
+            headerFields: failure == "backoff" ? ["Retry-After": "3600"] : nil)!)
     }
 }
 
