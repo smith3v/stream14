@@ -28,6 +28,9 @@ import CryptoKit
         } catch { emit(["error": String(describing: error)]); exit(1) }
     }
     static func write(_ url: URL, mode: String) async throws {
+        #if APP_WRITER
+        try await AppWriter.write(url, mode: mode)
+        #else
         let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
         writer.movieFragmentInterval = CMTime(seconds: 10, preferredTimescale: 600)
         let video = AVAssetWriterInput(mediaType: .video, outputSettings: [
@@ -100,6 +103,7 @@ import CryptoKit
         // Remain alive so parent can detect a kill that happened after completion.
         if mode == "finalize" { try await Task.sleep(for: .seconds(2)) }
         emit(["checkpoint": "normal-complete"])
+        #endif
     }
     static func inspect(_ url: URL) async throws {
         let asset = AVURLAsset(url: url)

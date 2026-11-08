@@ -50,6 +50,7 @@ nonisolated final class LocalRecorder: Sendable {
                 throw Failure.initialization
             }
             let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+            writer.movieFragmentInterval = CMTime(seconds: 10, preferredTimescale: 600)
             // Compression settings are nil when the actual formats arrive.
             // Creating the destination first catches initialization/path errors
             // before a session or publisher is allowed to start.

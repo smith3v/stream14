@@ -88,8 +88,8 @@ final class MediaSession {
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     var canSelectLens: Bool { !broadcastConfigurationLocked && !busy && !stopRequested && (phase == .idle || phase == .preview) }
-    var canRecord: Bool { phase == .preview && !busy && !stopRequested }
-    var canDeleteSamples: Bool { !busy && (phase == .idle || phase == .preview) }
+    var canRecord: Bool { phase == .preview && !busy && !stopRequested && recoveringSampleID == nil }
+    var canDeleteSamples: Bool { !busy && recoveringSampleID == nil && (phase == .idle || phase == .preview) }
     var recordingID: UUID? { recorder == nil ? nil : sample?.id }
     var recordingMetrics: LocalRecorder.Metrics? { recorder?.metrics }
     var isRecording: Bool { phase == .recording && recorder != nil && !recordingFailed }
@@ -158,13 +158,83 @@ final class MediaSession {
         audioRoute = inputs.isEmpty ? "Microphone unavailable" : inputs.map(\.portName).joined(separator: ", ")
     }
 
+    private let recordingRecovery = RecordingRecovery()
+    private var recordingReviewTask: Task<Void, Never>?
+    private(set) var recoveringSampleID: UUID?
+
     func refreshSamples() {
-        do { savedSamples = try ExperimentSample.loadAll() }
-        catch { message = "Saved recordings could not be listed. Files are retained." }
+        recordingReviewTask?.cancel()
+        do { savedSamples = try ExperimentSample.loadAll(activeID: recordingID) }
+        catch { message = "Saved recordings could not be listed. Files are retained."; return }
+        guard recoveringSampleID == nil else { return }
+        let candidates = savedSamples.filter { $0.id != recordingID && $0.review == nil }
+        recordingReviewTask = Task { [weak self] in
+            guard let self, let directory = try? ExperimentSample.directory() else { return }
+            for var sample in candidates {
+                guard !Task.isCancelled else { return }
+                let url = directory.appendingPathComponent(sample.fileName)
+                if !FileManager.default.fileExists(atPath: url.path) { sample.review = .missing }
+                else {
+                    do {
+                        let result = try await recordingRecovery.inspect(url)
+                        sample.duration = result.duration
+                        sample.review = .readable
+                        sample.byteCount = sample.fileSize(in: directory)
+                    } catch {
+                        guard !Task.isCancelled else { return }
+                        sample.review = .unreadable
+                    }
+                }
+                guard !Task.isCancelled, sample.id != recordingID,
+                      let index = savedSamples.firstIndex(where: { $0.id == sample.id }) else { continue }
+                do { try sample.save(in: directory); savedSamples[index] = sample }
+                catch { message = "Recording review could not be saved. Originals are retained." }
+            }
+        }
+    }
+
+    func recoverSample(_ selected: ExperimentSample) async {
+        guard canDeleteSamples, recoveringSampleID == nil,
+              var sample = savedSamples.first(where: { $0.id == selected.id }), sample.status != .completed else { return }
+        recordingReviewTask?.cancel()
+        recoveringSampleID = sample.id
+        defer { recoveringSampleID = nil; refreshSamples() }
+        do {
+            let directory = try ExperimentSample.directory()
+            var attempt = ExperimentSample.Recovery()
+            sample.recoveries = (sample.recoveries ?? []) + [attempt]
+            // Persist the attempt before native export; relaunch labels pending attempts failed.
+            try sample.save(in: directory)
+            savedSamples[savedSamples.firstIndex(where: { $0.id == sample.id })!] = sample
+            do {
+                let result = try await recordingRecovery.recover(original: directory.appendingPathComponent(sample.fileName),
+                    destination: directory.appendingPathComponent(sample.recoveryFileName(attempt)))
+                attempt.status = .recovered
+                attempt.duration = result.duration
+                message = "Recovered copy saved. It may omit the unfinished fragment; inspect playback. Original retained."
+            } catch {
+                attempt.status = .failed
+                message = "Recovery could not finish. Original and any partial recovered copy are retained."
+            }
+            if let index = sample.recoveries?.firstIndex(where: { $0.id == attempt.id }) {
+                sample.recoveries?[index] = attempt
+            }
+            try sample.save(in: directory)
+        } catch { message = "Recovery status could not be saved. All existing files are retained for review." }
+    }
+
+    func deleteRecovery(_ recovery: ExperimentSample.Recovery, from selected: ExperimentSample) {
+        guard canDeleteSamples, let sample = savedSamples.first(where: { $0.id == selected.id }) else { return }
+        do {
+            let directory = try ExperimentSample.directory()
+            _ = try sample.deletingRecovery(recovery, in: directory)
+            message = "Selected recovery copy deleted. Original recording is retained."
+        } catch { message = "Could not delete the recovery copy or save its status. Remaining files are retained; retry is available." }
+        refreshSamples()
     }
 
     func deleteSample(_ sample: ExperimentSample) {
-        guard canDeleteSamples else { return }
+        guard canDeleteSamples, recoveringSampleID == nil else { return }
         do {
             let directory = try ExperimentSample.directory()
             try sample.delete(in: directory)
@@ -388,7 +458,8 @@ final class MediaSession {
         do {
             let directory = try ExperimentSample.directory()
             self.directory = directory
-            let sample = ExperimentSample()
+            var sample = ExperimentSample()
+            sample.profile = profile.rawValue
             self.sample = sample
             try sample.save(in: directory)
             let recorder = LocalRecorder()
@@ -666,6 +737,9 @@ final class MediaSession {
             guard !videos.isEmpty, !audios.isEmpty, duration.seconds > 0 else {
                 throw ExperimentError.emptySample
             }
+            self.sample?.duration = duration.seconds
+            self.sample?.byteCount = sample.fileSize(in: directory)
+            self.sample?.review = .readable
             sampleURL = url
             if !failure {
                 message = interrupted ? "Interrupted recording finalized. Inspect playback before using it." :
