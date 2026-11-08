@@ -180,3 +180,16 @@ The actual remote-pinned normal project generic-iOS build-for-testing passed at
 state additions; compile/runtime repeat is due next. This supersedes only the
 prior private local-reference compile experiment, not receiver/physical gates.
 The F6 application branch is not yet published and must not be merged automatically.
+
+### Observed checkpoint 4 validation
+
+The actual remote-fork-pinned normal project passes 18 executed checks in four
+suites at `/private/tmp/stream14-integration-faults-1.xcresult` (26.999 seconds,
+log beside it): persistent encoder/marker, passthrough recorder, finite upload
+pump and four new independent-output/adapter tests. The integration tests verify
+an injected failed writer leaves compressed upload advancing; a rejected sender
+leaves a complete/playable original file with all 20 video frames; an unstarted
+writer blocks the actual connection factory before socket creation; and the
+actual AAC adapter copies one packet's exact bytes and rejects PCM. No socket,
+YouTube mutation or physical capture was performed. Full hosted and noncapture
+UI regression, final native compile and whole-change independent review remain due.
