@@ -24,11 +24,13 @@ struct QualificationExportView: View {
                     Label("Export qualification summary", systemImage: "chart.xyaxis.line")
                         .frame(minHeight: 44)
                 }
+                .accessibilityIdentifier("exportQualification-" + sampleID.uuidString)
                 Button("Refresh qualification summary", action: load).frame(minHeight: 44).disabled(loading)
                 Text("Numeric media and memory summary only. Last checkpoint: \(report.elapsedSeconds.formatted(.number.precision(.fractionLength(0)))) seconds; \(report.end == .stopped ? "stopped" : "may be incomplete").")
                     .font(.caption)
             } else {
                 Button("Load qualification summary", action: load).frame(minHeight: 44).disabled(loading)
+                    .accessibilityIdentifier("loadQualification-" + sampleID.uuidString)
                 if unavailable { Text("No readable qualification summary is available for this recording.").font(.caption) }
             }
         }

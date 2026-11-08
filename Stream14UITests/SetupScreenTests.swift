@@ -368,6 +368,27 @@ final class SetupScreenTests: XCTestCase {
         }
     }
 
+    func testQualificationSummaryLoadsAndDeliberateShareOpens() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["STREAM14_QUALIFICATION_FIXTURE_ID"] != nil,
+            "Seed a dedicated Simulator qualification checkpoint first.")
+        let id = try XCTUnwrap(ProcessInfo.processInfo.environment["STREAM14_QUALIFICATION_FIXTURE_ID"])
+        XCUIDevice.shared.orientation = .portrait
+        let app = fixtureApp()
+        app.tabBars.buttons["Recordings"].tap()
+        let load = app.buttons["loadQualification-" + id]
+        scrollTo(load, in: app)
+        load.tap()
+        let export = app.buttons["exportQualification-" + id]
+        XCTAssertTrue(export.waitForExistence(timeout: 5))
+        scrollTo(export, in: app)
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenshot.name = "Deliberate numeric qualification summary export"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        export.tap()
+        XCTAssertTrue(app.cells["Save to Files"].waitForExistence(timeout: 5))
+    }
+
     func testRecordingIconPlaybackAndExport() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["STREAM14_RECORDING_UI_FIXTURE_ID"] != nil,
                           "Seed an isolated Simulator recording fixture first.")
