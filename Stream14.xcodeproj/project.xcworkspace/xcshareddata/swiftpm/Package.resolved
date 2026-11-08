@@ -60,7 +60,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/smith3v/HaishinKit.swift.git",
       "state" : {
-        "revision" : "8dc2ecce781d320ef0f2576ff5195411c91505ad"
+        "revision" : "497f742c5f2c04cf3ca085378e660a273e351788"
       }
     },
     {

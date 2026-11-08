@@ -158,3 +158,20 @@ invalid/regressing/overflow times and a fresh reconnect epoch. This is not actua
 network/receiver or production dependency evidence. Independent review, normal
 iOS-product compile and immutable fork publication are still pending; root alone
 coordinates publication/adoption. No app package pin or shared cache was changed.
+
+
+## Receiver-discovered native AAC / CTS corrections (2026-11-08)
+
+`0003-native-aac-header.patch` follows0002 and handles canonical native AAC-LC
+flags zero when constructing the AAC sequence header, preserving legacy object-ID
+flags. `0004-compressed-video-cts.patch` follows0003 and removes legacy66ms
+compensation only from the explicit compressed video API. Native payload regressions
+and the reduced full-source suite pass40 tests in18 suites. See the
+[actual receiver record](../../docs/2026-11-08-private-rtmps-receiver-validation.md)
+for the original protocol rejection, normal TLS proof, two receiver recordings,
+remaining decoded59–70ms audio lead and exact scope. The focused main-based correction now selects published immutable revision
+`497f742c5f2c04cf3ca085378e660a273e351788` from the existing owned fork. Independent
+actual-source review found no material fork issues; the app fixture scope finding
+was resolved by restricting its entry points to Debug Simulator builds. Historical
+sections above preserve the original experiment status. No wire/playback alignment
+or physical RTMPS qualification is claimed.
