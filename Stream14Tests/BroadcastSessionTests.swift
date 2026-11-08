@@ -84,6 +84,25 @@ import UIKit
         #expect(h.session.confirmation == nil && h.server.transitions == ["live"])
     }
 
+    @Test func interruptionDuringUnsettledEndPreservesBarrierUntilReadConfirmsCompletion() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.start(); await h.session.waitForOperation()
+        h.hold = "complete"
+        h.session.confirmEnd()
+        try await h.until { h.pending != nil }
+        h.session.interrupted(.background)
+        #expect(h.session.hasUnsettledMutation && h.session.pendingRemote?.transition == .complete)
+        #expect(!h.session.canResume && h.session.state == .needsReconciliation)
+        h.session.foregroundReturned()
+        #expect(h.server.transitions == ["live", "complete"])
+        h.release()
+        try await h.until { !h.session.hasUnsettledMutation }
+        h.session.foregroundReturned(); await h.session.waitForOperation()
+        #expect(h.session.state == .ended && h.session.pendingRemote == nil)
+        #expect(h.server.transitions == ["live", "complete"])
+    }
+
     @Test func transientForegroundActivationDoesNotCancelHealthyLiveSupervision() async throws {
         let h = try await Harness(fastClock: true)
         defer { h.cleanup() }

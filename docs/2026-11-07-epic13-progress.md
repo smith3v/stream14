@@ -20,7 +20,7 @@ Preserve the original checkout and its private signing/concurrent setup edits. A
 | F6 / #19 | Fresh agent auditing/prototyping single shared encoder and actual bounded-send feasibility; no production adoption | `codex/issue-19-independent-transport` / `f6` | F1 gates; library nested tasks/unbounded socket queue cannot be bounded by an app queue alone |
 | F7 / #20 | Not started | — | F2–F6 prerequisites |
 | F8 / #21 | Not started | — | F7 prerequisite |
-| F9 / #22 | Not started | — | F7/F8 prerequisites |
+| F9 / #22 | Implemented at 75d7b92; independent review clean after idle-cleanup fix; final native validation running | codex/issue-22-session-interruptions / isolated clone | Physical Home/lock/audio, same-event receiver/file resume and heat qualification pending |
 | F10 / #23 | Not started | — | F4/F7/F8/F9 prerequisites |
 | F11 / #24 | Native Mac feasibility probe reviewed at 8503510; production integration pending | codex/issue-24-recovery-feasibility / separate clone | Selected compressed writer, F6/F9 and physical A5 |
 | F12 / #25 | Not started | — | F6/F8/F9/F11 prerequisites |
@@ -217,3 +217,10 @@ F8 review resumed and found two material lifecycle issues: file-only finalizatio
 F8 final implementation `4203446` inherits F7 `e22a04c`. Independent focused re-review confirms both lifecycle findings fixed in `2f456dd`, no remaining material findings. Full hosted regression: 130 passes, seven physical-only skips, zero failures; 31 coordinator checks and native Release pass. Root is publishing this reviewed stack above PR #51. Its actual two-minute outage, network change, receiver/file continuity and phone qualification remain pending.
 
 F9 interruption implementation continues in `/private/tmp/stream14-epic13-f9-interruptions` with a new stage agent. A separate receiver-validation agent is preparing actual TLS/decoder evidence in `/private/tmp/stream14-epic13-receiver-validation`; it uses only generated media and a private laptop receiver, no phone or YouTube action. Both stages need independent review before handoff.
+
+
+## F9 interruption implementation checkpoint — 2026-11-08
+
+F9 runtime `75d7b92` normally inherits reviewed F8 `20a0035`. It cancels startup/reconnect work synchronously on whole-session interruption, stops upload even while file control is busy, retains remote uncertainty and pending mutation barriers, and offers explicit same-event resume after camera reopen and fresh confirmation. Resume validates the original nonsecret profile/binding, requires dedicated inactive ingestion and a new writer/timeline; it never creates/rebinds resources or repeats Live for an already-live event. Serious heat reduces raster cadence; critical heat/input loss/capture failure interrupts. Writer failures leave healthy upload running with a persistent backup warning. Background expiry immediately preserves conservative metadata and restores prior idle state.
+
+Independent actual-file review against the full main diff and stage delta found one material early-permission cleanup issue; it was fixed with a deterministic regression. Focused re-review found no remaining material findings. Initial native focused coverage passed40/40 before the final cleanup regression; final full hosted and native Release results are recorded in the F9 handoff when complete. No F9 physical or real-service experiment occurred, and no issue acceptance gate is closed.
