@@ -18,7 +18,8 @@ final class MediaSession {
 
     let renderer: WebOverlayRenderer
     private(set) var profile: SessionProfile
-    var canSelectProfile: Bool { phase == .idle && !busy && !stopRequested }
+    var broadcastConfigurationLocked = false
+    var canSelectProfile: Bool { !broadcastConfigurationLocked && phase == .idle && !busy && !stopRequested }
     private let authorizeCapture: @MainActor () async -> Bool
     private let persistProfile: @MainActor (SessionProfile) -> Void
     private(set) var microphoneMuted = false
@@ -34,7 +35,7 @@ final class MediaSession {
     private(set) var overlayURL = ""
     private let saveOverlayURL: @MainActor (String) throws -> Void
     private var overlayForeground = false
-    var canEditOverlayURL: Bool { !busy && !stopRequested && (phase == .idle || phase == .preview) }
+    var canEditOverlayURL: Bool { !broadcastConfigurationLocked && !busy && !stopRequested && (phase == .idle || phase == .preview) }
     private var recorder: LocalRecorder?
     private var sharedEncoder: SharedMediaEncoder?
     private var mediaDestinations: SharedMediaDestinations?
@@ -65,12 +66,24 @@ final class MediaSession {
     private var previousIdleTimerDisabled: Bool?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
-    var canSelectLens: Bool { !busy && !stopRequested && (phase == .idle || phase == .preview) }
+    var canSelectLens: Bool { !broadcastConfigurationLocked && !busy && !stopRequested && (phase == .idle || phase == .preview) }
     var canRecord: Bool { phase == .preview && !busy && !stopRequested }
     var canDeleteSamples: Bool { !busy && (phase == .idle || phase == .preview) }
     var recordingID: UUID? { recorder == nil ? nil : sample?.id }
     var recordingMetrics: LocalRecorder.Metrics? { recorder?.metrics }
     var isRecording: Bool { phase == .recording && recorder != nil && !recordingFailed }
+
+    /// AVAssetWriter.startWriting/startSession must have accepted actual media;
+    /// record() returning by itself is not the backup-admission signal.
+    var hasStartedWriting: Bool { isRecording && recorder?.hasStarted == true }
+    var broadcastCaptureReady: Bool {
+        (phase == .preview || phase == .recording) && !busy && !stopRequested &&
+        AVCaptureDevice.authorizationStatus(for: .video) == .authorized &&
+        AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+    }
+    var broadcastOverlayReady: Bool {
+        overlayURL.isEmpty || (renderer.healthy && renderer.image != nil)
+    }
 
     init(readOverlayURL: @MainActor () throws -> String = OverlayURLStore.read,
          saveOverlayURL: @escaping @MainActor (String) throws -> Void = OverlayURLStore.save,

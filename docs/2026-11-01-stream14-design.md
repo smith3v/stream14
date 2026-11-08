@@ -639,6 +639,67 @@ channel, missing event, insufficient permission, quota exhaustion, and expired c
 distinct and actionable. A failed status check does not require terminating a
 healthy ongoing media connection.
 
+### F7 confirmed lifecycle implementation — 2026-11-08
+
+`BroadcastSession` is a concrete MainActor coordinator over the same App-owned
+`MediaSession` displayed in SetupView, plus the concrete authorization/client/binding
+components. It does not own another capture pipeline or encoder. `BroadcastIntent`
+freezes the current authorization generation, actual channel, event title/visibility
+and auto-start choice, profile and overlay URL after the operator requests the
+confirmation; no request/publish occurs merely to display that confirmation.
+Native configuration/selection controls lock while a session is in progress.
+Local rehearsal, microphone and zoom controls remain independent.
+
+After confirmation, the coordinator requires the actual local writer to have
+accepted media (`hasStartedWriting`), not merely a return from `record()`. It waits
+up to five seconds for that admission inside the overall 60-second startup bound,
+then re-reads the channel/event and resolves F5 binding. Changed confirmation
+metadata or unavailable configured-overlay render stops startup before publication.
+An empty applied URL is explicit overlay disable. The same frozen settings and
+account generation are checked across awaited work. A failed startup disconnects
+upload and retains a healthy recording; it never uses whole-session stop to handle
+an API/transport error. Explicit cancellation owns/cancels the connection Task, so
+F6's guarded connection cannot attach after cancellation.
+
+The client sends bodyless `liveBroadcasts/transition` POSTs once, with
+`id`, `broadcastStatus` and `part=snippet,status,contentDetails`. Manual events
+wait for active ingestion before one live request; auto-start events only poll.
+A current broadcast read must return `live` before the coordinator presents Live.
+No optional testing transition is implemented. Unknown/late states or deadline
+expiry stop startup upload and require read reconciliation before a new start.
+
+A backup-excluded, protected local journal retains only unresolved channel/event
+IDs before any possible upload, including auto-start, plus a transition type and
+operation ID before a live/complete mutation. Relaunch never reconnects or
+publishes; it offers read-only reconciliation using the current authorized channel.
+Corrupt/unwritable journal state disables Go Live rather than overwriting evidence.
+Pending IDs are cleared only after a confirmed terminal event or an upcoming event
+with inactive/ready ingestion and no ambiguous transition. A currently upcoming
+read cannot clear an uncertain live request: it may still apply later, including
+after relaunch. Resolve that exact event in Studio and reconcile its live/terminal
+state; the app supplies no blind reset/retry override. A RAM outstanding-request
+gate also prevents reconciliation or a second mutation while the original request
+is still awaiting a response after the UI deadline/cancellation. A confirmed still-live event remains pending and
+can be explicitly ended. Credentials, event metadata and overlay URLs are not
+written to this journal; F5's separate mutation journal remains authoritative for
+resource creation/binding ambiguity.
+
+Confirmed End invalidates/cancels startup and immediately requests whole local
+capture/output stop, independently of remote work. It reads the event before any
+complete mutation, sends at most one complete request per explicit attempt, then
+reads for confirmation within a 15-second remote deadline. A request ignoring
+cancellation cannot hold up local shutdown or later overwrite the UI with a stale
+success. Unknown completion stays pending with Studio and reconciliation actions;
+local file finalization/status remains separately owned/presented by MediaSession.
+Expired authorization can be reconnected after upload/startup has stopped; an
+active session requires End first. F8/F9 still own ongoing remote supervision,
+reconnect and full interruption/degradation behavior.
+
+The [F7 handoff](2026-11-08-broadcast-session-implementation.md) records fixture,
+build/review evidence and pending signed-phone/unlisted end-to-end acceptance.
+No real service mutation, camera upload or physical qualification is established
+by this implementation.
+
 The Google account may authorize a Brand Account channel. Show and test the actual
 authorized channel; do not assume all Studio-delegated channel roles work with the
 API. Reauthorization/channel selection is required if the wrong channel is returned.

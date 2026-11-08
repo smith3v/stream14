@@ -1496,6 +1496,71 @@ No production credentials, local package path or actual receiver acceptance is
 implied by this selection. F7's confirmed operator flow is still required before
 an upload; local rehearsal needs no internet connection or Google setup.
 
+## F7 confirmed Go Live and End (2026-11-08)
+
+This flow is an implementation candidate; real channel/OAuth/unlisted receiver
+acceptance remains pending. Do not open a public event as a routine test. The
+owner must choose the intended dedicated event and explicitly confirm publishing;
+opening the app, restoring authorization, refreshing/selecting an event or opening
+local preview does not upload camera or microphone media.
+
+1. Choose the profile, open the camera, and check the preview/audio route. Apply
+   the intended overlay URL and wait for a fresh usable render. If the configured
+   overlay is unavailable, explicitly apply an empty URL to disable it before
+   rechecking readiness. Preview/local recording still work without Google.
+2. Connect YouTube, Refresh, and check the actual channel/Brand Account. Select
+   the intended scheduled encoder event with auto-stop already disabled in Studio.
+   This action does not change title, visibility, audience or event settings.
+3. Tap **Go Live** and review the confirmation's channel name/ID, event title,
+   visibility and profile. Confirm only when ready to upload. The app starts or
+   retains the actual local writer before any binding or upload; a writer startup
+   failure publishes no media. Changed confirmation metadata requires review again.
+4. Watch the independent local recording, Upload and YouTube messages. Socket
+   connection is not Live. Manual events request live only after active ingestion;
+   auto-start events may become visible from the confirmed first upload and are
+   polled without a redundant transition. Startup is bounded to 60 seconds.
+5. **Cancel YouTube startup** or a startup/API failure stops the upload while a
+   healthy local file continues. **Stop recording** remains deliberate. A failed
+   broadcast attempt never automatically deletes files. If the app requests
+   reconciliation, use **Reconcile YouTube status** or **Open YouTube Studio**;
+   reconciliation is read only and does not restart upload or repeat a mutation.
+   An uncertain Live request remains blocked even if an early read says upcoming;
+   the earlier request could still apply. Resolve that exact event in Studio, then
+   reconcile a confirmed live/finished state. The app never silently discards this
+   transition barrier. While a previous request is still outstanding, wait for its
+   outcome before reconciliation or another completion request.
+6. **End broadcast** requires confirmation naming the frozen event. It requests
+   local capture/output stop immediately while remote completion is checked
+   separately within 15 seconds. Local finalization status stays visible in the
+   recording list. **YouTube end not confirmed** means the remote event might still
+   be live; check Studio and reconcile before explicitly retrying End. Stopping a
+   socket is not proof the YouTube event ended.
+7. On relaunch an unresolved event is shown for read-only reconciliation; the app
+   never silently resumes publishing. Reconnect authorization to its original
+   channel if required. Account actions are end-first during startup/live/End,
+   and available again after startup/upload has stopped for reconciliation.
+
+Reproducible offline validation (use a fresh result path per run):
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,name=Stream14 iPhone 13 mini,OS=27.2' \
+  -derivedDataPath /private/tmp/stream14-f7-simulator \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/BroadcastSessionTests \
+  -resultBundlePath /private/tmp/stream14-f7-fixtures-new.xcresult test
+```
+
+The [stage handoff](2026-11-08-broadcast-session-implementation.md) records actual
+results and exact API/ownership boundaries. Fixture credentials and API bodies are
+invented; no real Google requests or camera/network media are used. Preserve the
+Debug short-phone-smoke host isolation and normally signed distinct UI runner.
+Routine physical validation stays **five minutes TOTAL** including setup/wrap-up;
+OAuth/setup blockers stop within that budget, and longer qualification requires a
+separate agreement. No actual receiver, A/V sync, CBR, thermal/memory or three-hour
+broadcast acceptance follows from a native build or fixture run.
+
 
 ## Private synthetic RTMPS receiver checkpoint (2026-11-08)
 

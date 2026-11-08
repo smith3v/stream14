@@ -220,6 +220,20 @@ extension YouTubeClient {
         ], body: nil, generation: generation)
     }
 
+    /// F7 sends each transition once. Even a successful response is reconciled by
+    /// a subsequent read before presenting a remote lifecycle state.
+    func transitionBroadcast(eventID: String, channelID: String, to state: YouTubeBroadcastTransition,
+                             generation: UInt64) async throws -> YouTubeBroadcast {
+        let result: YouTubeBroadcast = try await writeOnce("liveBroadcasts/transition", query: [
+            "part": "snippet,status,contentDetails", "id": eventID, "broadcastStatus": state.rawValue
+        ], body: nil, generation: generation)
+        guard result.id == eventID, result.snippet?.channelId == channelID else {
+            throw YouTubeMutationError.uncertain
+        }
+        try await check(generation)
+        return result
+    }
+
     private func writeOnce<Value: Decodable & Sendable>(_ resource: String, query: [String: String],
                                                        body: Data?, generation: UInt64) async throws -> Value {
         try await check(generation)

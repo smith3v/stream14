@@ -109,3 +109,5 @@ nonisolated enum YouTubeReadError: Error, Equatable, LocalizedError {
         }
     }
 }
+
+nonisolated enum YouTubeBroadcastTransition: String, Codable, Sendable { case live, complete }
