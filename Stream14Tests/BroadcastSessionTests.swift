@@ -241,6 +241,34 @@ import UIKit
         #expect(h.session.state != .live)
     }
 
+    @Test func cancelledLateReadCannotStopASeparatelyConfirmedNewIntent() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.hold = "channels"
+        h.start(); try await h.until { h.pending != nil }
+        h.session.cancelStartup()
+        await h.session.waitForOperation()
+        h.start(); await h.session.waitForOperation()
+        #expect(h.uploaded && h.session.state == .live)
+        h.release()
+        try await Task.sleep(for: .milliseconds(20))
+        #expect(h.uploaded && h.snapshot.writerStarted && h.session.state == .live)
+    }
+
+    @Test func unreadablePendingJournalFailsClosedWithoutOverwritingOrPublishing() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        let url = h.directory.appendingPathComponent("remote.json")
+        let original = Data("not-a-valid-session-journal".utf8)
+        try original.write(to: url)
+        let resumed = h.makeSession()
+        #expect(resumed.journalUnavailable && !resumed.canStart)
+        resumed.requestConfirmation(channel: h.channel, event: h.server.event)
+        #expect(resumed.confirmation == nil)
+        #expect(try Data(contentsOf: url) == original)
+        #expect(h.server.requests.isEmpty && !h.uploaded)
+    }
+
     @Test func transitionClientUsesBodylessPOSTWithNoRetriesAndRejectsWrongIdentity() async throws {
         let h = try await Harness()
         defer { h.cleanup() }
