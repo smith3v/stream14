@@ -167,7 +167,9 @@ final class MediaSession {
         do { savedSamples = try ExperimentSample.loadAll(activeID: recordingID) }
         catch { message = "Saved recordings could not be listed. Files are retained."; return }
         guard recoveringSampleID == nil else { return }
-        let candidates = savedSamples.filter { $0.id != recordingID && $0.review == nil }
+        let candidates = savedSamples.filter {
+            $0.id != recordingID && ($0.review == nil || $0.status != .completed)
+        }
         recordingReviewTask = Task { [weak self] in
             guard let self, let directory = try? ExperimentSample.directory() else { return }
             for var sample in candidates {

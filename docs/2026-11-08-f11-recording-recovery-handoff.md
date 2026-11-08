@@ -99,3 +99,31 @@ launch reconciliation, playback/export UI, fragment loss and A5 need physical
 checks. Root owns the shared five-minute total routine-phone budget; additional
 qualification needs a separate explicit agreement. Never reset/uninstall the app
 or delete user recordings for this test. Preserve expendable originals/copies.
+
+### Exact production recovery-helper check
+
+The source-copy builder also compiles `RecordingRecovery.swift` unchanged. On the
+retained synthetic post-fragment original, the exact app actor's `app-review`
+reported a readable 20-second start and `app-recover` produced another readable
+20-second separate file. The pre-first-fragment `app-review` failed honestly with
+AVFoundation -11829. All four original SHA-256 values still matched afterwards.
+Logs: `/private/tmp/stream14-f11-app-helper-{review,recover,before}.log`; distinct
+copy: `/private/tmp/stream14-f11-app-native-run2/after.app-helper.recovered.mp4`.
+These commands perform reads/remux only, without another encode experiment:
+
+```sh
+/private/tmp/stream14-f11-app-probe4/probe app-review \
+  /private/tmp/stream14-f11-app-native-run2/after.original.mp4
+/private/tmp/stream14-f11-app-probe4/probe app-recover \
+  /private/tmp/stream14-f11-app-native-run2/after.original.mp4 \
+  /private/tmp/stream14-f11-app-native-run2/another-new-recovered-copy.mp4
+/private/tmp/stream14-f11-app-probe4/probe app-review \
+  /private/tmp/stream14-f11-app-native-run2/before.original.mp4
+```
+
+The last command is expected to fail. Final F10 UI integration, the added 13th
+selective-copy deletion test, a final affected-suite/Release rerun and independent
+review are still pending. The existing first 12-test pass and Release pass preceded
+that selective deletion test and the final refresh predicate, which now reinspects
+incomplete originals on each library reconciliation instead of trusting an older
+readable-start review forever. No process is left running at this checkpoint.

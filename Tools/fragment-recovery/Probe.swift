@@ -17,6 +17,17 @@ import CryptoKit
             let url = URL(fileURLWithPath: args[2])
             if args[1] == "write" { try await write(url, mode: args[3]); return }
             if args[1] == "inspect" { try await inspect(url); return }
+            #if APP_WRITER
+            if args[1] == "app-review" {
+                let result = try await RecordingRecovery().inspect(url)
+                emit(["readableStartDuration": result.duration]); return
+            }
+            if args[1] == "app-recover" {
+                let result = try await RecordingRecovery().recover(original: url,
+                    destination: URL(fileURLWithPath: args[3]))
+                emit(["recoveredStartDuration": result.duration]); return
+            }
+            #endif
             if args[1] == "export" {
                 let asset = AVURLAsset(url: url)
                 guard let export = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else {

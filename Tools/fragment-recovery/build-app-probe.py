@@ -34,9 +34,10 @@ nonisolated enum SharedMediaEncoder {
 }
 nonisolated final class SharedMediaCodec {''' + codec)
 (out / 'LocalRecorder.swift').write_text((media / 'LocalRecorder.swift').read_text())
+(out / 'RecordingRecovery.swift').write_text((media / 'RecordingRecovery.swift').read_text())
 subprocess.run(['xcrun', 'swiftc', '-O', '-swift-version', '6', '-D', 'APP_WRITER',
     '-module-cache-path', str(out / 'cache'), '-I', str(out), '-parse-as-library',
-    str(out / 'SessionProfile.swift'), str(out / 'Codec.swift'), str(out / 'LocalRecorder.swift'),
+    str(out / 'SessionProfile.swift'), str(out / 'Codec.swift'), str(out / 'LocalRecorder.swift'), str(out / 'RecordingRecovery.swift'),
     str(root / 'Tools/fragment-recovery/Probe.swift'), str(root / 'Tools/fragment-recovery/AppWriter.swift'),
     '-o', str(out / 'probe')], check=True)
 print(out / 'probe')
