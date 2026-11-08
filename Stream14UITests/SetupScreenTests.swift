@@ -160,6 +160,43 @@ final class SetupScreenTests: XCTestCase {
         }
     }
 
+    func testLastSessionControlFitsNativeViewport() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        for large in [false, true] {
+            for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight] {
+                XCUIDevice.shared.orientation = orientation
+                let app = fixtureApp("ready", largeText: large)
+                app.tabBars.buttons["Session"].tap()
+                let button = app.buttons["goLive"]
+                XCTAssertTrue(button.waitForExistence(timeout: 5))
+                let scroll = app.scrollViews.firstMatch
+                let raw = scroll.frame.intersection(app.frame)
+                let top = max(raw.minY, app.navigationBars.firstMatch.frame.maxY)
+                let bottom = min(raw.maxY, app.tabBars.firstMatch.frame.minY)
+                let viewport = CGRect(x: raw.minX, y: top, width: raw.width, height: bottom - top)
+                // Use actual native bounds, not the drag helper's optional 8pt
+                // clearance. One point tolerates AX subpixel conversion only.
+                for _ in 0..<8 {
+                    if viewport.insetBy(dx: -1, dy: -1).contains(button.frame) { break }
+                    let before = button.frame
+                    scroll.swipeUp()
+                    if abs(button.frame.minY - before.minY) < 1 { break }
+                }
+                let frame = button.frame
+                print("F10 final control: \(frame), native viewport: \(viewport)")
+                XCTAssertTrue(viewport.insetBy(dx: -1, dy: -1).contains(frame),
+                              "Final control \(frame) must fit native viewport \(viewport)")
+                XCTAssertTrue(button.isHittable)
+                XCTAssertGreaterThanOrEqual(frame.height, 44)
+                let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                screenshot.name = "Final Session control \(orientation.rawValue) largest text \(large)"
+                screenshot.lifetime = .keepAlways
+                add(screenshot)
+                app.terminate()
+            }
+        }
+    }
+
     func testFailedDeletionRetainsRowAndExplainsRetry() throws {
         let identifier = ProcessInfo.processInfo.environment["STREAM14_DELETE_FAILURE_FIXTURE_ID"]
         try XCTSkipUnless(identifier != nil, "Seed a nonregular-artifact Simulator fixture first.")

@@ -1660,7 +1660,7 @@ native interface suite using the shared scheme and a fresh result path:
 xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
   -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
   -derivedDataPath /private/tmp/stream14-f10-simulator \
-  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
   -disableAutomaticPackageResolution \
   -only-testing:Stream14UITests/SetupScreenTests/testNativeDestinationsNeverStartCaptureOrPublishing \
   -only-testing:Stream14UITests/SetupScreenTests/testPreflightBlockersAndExactPublishingConfirmation \

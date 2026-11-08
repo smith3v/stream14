@@ -72,7 +72,8 @@ Passed evidence on Xcode 27.2/iOS 27.2 Simulator:
 - `/private/tmp/stream14-f10-ui-final.xcresult`: original playback/export passes;
   old unscoped contrast audits report offscreen/clipped static text. The known
   landscape example is the YouTube heading at y709.7 on a 375-point screen, outside
-  the actual y86–303 viewport. Portrait similarly reports the event-status paragraph
+  the native y78–311 viewport (the gesture helper adds eight-point clearance,
+  yielding a y86–303 target rectangle). Portrait similarly reports the event-status paragraph
   at y772.7 below the y729 tab boundary, and recording metadata at y784.3 below that
   boundary. These are retained diagnostic results, not visible-contrast passes.
 
@@ -91,3 +92,43 @@ Physical smallest-screen use, spoken VoiceOver, real camera/receiver exclusion o
 controls, OAuth/publishing, numerical A/V sync and long qualification remain pending.
 There was no physical phone use or real Google/publishing action in F10. The five-minute
 TOTAL routine phone budget and separate long qualification agreement remain intact.
+
+## Final current-main handoff
+
+Normal merge `91c51f4` inherits actual main `f454e9b` and its reviewed HaishinKit
+revision `497f742c5f2c04cf3ca085378e660a273e351788`. The shared cache
+`/private/tmp/stream14-transport-fix-packages` was used read-only with automatic
+resolution disabled. Product source remains the independently reviewed F10 behavior;
+no media pin was edited manually.
+
+The final affected run `/private/tmp/stream14-f10-ui-verified.xcresult` passes all
+six selected native tests: portrait/largest-text preparation and privacy footer,
+profile persistence in both landscapes, recording metadata/actions in portrait and
+both landscapes at normal/largest text, original player/share-sheet opening, and
+Session normal/largest-text operation in both landscape directions. Known clipped
+static-text exceptions are logged with before/callback/native-viewport geometry;
+this final run is not wholly unfiltered. Screenshots exported to
+`/private/tmp/stream14-f10-ui-verified-attachments` were inspected. The native
+Hide/Show label crossfade is settled in these artifacts.
+
+A separate exact visibility check passes in
+`/private/tmp/stream14-f10-last-control.xcresult` across all four Session layouts.
+The normal last Go Live control is y260.667–311, height50.333, inside the actual
+native y78–311 viewport; at largest text it is y201.667–294.667, height93. Both
+landscape directions are fully visible, hittable and at least44 points high.
+Thus the drag helper's optional8-point clearance caused extra retries at the last
+control, rather than a product clipping bug. No product adjustment or contrast
+waiver was used for this check. Exact-control screenshots are under
+`/private/tmp/stream14-f10-last-control-attachments`.
+
+Playback/export checks open the native player and original-file share sheet using
+bundled sample media; they do not establish captured footage/receiver acceptance or
+an external Files copy. Only invented Simulator fixtures were deliberately deleted
+through confirmation; failed/pending and unrelated originals remain retained.
+
+F11 integration entry points remain `RecordingRow(sample:canDelete:play:delete:)`,
+`MediaSession.savedSamples`, `canDeleteSamples` and the dedicated
+`recordingsMessage`. Root owns final focused independent review of the exact audit
+geometry/new visibility test and settled screenshots, then publication into main.
+The prepared PR body is `/private/tmp/stream14-f10-pr-body.md`; it references #23
+without closing unmet physical acceptance. No PR was published by this stage.
