@@ -7,6 +7,8 @@ struct SetupView: View {
     let youtubeEvents: YouTubeEventSelection
     let experiment: MediaSession
     let broadcast: BroadcastSession
+    private enum Destination: Hashable { case preparation, session, recordings }
+    @State private var destination = Destination.preparation
     @State private var pendingDeletion: ExperimentSample?
     @State private var playback: PlaybackSelection?
     @State private var showingNotices = false
@@ -26,100 +28,21 @@ struct SetupView: View {
                 AttachedOverlayView(renderer: experiment.renderer)
                     .frame(height: 60)
                     .accessibilityHidden(true)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Local recording")
-                        .font(.headline)
-                        .accessibilityIdentifier("setupStatus")
-                    Text("Record camera, microphone and a transparent web overlay. Keep the phone in landscape with the rear camera upright.")
-                        .accessibilityIdentifier("setupExplanation")
-                    profileControls
-                    if experiment.phase != .idle {
-                        ExperimentPreview(view: experiment.preview)
-                            .aspectRatio(16 / 9, contentMode: .fit)
-                            .background(.black)
-                            .accessibilityLabel("Composed camera preview with web overlay")
-                            .accessibilityIdentifier("cameraPreview")
-                        if !experiment.availableLenses.isEmpty {
-                            Button {
-                                showingLensChoices = true
-                            } label: {
-                                Label(experiment.selectedLens.buttonLabel, systemImage: "camera")
-                                    .frame(minHeight: 44)
-                            }
-                            .controlSize(.small)
-                            .disabled(!experiment.canSelectLens)
-                            .accessibilityLabel("Rear camera lens")
-                            .accessibilityHint("Choose a rear lens before recording. Selection is locked while recording or finalizing.")
-                            .accessibilityValue(experiment.selectedLens.label)
-                            .accessibilityIdentifier("cameraLensSelector")
-                            .confirmationDialog("Choose rear camera", isPresented: $showingLensChoices,
-                                                titleVisibility: .visible) {
-                                ForEach(experiment.availableLenses) { lens in
-                                    Button(lens.label) {
-                                        Task { await experiment.selectLens(lens) }
-                                    }
-                                }
-                                Button("Cancel", role: .cancel) {}
-                            } message: {
-                                Text("Current lens: " + experiment.selectedLens.label)
-                            }
-                        }
+                TabView(selection: $destination) {
+                    Tab("Preparation", systemImage: "checklist", value: Destination.preparation) {
+                        preparationScreen
                     }
-                    mediaControls
-                    Text(experiment.renderer.status).font(.caption)
-                        .accessibilityIdentifier("overlayStatus")
-                    Toggle("Hide overlay manually", isOn: Binding(
-                        get: { experiment.renderer.health.manuallyHidden },
-                        set: { experiment.renderer.setManuallyHidden($0) }))
-                    if !experiment.thermalWarning.isEmpty { Text(experiment.thermalWarning).accessibilityLabel("Thermal warning: " + experiment.thermalWarning) }
-                    Text(experiment.message)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("mediaStatus")
-                    if let started = experiment.startedAt {
-                        Text(started, style: .timer)
-                            .monospacedDigit()
-                            .accessibilityLabel("Recording duration")
+                    Tab("Session", systemImage: "video", value: Destination.session) {
+                        sessionScreen
                     }
-                    if experiment.phase == .idle {
-                        Button("Open camera", systemImage: "camera") {
-                            Task { await experiment.openPreview() }
-                        }
-                        .accessibilityIdentifier("openExperiment")
-                    } else {
-                        Button(experiment.isRecording ? "Stop recording" : "Record",
-                               systemImage: experiment.isRecording ? "stop.circle" : "record.circle") {
-                            Task {
-                                if experiment.isRecording { await experiment.stopRecording() }
-                                else { await experiment.record() }
-                            }
-                        }
-                        .disabled(experiment.isRecording ? !experiment.canAdjustMedia : !experiment.canRecord)
-                        .accessibilityIdentifier("recordSample")
-                        Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
-                            .disabled(experiment.phase == .stopping || broadcast.requiresEndFirst)
+                    Tab("Recordings", systemImage: "film.stack", value: Destination.recordings) {
+                        recordingsScreen
                     }
-                    YouTubeConnectionView(authorization: authorization, broadcastActive: broadcast.requiresEndFirst)
-                    YouTubeEventsView(selection: youtubeEvents)
-                        .disabled(broadcast.locksSelection)
-                    BroadcastControlsView(broadcast: broadcast, media: experiment, selection: youtubeEvents, authorization: authorization)
-                    ForEach(experiment.savedSamples) { sample in
-                        RecordingRow(sample: sample, canDelete: experiment.canDeleteSamples,
-                                     play: { playback = PlaybackSelection(url: $0) },
-                                     delete: { pendingDeletion = sample })
-                    }
-                    Text("Export to keep a copy outside the app. Deleting the app removes its local samples.")
-                        .font(.footnote)
-                    Text("\(experiment.profile.rawValue) · H.264/AAC · local MP4")
-                        .font(.footnote)
-                    footerLayout { footerLinks }
                 }
-                .padding()
+                .background(Color(uiColor: .systemBackground))
                 .buttonStyle(.bordered)
                 .tint(Color.primary)
                 .controlSize(.large)
-            }
-            .background(Color(uiColor: .systemBackground))
             }
             .navigationTitle("stream14")
             .toolbar {
@@ -129,7 +52,7 @@ struct SetupView: View {
                 }
                     .accessibilityLabel("Overlay settings")
                     .accessibilityIdentifier("testWebOverlay")
-                    .disabled(!experiment.canEditOverlayURL)
+
             }
             .alert("Delete this recording?", isPresented: Binding(
                 get: { pendingDeletion != nil },
@@ -149,10 +72,12 @@ struct SetupView: View {
             .sheet(isPresented: $showingOverlayTest) {
                 NavigationStack {
                     Form {
+                        if !experiment.canEditOverlayURL { Text("Overlay URL is locked while the session is active or finalizing. Reload and manual visibility remain available in Session.") }
                         TextField("HTTPS overlay URL", text: $overlayURLDraft)
                             .textFieldStyle(.roundedBorder)
                             .keyboardType(.URL).textInputAutocapitalization(.never)
                             .autocorrectionDisabled().privacySensitive()
+                            .disabled(!experiment.canEditOverlayURL)
                             .accessibilityLabel("HTTPS overlay URL").accessibilityIdentifier("overlayURL")
                         Button("Apply URL") {
                             if experiment.applyOverlayURL(overlayURLDraft) {
@@ -162,6 +87,7 @@ struct SetupView: View {
                         .disabled(!experiment.canEditOverlayURL)
                         .accessibilityIdentifier("applyOverlayURL")
                         Button("Use reference URL") { overlayURLDraft = "https://heren14-overlay.smith3v.com/overlay.html" }
+                            .disabled(!experiment.canEditOverlayURL)
                         Text(experiment.urlMessage)
                         Text("Apply saves this URL securely and starts the overlay automatically while the app is active. Apply an empty URL to disable it completely. Closing without applying discards edits. Source document access does not verify a separate scoring backend.")
                     }
@@ -198,6 +124,163 @@ struct SetupView: View {
                     experiment.requestStop(interruption: true)
                 }
             }
+        }
+    }
+
+    private var preparationScreen: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Prepare your session").font(.headline).accessibilityIdentifier("setupStatus")
+                Text("Record locally without Google, or choose a scheduled YouTube event before confirming Go Live. Keep the phone in landscape with the rear camera upright.")
+                    .accessibilityIdentifier("setupExplanation")
+                profileControls
+                Text(experiment.phase == .idle ? "Camera and microphone: not open" : "Camera and microphone: open")
+                Text("Input: " + experiment.audioRoute)
+                overlayControls
+                Button("Open session", systemImage: "video") { destination = .session }
+                    .frame(minHeight: 44).accessibilityIdentifier("openSession")
+                YouTubeConnectionView(authorization: authorization, broadcastActive: broadcast.requiresEndFirst)
+                YouTubeEventsView(selection: youtubeEvents).disabled(broadcast.locksSelection)
+                broadcastControls
+                Text("Opening settings or choosing an event does not publish. Go Live requires camera readiness, a healthy or explicitly disabled overlay, and confirmation of the channel, event, visibility and profile.")
+                    .font(.footnote)
+                footerLayout { footerLinks }
+            }.padding()
+        }
+    }
+
+    private var sessionScreen: some View {
+        GeometryReader { geometry in
+            let wide = geometry.size.width > geometry.size.height && !dynamicTypeSize.isAccessibilitySize
+            if wide {
+                HStack(alignment: .top, spacing: 12) {
+                    previewPanel.frame(maxWidth: .infinity)
+                    ScrollView { sessionControls.padding(.trailing) }
+                        .frame(width: max(260, geometry.size.width * 0.4))
+                }.padding(.leading)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) { previewPanel; sessionControls }.padding()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var previewPanel: some View {
+                    if experiment.phase != .idle {
+                        ExperimentPreview(view: experiment.preview)
+                            .aspectRatio(16 / 9, contentMode: .fit)
+                            .background(.black)
+                            .accessibilityLabel("Composed camera preview with web overlay")
+                            .accessibilityIdentifier("cameraPreview")
+                        if !experiment.availableLenses.isEmpty {
+                            Button {
+                                showingLensChoices = true
+                            } label: {
+                                Label(experiment.selectedLens.buttonLabel, systemImage: "camera")
+                                    .frame(minHeight: 44)
+                            }
+                            .controlSize(.small)
+                            .disabled(!experiment.canSelectLens)
+                            .accessibilityLabel("Rear camera lens")
+                            .accessibilityHint("Choose a rear lens before recording. Selection is locked while recording or finalizing.")
+                            .accessibilityValue(experiment.selectedLens.label)
+                            .accessibilityIdentifier("cameraLensSelector")
+                            .confirmationDialog("Choose rear camera", isPresented: $showingLensChoices,
+                                                titleVisibility: .visible) {
+                                ForEach(experiment.availableLenses) { lens in
+                                    Button(lens.label) {
+                                        Task { await experiment.selectLens(lens) }
+                                    }
+                                }
+                                Button("Cancel", role: .cancel) {}
+                            } message: {
+                                Text("Current lens: " + experiment.selectedLens.label)
+                            }
+                        }
+                    }
+        if experiment.phase == .idle {
+            ContentUnavailableView("Camera closed", systemImage: "video.slash", description: Text("Open the camera to rehearse or record. This does not publish to YouTube."))
+        }
+    }
+
+    private var sessionControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Session").font(.headline)
+            if let intent = broadcast.activeIntent ?? broadcast.confirmation {
+                Text("Channel: " + intent.channel.title)
+                Text("Event: " + intent.event.title)
+                Text("Visibility: " + intent.event.visibility)
+                Text("Profile: " + intent.profile.label)
+            }
+            Text("Recording: " + experiment.message)
+                .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("mediaStatus")
+            if let started = experiment.startedAt {
+                Text(started, style: .timer).monospacedDigit().accessibilityLabel("Recording duration")
+            }
+            if !experiment.thermalWarning.isEmpty {
+                Text(experiment.thermalWarning).accessibilityLabel("Thermal warning: " + experiment.thermalWarning)
+            }
+            cameraActions
+            mediaControls
+            overlayControls
+            broadcastControls
+        }
+    }
+
+    @ViewBuilder private var cameraActions: some View {
+        if experiment.phase == .idle {
+            Button("Open camera", systemImage: "camera") { Task { await experiment.openPreview() } }
+                .frame(minHeight: 44).accessibilityIdentifier("openExperiment")
+        } else {
+            Button(experiment.isRecording ? "Stop recording" : "Record",
+                   systemImage: experiment.isRecording ? "stop.circle" : "record.circle") {
+                Task {
+                    if experiment.isRecording { await experiment.stopRecording() }
+                    else { await experiment.record() }
+                }
+            }
+            .frame(minHeight: 44)
+            .disabled(experiment.isRecording ? !experiment.canAdjustMedia : !experiment.canRecord)
+            .accessibilityIdentifier("recordSample")
+            Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
+                .frame(minHeight: 44)
+                .disabled(experiment.phase == .stopping || broadcast.requiresEndFirst)
+        }
+    }
+
+    private var overlayControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Overlay: " + experiment.renderer.status).font(.caption)
+                .accessibilityIdentifier("overlayStatus")
+            Toggle("Hide overlay manually", isOn: Binding(
+                get: { experiment.renderer.health.manuallyHidden },
+                set: { experiment.renderer.setManuallyHidden($0) })).frame(minHeight: 44)
+            if !experiment.overlayURL.isEmpty {
+                Button("Reload overlay", systemImage: "arrow.clockwise") { experiment.renderer.reload() }
+                    .frame(minHeight: 44).accessibilityIdentifier("reloadOverlay")
+            }
+        }
+    }
+
+    private var broadcastControls: some View {
+        BroadcastControlsView(broadcast: broadcast, media: experiment, selection: youtubeEvents, authorization: authorization)
+    }
+
+    private var recordingsScreen: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Recordings").font(.headline)
+                if experiment.savedSamples.isEmpty { Text("No recordings on this iPhone.") }
+                ForEach(experiment.savedSamples) { sample in
+                    RecordingRow(sample: sample, canDelete: experiment.canDeleteSamples,
+                                 play: { playback = PlaybackSelection(url: $0) },
+                                 delete: { pendingDeletion = sample })
+                    Divider()
+                }
+                Text("Export to keep a copy outside the app. Deleting the app removes its local recordings.").font(.footnote)
+                Text("Original H.264/AAC MP4 files. Pending and failed recordings are retained for review.").font(.footnote)
+            }.padding()
         }
     }
 

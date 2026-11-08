@@ -27,3 +27,7 @@ Native tabs make the three specified destinations directly discoverable. A singl
 ## Evidence
 
 Pending implementation and focused native checks. Physical smallest-screen use, spoken VoiceOver, actual receiver/file exclusion and long qualification remain unverified.
+
+### Initial checkpoint (before stable F9 handoff)
+
+Preparation/Session/Recordings native tabs and normal-text landscape two-column layout are implemented in SetupView only. The existing overlay host, file actions and lifecycle callbacks are retained. Settings stays inspectable when URL edits are locked; active overlay reload/manual visibility are exposed. `git diff --check` passes. This is an incomplete stage checkpoint: existing UI tests still assume the old single screen and require navigation updates; F9 backup warning/foreground resume hooks must be inherited from its final reviewed commit. Build is running at `/private/tmp/stream14-f10-build.log` (initial sandboxed invocation stopped after native service restriction; authorized native invocation is compiling/resolving packages). No Simulator UI, phone, API or publishing validation has run. Do not publish/merge this checkpoint as completed F10.
