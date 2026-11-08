@@ -46,6 +46,7 @@ final class MediaSession {
     private var routeTask: Task<Void, Never>?
 
     private(set) var savedSamples: [ExperimentSample] = []
+    private(set) var recordingsMessage = ""
     private(set) var urlMessage = ""
     private(set) var overlayURL = ""
     private let saveOverlayURL: @MainActor (String) throws -> Void
@@ -168,10 +169,13 @@ final class MediaSession {
     private var recordingReviewTask: Task<Void, Never>?
     private(set) var recoveringSampleID: UUID?
 
-    func refreshSamples() {
+    func refreshSamples(clearFeedback: Bool = true) {
         recordingReviewTask?.cancel()
-        do { savedSamples = try ExperimentSample.loadAll(activeID: recordingID) }
-        catch { message = "Saved recordings could not be listed. Files are retained."; return }
+        do {
+            savedSamples = try ExperimentSample.loadAll(activeID: recordingID)
+            if clearFeedback { recordingsMessage = "" }
+        }
+        catch { recordingsMessage = "Saved recordings could not be listed. Files are retained."; return }
         guard recoveringSampleID == nil else { return }
         let candidates = savedSamples.filter {
             $0.id != recordingID && ($0.review == nil || $0.status != .completed)
@@ -196,7 +200,7 @@ final class MediaSession {
                 guard !Task.isCancelled, sample.id != recordingID,
                       let index = savedSamples.firstIndex(where: { $0.id == sample.id }) else { continue }
                 do { try sample.save(in: directory); savedSamples[index] = sample }
-                catch { message = "Recording review could not be saved. Originals are retained." }
+                catch { recordingsMessage = "Recording review could not be saved. Originals are retained." }
             }
         }
     }
@@ -206,7 +210,7 @@ final class MediaSession {
               var sample = savedSamples.first(where: { $0.id == selected.id }), (sample.status != .completed || sample.review != .readable) else { return }
         recordingReviewTask?.cancel()
         recoveringSampleID = sample.id
-        defer { recoveringSampleID = nil; refreshSamples() }
+        defer { recoveringSampleID = nil; refreshSamples(clearFeedback: false) }
         do {
             let directory = try ExperimentSample.directory()
             var attempt = ExperimentSample.Recovery()
@@ -219,16 +223,16 @@ final class MediaSession {
                     destination: directory.appendingPathComponent(sample.recoveryFileName(attempt)))
                 attempt.status = .recovered
                 attempt.duration = result.duration
-                message = "Recovered copy saved. It may omit the unfinished fragment; inspect playback. Original retained."
+                recordingsMessage = "Recovered copy saved. It may omit the unfinished fragment; inspect playback. Original retained."
             } catch {
                 attempt.status = .failed
-                message = "Recovery could not finish. Original and any partial recovered copy are retained."
+                recordingsMessage = "Recovery could not finish. Original and any partial recovered copy are retained."
             }
             if let index = sample.recoveries?.firstIndex(where: { $0.id == attempt.id }) {
                 sample.recoveries?[index] = attempt
             }
             try sample.save(in: directory)
-        } catch { message = "Recovery status could not be saved. All existing files are retained for review." }
+        } catch { recordingsMessage = "Recovery status could not be saved. All existing files are retained for review." }
     }
 
     func deleteRecovery(_ recovery: ExperimentSample.Recovery, from selected: ExperimentSample) {
@@ -236,9 +240,9 @@ final class MediaSession {
         do {
             let directory = try ExperimentSample.directory()
             _ = try sample.deletingRecovery(recovery, in: directory)
-            message = "Selected recovery copy deleted. Original recording is retained."
-        } catch { message = "Could not delete the recovery copy or save its status. Remaining files are retained; retry is available." }
-        refreshSamples()
+            recordingsMessage = "Selected recovery copy deleted. Original recording is retained."
+        } catch { recordingsMessage = "Could not delete the recovery copy or save its status. Remaining files are retained; retry is available." }
+        refreshSamples(clearFeedback: false)
     }
 
     func deleteSample(_ sample: ExperimentSample) {
@@ -248,11 +252,11 @@ final class MediaSession {
             try sample.delete(in: directory)
             if sampleURL?.lastPathComponent == sample.fileName { sampleURL = nil }
             refreshSamples()
-            message = "Recording deleted from this iPhone. Exported copies are unchanged."
+            recordingsMessage = "Recording deleted from this iPhone. Exported copies are unchanged."
         } catch {
             if let sampleURL, !FileManager.default.fileExists(atPath: sampleURL.path) { self.sampleURL = nil }
             refreshSamples()
-            message = "Could not delete all recording files. Remaining files are kept; you can retry."
+            recordingsMessage = "Could not delete all recording files. Remaining files are kept; you can retry."
         }
     }
 
@@ -452,6 +456,9 @@ final class MediaSession {
     }
 
     func record(injection: LocalRecorder.Injection = .none) async {
+        #if DEBUG
+        guard !interfaceFixtureMode else { return }
+        #endif
         guard canRecord else { return }
         busy = true
         phase = .starting
@@ -878,6 +885,28 @@ final class MediaSession {
         if interrupted && !failure { message = "Capture stopped after an interruption. Open the camera explicitly to resume." }
         finishOperation()
     }
+
+    #if DEBUG
+    private var interfaceFixtureMode = false
+
+    /// Presentation-only fixture: no capture, encoder, writer or network is opened.
+    func installInterfaceFixture(_ state: String) {
+        interfaceFixtureMode = true
+        guard state != "idle" else { return }
+        phase = .preview
+        message = "Fixture camera ready; no capture is running."
+        audioRoute = "Fixture microphone"
+        cameraZoom = CameraZoom(value: 1, minimum: 1, maximum: 3)
+        if ["reconnecting", "backup-failed", "unknown-end", "ended"].contains(state) {
+            broadcastConfigurationLocked = state != "ended"
+            uploadMessage = state == "reconnecting" ? "Reconnecting. Local recording continues while healthy." : "Upload stopped"
+        }
+        if state == "backup-failed" {
+            recordingFailed = true
+            uploadMessage = "Upload connected; YouTube confirmed live"
+        }
+    }
+    #endif
 
     private enum ExperimentError: Error {
         case permissions, devices, emptySample

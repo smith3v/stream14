@@ -79,6 +79,17 @@ struct RecordingRecoveryTests {
         #expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent(sample.recoveryFileName(other)).path))
         #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent(sample.recoveryFileName(selected)).path))
         #expect(try ExperimentSample.loadAll(in: directory).first?.recoveries?.map(\.id) == [other.id])
+        let unexpected = directory.appendingPathComponent(sample.recoveryFileName(other))
+        try FileManager.default.removeItem(at: unexpected) // Only this synthetic fixture.
+        try FileManager.default.createDirectory(at: unexpected, withIntermediateDirectories: false)
+        let child = unexpected.appendingPathComponent("retained.txt")
+        try Data("keep".utf8).write(to: child)
+        #expect(throws: ExperimentSample.DeletionError.self) {
+            try updated.deletingRecovery(other, in: directory)
+        }
+        #expect(FileManager.default.fileExists(atPath: child.path))
+        #expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent(sample.fileName).path))
+        #expect(try ExperimentSample.loadAll(in: directory).first?.recoveries?.map(\.id) == [other.id])
     }
 
     @Test func failedInspectionAndRecoveryRetainUnreadableOriginal() async throws {
