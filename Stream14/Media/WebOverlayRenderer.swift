@@ -2,12 +2,14 @@ import Observation
 import SwiftUI
 import WebKit
 
-/// Public handoff: `image` is an immutable 1920×1080 raster. Consumers must apply
+/// Public handoff: `image` is an immutable selected-profile raster. Consumers must apply
 /// `visible` as well; keeping an image in memory never establishes source health.
 @MainActor
 @Observable
 final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
-    static let canvas = CGSize(width: 1920, height: 1080)
+    static let canvas = SessionProfile.fullHD.size
+    private(set) var profile: SessionProfile
+    var canvasSize: CGSize { profile.size }
     private(set) var webView: WKWebView
     private(set) var image: CGImage?
     private(set) var visible = false
@@ -45,18 +47,19 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
     private var freshDocument = false
     private var now: TimeInterval { clock() }
 
-    init(clock: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+    init(profile: SessionProfile = .fullHD, clock: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+        self.profile = profile
         self.clock = clock
-        webView = Self.makeWebView()
+        webView = Self.makeWebView(size: profile.size)
         super.init()
         configureDelegates()
     }
 
-    private static func makeWebView(configuration: WKWebViewConfiguration = WKWebViewConfiguration()) -> WKWebView {
+    private static func makeWebView(size: CGSize, configuration: WKWebViewConfiguration = WKWebViewConfiguration()) -> WKWebView {
         configuration.websiteDataStore = .nonPersistent()
         configuration.allowsInlineMediaPlayback = false
         configuration.mediaTypesRequiringUserActionForPlayback = .all
-        let view = WKWebView(frame: CGRect(origin: .zero, size: canvas), configuration: configuration)
+        let view = WKWebView(frame: CGRect(origin: .zero, size: size), configuration: configuration)
         view.isOpaque = false
         view.backgroundColor = .clear
         view.scrollView.backgroundColor = .clear
@@ -84,7 +87,7 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
         let host = webView.superview as? OverlayViewport
         let configuration = webView.configuration
         webView.removeFromSuperview()
-        webView = Self.makeWebView(configuration: configuration)
+        webView = Self.makeWebView(size: profile.size, configuration: configuration)
         configureDelegates()
         host?.setWebView(webView)
         currentNavigation = nil
@@ -95,6 +98,19 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
         freshDocument = false
         renderAttemptStarted = now
         nextCapture = now
+    }
+
+    /// MediaSession calls this only with capture closed. Retire old callbacks and
+    /// raster immediately; source/manual-hide intent survives the canvas rebuild.
+    func setProfile(_ profile: SessionProfile) {
+        guard profile != self.profile else { return }
+        let url = requestedURL
+        let html = fixtureHTML
+        let wasActive = active
+        self.profile = profile
+        reset()
+        if wasActive, let url { load(url.absoluteString) }
+        else if wasActive, let html { loadFixture(html) }
     }
 
     static func validatedURL(_ text: String) -> URL? {
@@ -289,14 +305,14 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
             guard token == self.generation else { self.captureStarted = nil; return }
             guard self.loaded, let values = result as? [String: Any],
                   values["ready"] as? Bool == true,
-                  (values["width"] as? Int) == 1920, (values["height"] as? Int) == 1080,
+                  (values["width"] as? Int) == self.profile.width, (values["height"] as? Int) == self.profile.height,
                   values["resources"] as? Bool == true || self.now - self.loadedAt >= 0.75 else {
                 self.captureStarted = nil
                 return
             }
             let configuration = WKSnapshotConfiguration()
-            configuration.rect = CGRect(origin: .zero, size: Self.canvas)
-            configuration.snapshotWidth = NSNumber(value: 1920 / max(browser.traitCollection.displayScale, 1))
+            configuration.rect = CGRect(origin: .zero, size: self.canvasSize)
+            configuration.snapshotWidth = NSNumber(value: self.canvasSize.width / max(browser.traitCollection.displayScale, 1))
             configuration.afterScreenUpdates = true
             browser.takeSnapshot(with: configuration) { [weak self, weak browser] snapshot, _ in
                 guard let self, let browser, self.active, browser === self.webView else { return }
@@ -306,7 +322,8 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
                     return
                 }
                 Task { [weak self, weak browser] in
-                    let normalized = await Task.detached(priority: .utility) { Self.normalize(source) }.value
+                    let profile = self?.profile ?? .fullHD
+                    let normalized = await Task.detached(priority: .utility) { Self.normalize(source, profile: profile) }.value
                     guard let self, let browser, self.active, browser === self.webView else { return }
                     guard token == self.generation else { self.captureStarted = nil; return }
                     self.captureStarted = nil
@@ -316,20 +333,20 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
                     self.health.rendered(at: self.now, freshDocument: self.freshDocument)
                     self.freshDocument = false
                     self.captureMilliseconds = (self.now - started) * 1000
-                    self.viewport = "1920×1080 CSS → 1920×1080 pixels"
+                    self.viewport = "\(self.profile.width)×\(self.profile.height) CSS → \(self.profile.width)×\(self.profile.height) pixels"
                     self.publishHealth()
                 }
             }
         }
     }
 
-    nonisolated static func normalize(_ source: CGImage) -> CGImage? {
-        guard let context = CGContext(data: nil, width: 1920, height: 1080,
-                bitsPerComponent: 8, bytesPerRow: 1920 * 4,
+    nonisolated static func normalize(_ source: CGImage, profile: SessionProfile = .fullHD) -> CGImage? {
+        guard let context = CGContext(data: nil, width: profile.width, height: profile.height,
+                bitsPerComponent: 8, bytesPerRow: profile.width * 4,
                 space: CGColorSpaceCreateDeviceRGB(),
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         context.interpolationQuality = .high
-        context.draw(source, in: CGRect(x: 0, y: 0, width: 1920, height: 1080))
+        context.draw(source, in: CGRect(x: 0, y: 0, width: profile.width, height: profile.height))
         return context.makeImage()
     }
 
@@ -465,8 +482,10 @@ struct AttachedOverlayView: UIViewRepresentable {
 
 final class OverlayViewport: UIView {
     private var webView: WKWebView
+    private var canvasSize: CGSize
     init(webView: WKWebView) {
         self.webView = webView
+        canvasSize = webView.bounds.size
         super.init(frame: .zero)
         clipsToBounds = true
         isUserInteractionEnabled = false
@@ -476,6 +495,7 @@ final class OverlayViewport: UIView {
         guard webView !== view else { return }
         webView.removeFromSuperview()
         webView = view
+        canvasSize = view.bounds.size
         addSubview(view)
         setNeedsLayout()
     }
@@ -483,8 +503,8 @@ final class OverlayViewport: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         webView.transform = .identity
-        webView.bounds = CGRect(origin: .zero, size: WebOverlayRenderer.canvas)
-        let scale = min(bounds.width / 1920, bounds.height / 1080)
+        webView.bounds = CGRect(origin: .zero, size: canvasSize)
+        let scale = min(bounds.width / canvasSize.width, bounds.height / canvasSize.height)
         webView.transform = CGAffineTransform(scaleX: scale, y: scale)
         webView.center = CGPoint(x: bounds.midX, y: bounds.midY)
     }
