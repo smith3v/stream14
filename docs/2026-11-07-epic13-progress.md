@@ -149,3 +149,15 @@ physical skips, 0 failed; the corrected context-test compile failure is retained
 not counted as a pass. A reviewed draft PR is ready for root publication, with
 F1/F6 receiver/physical/CBR/AMF and later endurance criteria still open. No phone
 execution, media transmission or Google mutation occurred in this integration.
+
+## Connected attempt and attended preparation — 2026-11-08
+
+Owner connected the 13 mini, set Auto-Lock to Never and confirmed unlocked/ready. Prepared normally signed Short47 Debug products; initial signature preflight used the wrong sibling test-bundle path, corrected to embedded app/PlugIns. Initial test invocation then selected ZERO tests: missing parentheses in Swift Testing method selector. Exit0 is not pass; no camera clips were recorded. Stopped the attempt within the selected budget, no actual Google/lock/revoke tests.
+
+Off-phone Xcode enumeration /private/tmp/stream14-short-smoke-enumeration-20261108.json has no errors and exactly one enabled identifier for suite Stream14Tests/ShortPhoneSmokeTests. Commands now use that suite, with explicit one-pass/zero-skip acceptance. Swift Testing method catalogue examples use quoted enumerated identifiers with parentheses; XCTest UI selectors unchanged.
+
+The owner will be available soon for attended tests. The new attended-session card documents exact owner taps, a five-minute local-smoke + sign-in/channel agenda, alternatives and future/not-runnable gates. No additional physical test started while preparing it. Current private attempt evidence /private/tmp/stream14-short-phone-20261108-084609; source8af669f, zero executed tests. Broader integration agents/reviewer most recently hit usage limits; F6 source9097f1e retry-context fix awaits final focused review/results, F7 work remains checkpointed separately.
+
+Latest follow-up: F6 final runtime review at1103a9d/docs0b35a1c found both startup findings resolved and no material issues; corrected 11 affected checks and native build pass. Final handoffd2bfec1 is ready for reviewed draft PR. F7 plan098cdd4 is committed and implementation proceeds without touching the phone.
+
+Prepublication handoff: reviewed runtime1103a9d/docsd2bfec1 now includes the attended card and verified suite selector from PR47ef2dbf3 through the updated native-probe predecessor. This merge changes documentation only; no additional phone invocation occurred. F7 continues in /private/tmp/stream14-epic13-f7-session from reviewed source and must inherit this documentation before its PR.
