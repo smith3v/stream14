@@ -22,7 +22,7 @@ Preserve the original checkout and its private signing/concurrent setup edits. A
 | F8 / #21 | Not started | — | F7 prerequisite |
 | F9 / #22 | Not started | — | F7/F8 prerequisites |
 | F10 / #23 | Not started | — | F4/F7/F8/F9 prerequisites |
-| F11 / #24 | Not started | — | F6/F9 prerequisites |
+| F11 / #24 | Native Mac feasibility probe reviewed at 8503510; production integration pending | codex/issue-24-recovery-feasibility / separate clone | Selected compressed writer, F6/F9 and physical A5 |
 | F12 / #25 | Not started | — | F6/F8/F9/F11 prerequisites |
 | F13 / #26 | Not started | — | Integrated reviewed candidate, service setup and signed delivery |
 | F14 / #27 | Not started | — | Delivered candidate, separately agreed qualification and owner acceptance |
@@ -107,3 +107,13 @@ Short-smoke runtime a7c18e5, evidence 0b92879, branch codex/short-connected-phon
 The master plan records exact prebuild and Debug-only test-without-building commands. No phone was installed/launched; owner availability remains later.
 
 Pipeline integration is progressing in separate non-iCloud clone /private/tmp/stream14-epic13-f6-integration-repo, branch codex/issue-19-shared-media-integration, plan 4c07b75 from F6 predecessor 02dcc66. Native single encoder ownership is approved for draft work; root coordinates reviewed shared-clock patch and immutable fork pin before dependency adoption. Failed iCloud worktree remains preserved. Integration must include the short-smoke predecessor before its PR.
+
+## Coordinator checkpoint — native recovery feasibility (2026-11-08)
+
+Early F11 native research is committed at 8503510 in /private/tmp/stream14-epic13-f11-recovery, branch codex/issue-24-recovery-feasibility. Independent review inspected source, guarded child-process harness, retained run8 media hashes and SDK contracts with no material findings. This does not implement production recovery or close A5/#24.
+
+The Mac-only generated H.264/AAC test uses 320×180 video and mono 48 kHz, not the app profile. Ten-second fragments preserve about 20 of 25 submitted seconds after own-child termination; distinct native passthrough copies preserve compressed payload hashes and decoded counts, originals unchanged. Before-first-fragment files remain unreadable and are retained honestly. See the native recovery report and exact private evidence paths there.
+
+Draft actual F6 pipeline work continues in /private/tmp/stream14-epic13-f6-integration-repo: single native persistent encoder and passthrough migration pass 13 generated-media checks, including independent decoded midpoint markers; current local checkpoint d50d4e5 reviewed with no material findings. Concrete bounded uploader queue ae313e4 has four checks; adapter and full-PR review remain pending. Common-origin patch fedc43b passed separate review, 39 package checks and original-manifest iOS product compilation.
+
+The reviewed minimal fork is now published at https://github.com/smith3v/HaishinKit.swift.git revision 8dc2ecce781d320ef0f2576ff5195411c91505ad, parent official 2.3.0 aa2149df822f2e965adf2410a106db959b2e1962. Root verified all eight changed/new source/test files byte-for-byte against reviewed/validated sources and original Package.swift unchanged. No upstream PR was sent. App adoption must pin that exact revision, document maintenance/notices, run full affected regressions and independent full integration review; no live media or physical acceptance is implied.
