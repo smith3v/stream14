@@ -46,6 +46,7 @@ final class MediaSession {
     private var routeTask: Task<Void, Never>?
 
     private(set) var savedSamples: [ExperimentSample] = []
+    private(set) var recordingsMessage = ""
     private(set) var urlMessage = ""
     private(set) var overlayURL = ""
     private let saveOverlayURL: @MainActor (String) throws -> Void
@@ -159,8 +160,11 @@ final class MediaSession {
     }
 
     func refreshSamples() {
-        do { savedSamples = try ExperimentSample.loadAll() }
-        catch { message = "Saved recordings could not be listed. Files are retained." }
+        do {
+            savedSamples = try ExperimentSample.loadAll()
+            recordingsMessage = ""
+        }
+        catch { recordingsMessage = "Saved recordings could not be listed. Files are retained." }
     }
 
     func deleteSample(_ sample: ExperimentSample) {
@@ -170,11 +174,11 @@ final class MediaSession {
             try sample.delete(in: directory)
             if sampleURL?.lastPathComponent == sample.fileName { sampleURL = nil }
             refreshSamples()
-            message = "Recording deleted from this iPhone. Exported copies are unchanged."
+            recordingsMessage = "Recording deleted from this iPhone. Exported copies are unchanged."
         } catch {
             if let sampleURL, !FileManager.default.fileExists(atPath: sampleURL.path) { self.sampleURL = nil }
             refreshSamples()
-            message = "Could not delete all recording files. Remaining files are kept; you can retry."
+            recordingsMessage = "Could not delete all recording files. Remaining files are kept; you can retry."
         }
     }
 

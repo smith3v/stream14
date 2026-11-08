@@ -115,7 +115,7 @@ final class SetupScreenTests: XCTestCase {
                 let mute = app.buttons["microphoneMute"]
                 scrollTo(mute, in: app)
                 XCTAssertGreaterThanOrEqual(mute.frame.height, 44)
-                let hide = app.switches["Hide overlay manually"]
+                let hide = app.buttons["manualOverlayVisibility"]
                 scrollTo(hide, in: app)
                 let previous = hide.value as? String
                 hide.tap()
@@ -124,10 +124,26 @@ final class SetupScreenTests: XCTestCase {
                 screenshot.name = "Session landscape \(orientation.rawValue) largest text \(large)"
                 screenshot.lifetime = .keepAlways
                 add(screenshot)
+                scrollTo(app.buttons["goLive"], in: app)
                 try auditInterface(app)
                 app.terminate()
             }
         }
+    }
+
+    func testFailedDeletionRetainsRowAndExplainsRetry() throws {
+        let identifier = ProcessInfo.processInfo.environment["STREAM14_DELETE_FAILURE_FIXTURE_ID"]
+        try XCTSkipUnless(identifier != nil, "Seed a nonregular-artifact Simulator fixture first.")
+        let app = fixtureApp()
+        app.tabBars.buttons["Recordings"].tap()
+        let target = app.buttons["deleteRecording-" + identifier!]
+        scrollTo(target, in: app)
+        target.tap()
+        app.buttons["Delete recording"].tap()
+        let status = app.staticTexts["recordingsStatus"]
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+        XCTAssertTrue(status.label.contains("Remaining files are kept; you can retry"))
+        XCTAssertTrue(target.exists)
     }
 
     func testDeviceRearLensSelector() throws {
@@ -330,7 +346,7 @@ final class SetupScreenTests: XCTestCase {
                 screenshot.name = "Recordings \(orientation.rawValue) large text \(largeText)"
                 screenshot.lifetime = .keepAlways
                 add(screenshot)
-                try auditVisibleRecordingContent(in: app)
+                try auditInterface(app)
                 let missingPlay = app.buttons["playRecording-" + missingID]
                 scrollTo(missingPlay, in: app)
                 XCTAssertFalse(missingPlay.isEnabled)
@@ -347,7 +363,7 @@ final class SetupScreenTests: XCTestCase {
                 footer.name = "Footer \(orientation.rawValue) large text \(largeText)"
                 footer.lifetime = .keepAlways
                 add(footer)
-                try auditVisibleRecordingContent(in: app)
+                try auditInterface(app)
             }
         }
     }
@@ -377,38 +393,22 @@ final class SetupScreenTests: XCTestCase {
 
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(element.waitForExistence(timeout: 5))
-        for _ in 0..<24 {
-            let scroll = app.scrollViews.firstMatch
+        for attempt in 0..<24 {
+            let scroll = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.collectionViews.firstMatch
             let raw = scroll.frame.intersection(app.frame)
             let top = max(raw.minY, app.navigationBars.firstMatch.frame.maxY)
             let bottom = app.tabBars.firstMatch.exists ? min(raw.maxY, app.tabBars.firstMatch.frame.minY) : raw.maxY
             let viewport = CGRect(x: raw.minX, y: top, width: raw.width, height: max(1, bottom - top)).insetBy(dx: 0, dy: 8)
+            if attempt == 0 { print("F10 scroll viewport: \(viewport), raw: \(raw), tab: \(app.tabBars.firstMatch.frame), target: \(element.frame)") }
             if viewport.contains(element.frame), element.isHittable { return }
-            let distance = max(-viewport.height / 2,
-                               min(viewport.height / 2, viewport.midY - element.frame.midY))
-            let start = app.coordinate(withNormalizedOffset: .zero)
-                .withOffset(CGVector(dx: viewport.midX, dy: viewport.midY))
-            start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: distance)))
+            let distance = max(-60, min(60, viewport.midY - element.frame.midY))
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let start = origin.withOffset(CGVector(dx: viewport.midX, dy: viewport.midY))
+            let end = origin.withOffset(CGVector(dx: viewport.midX, dy: viewport.midY + distance))
+            start.press(forDuration: 0.05, thenDragTo: end,
+                        withVelocity: .slow, thenHoldForDuration: 0.2)
         }
         XCTAssertTrue(element.isHittable)
-    }
-
-    private func auditVisibleRecordingContent(in app: XCUIApplication) throws {
-        let viewport = app.scrollViews.firstMatch.frame
-        // The audit can adjust scrolling before invoking its issue handler. Keep
-        // the geometry of the screenshot it is about to inspect, not that later UI.
-        let textFrames = app.staticTexts.allElementsBoundByIndex.map { (label: $0.label, frame: $0.frame) }
-        try app.performAccessibilityAudit { issue in
-            // Scrolling normally clips a line at the viewport edge. The contrast
-            // audit can sample that covered text against the fixed WebKit surface.
-            // Exempt only that case; fully visible text and every control still audit.
-            guard issue.auditType == .contrast, let element = issue.element,
-                  element.elementType == .staticText else { return false }
-            let matches = textFrames.filter { $0.label == element.label }
-            guard matches.count == 1, let frame = matches.first?.frame else { return false }
-            return frame.intersects(viewport) && !viewport.contains(frame)
-                && frame.minX >= viewport.minX && frame.maxX <= viewport.maxX
-        }
     }
 
     func testDeniedCameraShowsSettingsGuidance() throws {
@@ -495,7 +495,7 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertEqual(app.staticTexts["setupStatus"].frame.minY - app.navigationBars["stream14"].frame.maxY,
                        16, accuracy: 2)
         XCTAssertTrue(app.staticTexts["overlayStatus"].exists)
-        XCTAssertTrue(app.switches["Hide overlay manually"].exists)
+        XCTAssertTrue(app.buttons["manualOverlayVisibility"].exists)
         XCTAssertEqual(
             app.staticTexts["setupExplanation"].label,
             "Record locally without Google, or choose a scheduled YouTube event before confirming Go Live. Keep the phone in landscape with the rear camera upright."

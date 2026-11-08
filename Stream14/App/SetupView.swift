@@ -173,23 +173,28 @@ struct SetupView: View {
             let wide = geometry.size.width > geometry.size.height && !dynamicTypeSize.isAccessibilitySize
             if wide {
                 HStack(alignment: .top, spacing: 12) {
-                    previewPanel.frame(maxWidth: .infinity)
+                    previewPanel(width: max(1, geometry.size.width - max(260, geometry.size.width * 0.4) - 28), maximumHeight: geometry.size.height)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     ScrollView { sessionControls.padding(.trailing) }
                         .frame(width: max(260, geometry.size.width * 0.4))
                 }.padding(.leading)
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) { previewPanel; sessionControls }.padding()
+                    VStack(alignment: .leading, spacing: 16) {
+                        previewPanel(width: max(1, geometry.size.width - 32))
+                        sessionControls
+                    }.padding()
                 }
             }
         }
     }
 
-    private var previewPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func previewPanel(width: CGFloat, maximumHeight: CGFloat? = nil) -> some View {
+        let fittedWidth = min(width, (maximumHeight ?? .greatestFiniteMagnitude) * 16.0 / 9.0)
+        return VStack(alignment: .leading, spacing: 8) {
             if experiment.phase != .idle {
                 ExperimentPreview(view: experiment.preview)
-                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .frame(width: fittedWidth, height: fittedWidth * 9.0 / 16.0)
                     .background(.black)
                     .accessibilityLabel("Composed camera preview with web overlay")
                     .accessibilityIdentifier("cameraPreview")
@@ -281,11 +286,16 @@ struct SetupView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Overlay: " + experiment.renderer.status).font(.caption)
                 .accessibilityIdentifier("overlayStatus")
-            Toggle(isOn: Binding(
-                get: { experiment.renderer.health.manuallyHidden },
-                set: { experiment.renderer.setManuallyHidden($0) })) {
-                    Text("Hide overlay manually").frame(minHeight: 44)
-                }
+            Button {
+                experiment.renderer.setManuallyHidden(!experiment.renderer.health.manuallyHidden)
+            } label: {
+                Label(experiment.renderer.health.manuallyHidden ? "Show overlay" : "Hide overlay manually",
+                      systemImage: experiment.renderer.health.manuallyHidden ? "eye" : "eye.slash")
+                    .frame(minHeight: 44)
+            }
+            .accessibilityLabel("Manual overlay visibility")
+            .accessibilityValue(experiment.renderer.health.manuallyHidden ? "Hidden" : "Shown")
+            .accessibilityIdentifier("manualOverlayVisibility")
             if !experiment.overlayURL.isEmpty {
                 Button("Reload overlay", systemImage: "arrow.clockwise") { experiment.renderer.reload() }
                     .frame(minHeight: 44).accessibilityIdentifier("reloadOverlay")
@@ -310,6 +320,9 @@ struct SetupView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Recordings").font(.headline)
                 backupFailureWarning
+                if !experiment.recordingsMessage.isEmpty {
+                    Text(experiment.recordingsMessage).accessibilityIdentifier("recordingsStatus")
+                }
                 if experiment.savedSamples.isEmpty { Text("No recordings on this iPhone.") }
                 ForEach(experiment.savedSamples) { sample in
                     RecordingRow(sample: sample, canDelete: experiment.canDeleteSamples,
