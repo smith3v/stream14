@@ -584,6 +584,33 @@ supported, and use its returned RTMPS endpoint. Track the created ID immediately
 retrying a later bind does not repeatedly create resources. An ambiguous create
 response requires reconciliation or operator action, not blind repeated insertion.
 
+F5 implementation (2026-11-07): `YouTubeBinding.prepareConfirmed` is an explicit
+component for the later Go Live coordinator; listing, selection and preview do not
+invoke it. It checks the actual channel and selected event again, then checks all
+pages of `broadcastStatus=all,broadcastType=all` for other unfinished bindings.
+Existing reusable streams are not presumed shared: known ready/inactive, healthy,
+profile-compatible streams can be reused only after current dedication is established.
+Unknown lifecycle/health/reuse/compatibility information fails closed. Newly created
+streams request RTMP with paired variable resolution/frame rate and `isReusable=false`.
+
+An atomic, backup-excluded local journal stores only operation/channel/event/profile
+and known created-resource IDs plus phase, independently for each channel/event.
+Completing one event does not block another or discard an older unresolved create.
+The `inserting` phase is written before
+POST; a successful response ID is saved before cancellation/account-change rejection.
+Malformed/timeout/server-failure insert results become unresolved and never trigger
+another blind insert, including after relaunch. Definitive API rejection or credential
+preflight failure permits a later explicit retry. Known created IDs survive binding
+failure and are read before retrying; binds are sent once and reconciled by event ID.
+The workflow has one in-flight operation and a 45-second deadline with cancellation.
+No automatic remote deletion/unbinding or editorial/auto-start/auto-stop updates occur.
+When Studio resolves an ambiguous request by binding the event, verified readback
+marks that journal entry prepared without inventing a known app-created ID. If that
+event later becomes unbound, the prior unknown-create guard still prevents blind insertion.
+Raw responses and credentials are not persisted; credential values redact diagnostic
+descriptions/reflection. Physical signed-account/unlisted-event API acceptance remains
+pending; deterministic fixtures do not establish live service acceptance.
+
 Fetch `rtmpsIngestionAddress` and the stream name/key from YouTube; do not manufacture
 an insecure RTMP fallback. Use TLS certificate and hostname validation. RTMPS and
 the relevant ingestion fields are described in [YouTube's ingestion guide][rtmps].

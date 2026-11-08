@@ -1461,3 +1461,24 @@ after authorization, with an explicit 44-point target. The final recheck passed
 `/private/tmp/stream14-f3-ui-recheck.xcresult`. Private screenshots were inspected;
 authenticated event rows and physical VoiceOver remain pending. The initial failed
 UI result is retained, and no audit issue was suppressed.
+
+## F5 safe ingestion preparation (2026-11-07)
+
+The [F5 handoff](2026-11-07-safe-ingestion-implementation.md) documents a
+write-once/reconcile component for the later confirmed Go Live flow. Merely
+connecting, refreshing/selecting an event or opening local preview does not
+create or bind streams. Auto-stop must already be disabled in YouTube Studio;
+this component never silently changes event settings.
+
+Pending mutation IDs and phases are stored in a small backup-excluded local
+journal. An ambiguous creation is not repeated blindly after retry/relaunch.
+If the app reports an unknown creation outcome, inspect streams in Studio and
+resolve the intended binding there; do not repeatedly create new resources.
+A known created ID survives binding failures and is reused on reconciliation.
+No stream key or token is stored in that journal, and no remote resources or
+recordings are automatically deleted.
+
+Fixture tests use no real Google service or camera. Actual signed-account
+acceptance requires a dedicated unlisted event and explicit operator action;
+F5 has no standalone phone runner or Go Live UI yet. The later F7 integration
+must make those checks executable before a connected-phone test is scheduled.
