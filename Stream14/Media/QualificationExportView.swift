@@ -22,7 +22,7 @@ struct QualificationExportView: View {
                     Label("Export qualification summary", systemImage: "chart.xyaxis.line")
                         .frame(minHeight: 44)
                 }
-                Text("Numeric media and memory summary only. Last checkpoint: \(Int(report.elapsedSeconds)) seconds; \(report.end == .stopped ? "stopped" : "may be incomplete").")
+                Text("Numeric media and memory summary only. Last checkpoint: \(report.elapsedSeconds.formatted(.number.precision(.fractionLength(0)))) seconds; \(report.end == .stopped ? "stopped" : "may be incomplete").")
                     .font(.caption)
             } else {
                 Button("Load qualification summary") {

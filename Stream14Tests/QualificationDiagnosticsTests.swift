@@ -62,6 +62,17 @@ struct QualificationDiagnosticsTests {
         var rejected = false
         do { _ = try await checkpoint.load(id: id, directory: directory) } catch { rejected = true }
         #expect(rejected)
+        object["schema"] = 1
+        object["profile"] = secrets[0]
+        try JSONSerialization.data(withJSONObject: object).write(to: QualificationCheckpoint.url(id: id, directory: directory))
+        rejected = false
+        do { _ = try await checkpoint.load(id: id, directory: directory) } catch { rejected = true }
+        #expect(rejected)
+        try Data(repeating: 32, count: QualificationCheckpoint.maximumBytes + 1)
+            .write(to: QualificationCheckpoint.url(id: id, directory: directory))
+        rejected = false
+        do { _ = try await checkpoint.load(id: id, directory: directory) } catch { rejected = true }
+        #expect(rejected)
         try Data("malformed".utf8).write(to: QualificationCheckpoint.url(id: id, directory: directory))
         rejected = false
         do { _ = try await checkpoint.load(id: id, directory: directory) } catch { rejected = true }

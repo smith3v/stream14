@@ -33,11 +33,13 @@ xcrun swiftc -O -swift-version 6 -module-cache-path /private/tmp/stream14-analys
 ```
 
 The tool streams compressed track PTS and independently decodes every video/audio
-buffer. `finishedReading` must be true for all tracks; failure is unreadable or
+buffer. `finishedReading` must be true and invalid timestamp counts must be zero for all
+tracks; exit 2 retains partial JSON but means analysis failed. Failure is unreadable or
 incomplete, never a repaired/complete claim. Compare PTS gaps/estimated 30 Hz missing
 intervals with measured raw encoder rejections and file/transport counters; do not
 sum them as independent losses. Audio sample units differ between compressed and
-decoded buffers. It never remuxes, transcodes or edits the original. Analysis is
+decoded buffers. Empty native boundary-marker buffers are counted separately;
+batched AAC/PCM timing is expanded using native sample timing, not buffer spacing. It never remuxes, transcodes or edits the original. Analysis is
 private; terminal errors deliberately omit file paths and SDK descriptions.
 
 For overhead: with an agreed short 13 mini run and fixed scene/profile/power/network,

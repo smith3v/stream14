@@ -51,6 +51,11 @@ struct LocalRecorderTests {
             if injection == .none {
                 let metrics = try await recorder.finish()
                 #expect(metrics.videoWritten > 0)
+                #expect(metrics.offeredVideo == metrics.videoWritten)
+                #expect(metrics.offeredAudio == metrics.audioWritten)
+                #expect((metrics.startupHighWaterPackets ?? 0) <= 16)
+                #expect((metrics.startupHighWaterBytes ?? 0) <= 2 * 1024 * 1024)
+                #expect(metrics.videoDropped == 0 && metrics.audioDropped == 0)
                 let asset = AVURLAsset(url: url)
                 #expect(try await asset.load(.duration).seconds > 0.5)
                 #expect(try await asset.loadTracks(withMediaType: .video).count == 1)
