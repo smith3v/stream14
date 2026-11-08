@@ -41,3 +41,50 @@ Checked official Google references on 2026-11-08: [transition](https://developer
 ## Validation and remaining acceptance
 
 Implementation and validation pending. No phone, receiver, OAuth callback, real unlisted event, physical A/V sync/performance/CBR or long-run acceptance is claimed. Routine phone validation remains FIVE MINUTES TOTAL including setup/wrap-up; longer qualification needs separate agreement. Original recordings are retained.
+
+## Implemented handoff
+
+- `Stream14/Broadcast/BroadcastSession.swift`: `requestConfirmation(channel:event:)` is side-effect free; `confirmStart(_:)` owns startup; `cancelStartup()` retains healthy recording; `confirmEnd()` stops local capture independently; `reconcile()` is read only; `accountChanged()` invalidates stale work. UI states are idle/starting/waitingForIngestion/goingLive/live/needsReconciliation/ending/ended, independent of MediaSession's real file/upload indicators.
+- `BroadcastMedia(session:)` captures the **same** MediaSession used by SetupView. Fixture closures isolate only media side effects; production still uses the actual shared encoder/writer/RTMPS path. App ownership preserves the existing Debug short-smoke nil-SDK/no-Keychain/no-permission host factory and Release behavior.
+- `MediaSession.hasStartedWriting` exposes actual writer admission. Its broadcast capture/overlay checks and configuration lock supply preflight without re-requesting permissions or creating another capture instance.
+- `YouTubeClient.transitionBroadcast(eventID:channelID:to:generation:)` is a guarded, bodyless write-once POST; only `.live` and `.complete` are available. It validates event/channel identity; lifecycle truth still requires read reconciliation.
+- `PendingRemoteBroadcastStore` saves only unresolved channel/event IDs plus optional transition type/mutation UUID using atomic protected backup-excluded storage. A transition marker is claimed before dispatch. Definite HTTP rejection can release that marker; uncertain outcome or success not yet observed by read cannot. A ready/inactive read does not erase an ambiguous transition, including on relaunch. The same process also tracks outstanding mutations until their actual await settles, so a UI deadline cannot enable duplicate writes while the original request hangs.
+- `BroadcastDeadline` bounds control requests without waiting for a cancellation-ignoring losing task. Every remote response is generation checked. Only one work task/timer exists per control request, never per media callback. Native file finalization remains separately owned by MediaSession; the coordinator never labels a partial file complete.
+- `BroadcastControlsView` adds explicit Go Live/End confirmations, independent Upload/YouTube status, startup cancellation, read reconciliation and Studio. Existing local rehearsal and deliberate file deletion remain available. Active account controls are end-first; stopped/uncertain sessions can reconnect for read reconciliation. Native permission strings and the app-linked privacy policy describe the now-reachable confirmed YouTube media flow.
+
+## Review and validation record
+
+Independent actual-source review identified a material race: a cancelled/timed-out live request could remain outstanding while an early upcoming/inactive read cleared the old two-ID journal. Fixed in `3de0c98` with actual-request tracking, durable mutation barriers and three regressions that reconcile/retry **before** releasing the original held request, plus uncertain-response/relaunch coverage. The review also caught outdated local-only permission/policy disclosures, corrected in the same commit. Focused re-review outcome is recorded below when complete.
+
+Executed with Xcode 27.2 (27B52), native iOS/Simulator 27.2 SDK, on the isolated `/private/tmp/stream14-epic13-f7-session` clone. Packages are the unchanged exact F6 pins. Original iCloud checkout/private signing/configuration/recordings were untouched. Commands below use copied isolated package caches and no owner Google configuration.
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /private/tmp/stream14-f7-release \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -derivedDataPath /private/tmp/stream14-f7-simulator \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -disableAutomaticPackageResolution -only-testing:Stream14Tests \
+  -resultBundlePath /private/tmp/stream14-f7-hosted-final.xcresult test
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /private/tmp/stream14-f7-ios-tests \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build-for-testing
+```
+
+- Unsigned normal Release **passes**, `/private/tmp/stream14-f7-release-final.log`. Built Info.plist camera/microphone descriptions were inspected and match the confirmed broadcasting disclosure.
+- Focused final F7 suite: **21 pass, zero fail/skip**, `/private/tmp/stream14-f7-fixtures-2.xcresult` and matching `.log`. It covers side-effect-free confirmation, actual writer order/readiness failure, changed capture/overlay/profile/URL/metadata, manual/auto, transport-is-not-live, every startup failure retaining a healthy file, ambiguous/late/unknown states, stale account/late-read isolation, duplicate actions, cancellation at record/channel/binding/upload/transition, held End independent local stop, read-before-retry, durable relaunch/journal corruption and outstanding/ambiguous mutation barriers.
+- Full hosted suite: **120 pass, seven explicit opt-in skips, zero fail** (127 total, 24 suites), `/private/tmp/stream14-f7-hosted-final.xcresult` and `.log`. Physical publication/capture, real-reference and short-phone smoke checks remain skipped, not accepted. Generated-media tests are laptop fixtures, not phone evidence.
+- Two noncapture accessibility UI tests **pass**, portrait and largest-text landscape: `/private/tmp/stream14-f7-ui-1.xcresult`/`.log`, alongside the then-current 18 F7 checks. The subsequent barrier/disclosure fix changes no rendered UI layout; final hosted tests cover its runtime behavior. Authenticated channel/event confirmations and spoken physical VoiceOver are still pending.
+- `git diff --check`, project plist syntax and relative Markdown link checks pass. Initial sandboxed dependency resolution failed because Xcode/Simulator services and network were unavailable there; native validation reused the reviewed copied package cache with normal Xcode services. Initial SwiftUI typecheck timeout was resolved by extracting BroadcastControlsView. Earlier failure logs are retained, with no false successful build claim.
+
+The iPhone SDK test-build outcome and final review outcome are appended after completion. No signed phone install/launch, real Google request, RTMPS socket, camera upload, file deletion, TestFlight delivery or physical qualification was performed by F7. Actual unlisted channel/event start/end, receiver overlay/audio, OAuth callback/Keychain and 13 mini performance/sync/CBR/endurance remain owner-dependent. No acceptance checkbox in #20/A3/A6 is closed on fixtures alone.
+
+Normal generic-iPhone SDK `build-for-testing` also **passes**, with app and test bundle compiled and linked, `/private/tmp/stream14-f7-ios-tests.log`. It performs no signing/install/device operation. Simulator lease was released to the root coordinator after the final hosted run.
