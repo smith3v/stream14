@@ -728,8 +728,7 @@ final class MediaSession {
         }
     }
 
-    private func finishRecording(keepEncoding: Bool = false) async {
-        qualificationTask?.cancel(); qualificationTask = nil
+    private func finishRecording(keepEncoding: Bool = false, closingSession: Bool = false) async {
         await checkpointQualification()
         if !keepEncoding, let sharedEncoder {
             await mixer.removeOutput(sharedEncoder)
@@ -740,7 +739,10 @@ final class MediaSession {
             encoderErrorTask?.cancel(); encoderErrorTask = nil
         }
         guard let recorder else {
-            if !keepEncoding { restoreIdleTimer() }
+            if !keepEncoding {
+                if !closingSession { await finishQualification() }
+                restoreIdleTimer()
+            }
             return
         }
         mediaDestinations?.detachRecorder()
@@ -781,14 +783,28 @@ final class MediaSession {
         }
         errorTask?.cancel()
         errorTask = nil
-        await checkpointQualification(stopped: true)
-        qualificationReport = nil
-        qualificationStart = nil
+        await checkpointQualification()
         self.recorder = nil
+        if !keepEncoding && !closingSession { await finishQualification() }
         refreshSamples()
         startedAt = nil
         if !keepEncoding { restoreIdleTimer() }
     }
+
+    private func finishQualification() async {
+        qualificationTask?.cancel(); qualificationTask = nil
+        await checkpointQualification(stopped: true)
+        qualificationReport = nil
+        qualificationStart = nil
+    }
+
+    #if DEBUG
+    func beginQualificationFixture(transport: QualificationTransportCounter) {
+        startQualification()
+        qualificationTransport = transport
+    }
+    func checkpointQualificationFixture() async { await checkpointQualification() }
+    #endif
 
     private func startQualification() {
         qualificationTask?.cancel()
@@ -825,6 +841,12 @@ final class MediaSession {
                 startupHighWaterBytes: metrics.startupHighWaterBytes ?? 0,
                 startupHighWaterPackets: metrics.startupHighWaterPackets ?? 0)
         }
+        report.recording = switch sample?.status {
+        case .completed: .completed
+        case .interrupted: .interrupted
+        case .failed: .failed
+        default: .pending
+        }
         report.transport = qualificationTransport.snapshot
         report.end = stopped ? .stopped : .checkpoint
         qualificationReport = report
@@ -849,7 +871,7 @@ final class MediaSession {
         // Socket shutdown never delays file finalization. This is one control
         // task per stop operation, not a retained task per media callback.
         let uploadClosing = interruptedUploadClosing ?? publisher.map { publisher in Task { await publisher.stop() } }
-        await finishRecording()
+        await finishRecording(closingSession: true)
         mediaDestinations = nil
         overlayTask?.cancel()
         overlayTask = nil
@@ -879,6 +901,7 @@ final class MediaSession {
             _ = try? await withBroadcastDeadline(seconds: 3) { await uploadClosing.value }
         }
         interruptedUploadClosing = nil
+        await finishQualification()
         uploadAffinity.endCaptureSession()
         uploadState = .idle
         phase = .idle

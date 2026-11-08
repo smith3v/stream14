@@ -9,6 +9,7 @@ nonisolated struct QualificationReport: Codable, Sendable {
     enum Codec: String, Codable, Sendable { case h264AACMP4 }
     enum Thermal: Int, Codable, Sendable { case nominal, fair, serious, critical, unknown }
     enum End: String, Codable, Sendable { case checkpoint, stopped }
+    enum Recording: String, Codable, Sendable { case pending, completed, interrupted, failed }
     struct Observation: Codable, Sendable {
         let elapsedSeconds: Double
         let chargedFootprintBytes: UInt64?
@@ -44,6 +45,7 @@ nonisolated struct QualificationReport: Codable, Sendable {
         var skippedBeforeOrigin = 0
         var rejectedPackets = 0
         var discardedAdmittedPackets = 0
+        var unresolvedPackets = 0
         var highWaterBytes = 0
         var highWaterPackets = 0
         mutating func add(_ other: Self) {
@@ -62,6 +64,7 @@ nonisolated struct QualificationReport: Codable, Sendable {
     let profile: Profile
     var codec = Codec.h264AACMP4
     var end = End.checkpoint
+    var recording = Recording.pending
     var elapsedSeconds = 0.0
     var observationCount = 0
     var peakChargedFootprintBytes: UInt64?
@@ -173,6 +176,7 @@ nonisolated final class QualificationTransportCounter: Sendable {
             value.skippedBeforeOrigin += new.skippedBeforeOrigin - old.skippedBeforeOrigin
             value.rejectedPackets += new.rejectedPackets - old.rejectedPackets
             value.discardedAdmittedPackets += new.discardedAdmittedPackets - old.discardedAdmittedPackets
+            value.unresolvedPackets = max(0, value.admittedPackets - value.acknowledgedPackets - value.discardedAdmittedPackets)
             value.highWaterBytes = max(value.highWaterBytes, new.highWaterBytes)
             value.highWaterPackets = max(value.highWaterPackets, new.highWaterPackets)
         }
