@@ -38,6 +38,7 @@ final class SetupScreenTests: XCTestCase {
         app.tabBars.buttons["Session"].tap()
         XCTAssertTrue(app.buttons["openExperiment"].exists)
         XCTAssertFalse(app.buttons["endBroadcast"].exists)
+        scrollTo(app.buttons["goLive"], in: app)
         try auditInterface(app)
     }
 
@@ -106,7 +107,12 @@ final class SetupScreenTests: XCTestCase {
                 XCUIDevice.shared.orientation = orientation
                 let app = fixtureApp("ready", largeText: large)
                 app.tabBars.buttons["Session"].tap()
-                let mute = app.switches["microphoneMute"]
+                if !large {
+                    let preview = app.descendants(matching: .any).matching(identifier: "cameraPreview").firstMatch
+                    XCTAssertTrue(preview.waitForExistence(timeout: 5))
+                    XCTAssertEqual(preview.frame.width / preview.frame.height, 16.0 / 9.0, accuracy: 0.05)
+                }
+                let mute = app.buttons["microphoneMute"]
                 scrollTo(mute, in: app)
                 XCTAssertGreaterThanOrEqual(mute.frame.height, 44)
                 let hide = app.switches["Hide overlay manually"]
@@ -372,8 +378,12 @@ final class SetupScreenTests: XCTestCase {
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(element.waitForExistence(timeout: 5))
         for _ in 0..<24 {
-            if element.isHittable { break }
-            let viewport = app.scrollViews.firstMatch.frame.intersection(app.frame)
+            let scroll = app.scrollViews.firstMatch
+            let raw = scroll.frame.intersection(app.frame)
+            let top = max(raw.minY, app.navigationBars.firstMatch.frame.maxY)
+            let bottom = app.tabBars.firstMatch.exists ? min(raw.maxY, app.tabBars.firstMatch.frame.minY) : raw.maxY
+            let viewport = CGRect(x: raw.minX, y: top, width: raw.width, height: max(1, bottom - top)).insetBy(dx: 0, dy: 8)
+            if viewport.contains(element.frame), element.isHittable { return }
             let distance = max(-viewport.height / 2,
                                min(viewport.height / 2, viewport.midY - element.frame.midY))
             let start = app.coordinate(withNormalizedOffset: .zero)

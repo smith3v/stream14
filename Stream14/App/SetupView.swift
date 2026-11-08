@@ -21,42 +21,28 @@ struct SetupView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .top) {
-                // Keep WebKit attached at a nonzero size for snapshots, covered by
-                // the opaque scroll surface so it takes no separate layout space.
-                AttachedOverlayView(renderer: experiment.renderer)
-                    .frame(height: 60)
-                    .accessibilityHidden(true)
-                TabView(selection: $destination) {
-                    Tab("Preparation", systemImage: "checklist", value: Destination.preparation) {
-                        if destination == .preparation { preparationScreen }
-                    }
-                    Tab("Session", systemImage: "video", value: Destination.session) {
-                        if destination == .session { sessionScreen }
-                    }
-                    Tab("Recordings", systemImage: "film.stack", value: Destination.recordings) {
-                        if destination == .recordings { recordingsScreen }
-                    }
+        ZStack(alignment: .top) {
+            // Keep WebKit attached at a nonzero size for snapshots, covered by
+            // the opaque scroll surface so it takes no separate layout space.
+            AttachedOverlayView(renderer: experiment.renderer)
+                .frame(height: 60)
+                .accessibilityHidden(true)
+            TabView(selection: $destination) {
+                Tab("Preparation", systemImage: "checklist", value: Destination.preparation) {
+                    if destination == .preparation { navigationScreen(preparationScreen) }
                 }
-                .background(Color(uiColor: .systemBackground))
-                .buttonStyle(.bordered)
-                .tint(Color.primary)
-                .controlSize(.large)
-            }
-            .navigationTitle("stream14")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                Button {
-                    overlayURLDraft = experiment.overlayURL
-                    showingOverlayTest = true
-                } label: {
-                    Image(systemName: "globe").frame(width: 44, height: 44)
+                Tab("Session", systemImage: "video", value: Destination.session) {
+                    if destination == .session { navigationScreen(sessionScreen) }
                 }
-                    .accessibilityLabel("Overlay settings")
-                    .accessibilityIdentifier("testWebOverlay")
-
+                Tab("Recordings", systemImage: "film.stack", value: Destination.recordings) {
+                    if destination == .recordings { navigationScreen(recordingsScreen) }
+                }
             }
+            .background(Color(uiColor: .systemBackground))
+            .buttonStyle(.bordered)
+            .tint(Color.primary)
+            .controlSize(.large)
+        }
             .alert("Delete this recording?", isPresented: Binding(
                 get: { pendingDeletion != nil },
                 set: { if !$0 { pendingDeletion = nil } }),
@@ -131,6 +117,27 @@ struct SetupView: View {
                     experiment.interrupt(.background)
                 }
             }
+    }
+
+    private func navigationScreen<Content: View>(_ content: Content) -> some View {
+        NavigationStack {
+            GeometryReader { bounds in
+                content
+                    .frame(width: bounds.size.width, height: bounds.size.height)
+                    .clipped()
+            }
+                .navigationTitle("stream14")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    Button {
+                        overlayURLDraft = experiment.overlayURL
+                        showingOverlayTest = true
+                    } label: {
+                        Image(systemName: "globe").frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Overlay settings")
+                    .accessibilityIdentifier("testWebOverlay")
+                }
         }
     }
 
@@ -186,6 +193,7 @@ struct SetupView: View {
                     .background(.black)
                     .accessibilityLabel("Composed camera preview with web overlay")
                     .accessibilityIdentifier("cameraPreview")
+                    .clipped()
 
             }
             if experiment.phase == .idle {
@@ -337,14 +345,16 @@ struct SetupView: View {
 
     @ViewBuilder private var mediaControls: some View {
                     if experiment.phase == .preview || experiment.phase == .recording {
-                        Toggle(isOn: Binding(
-                            get: { experiment.microphoneMuted },
-                            set: { value in Task { await experiment.setMicrophoneMuted(value) } })) {
-                                Text("Mute microphone").frame(minHeight: 44)
-                            }
-                            .frame(minHeight: 44)
-                            .disabled(!experiment.canAdjustMedia)
-                            .accessibilityIdentifier("microphoneMute")
+                        Button {
+                            Task { await experiment.setMicrophoneMuted(!experiment.microphoneMuted) }
+                        } label: {
+                            Label(experiment.microphoneMuted ? "Unmute microphone" : "Mute microphone",
+                                  systemImage: experiment.microphoneMuted ? "mic.slash" : "mic")
+                                .frame(minHeight: 44)
+                        }
+                        .disabled(!experiment.canAdjustMedia)
+                        .accessibilityValue(experiment.microphoneMuted ? "Muted" : "On")
+                        .accessibilityIdentifier("microphoneMute")
                         ProgressView(value: experiment.microphoneLevel) {
                             Text(experiment.microphoneMuted ? "Microphone muted" : "Microphone level")
                         }
