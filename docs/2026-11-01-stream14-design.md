@@ -732,6 +732,17 @@ Simulator checks; these are not physical or receiver evidence. See the
 for retained failures, proposed bounds and unresolved adoption/qualification gates.
 No production encoding, transport or recording-lifecycle selection changes yet.
 
+On 2026-11-08 the owner/root authorized a draft app-owned single native encoder
+following the existing HaishinKit mixer. A public library codec exposure would
+also need bounded compressed callbacks, explicit owned AAC buffers and independent
+codec lifetime/error reporting; changing access levels alone is insufficient. The
+native candidate keeps library camera/composition/preview and replaces the raw
+writer encoding, with independently owned passthrough MP4 and bounded RTMPS
+consumers. See the [integration plan](2026-11-08-shared-media-integration-implementation.md).
+This decision does not pass F1, adopt a fork, enable operator publishing, or establish
+physical realtime/sync/resource evidence. Common transport epoch and package review
+remain prerequisites to an immutable production dependency selection.
+
 ## 7. Architecture, ownership, and interfaces
 
 Use one Xcode iOS app target plus focused unit and UI test targets. Keep small
