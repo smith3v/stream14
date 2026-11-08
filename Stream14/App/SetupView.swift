@@ -53,7 +53,7 @@ struct SetupView: View {
                     }
                     Button("Cancel", role: .cancel) { pendingDeletion = nil }
                 } message: { sample in
-                    Text("Permanently remove the recording from \(sample.created.formatted(date: .abbreviated, time: .standard)) and its metadata from this iPhone? This cannot be undone. Copies already exported to Files are kept.")
+                    Text("Permanently remove the recording from \(sample.created.formatted(date: .abbreviated, time: .standard)) and all its recovery copies and metadata from this iPhone? This cannot be undone. Copies already exported to Files are kept.")
                 }
             .sheet(item: $playback) { selection in
                 SamplePlayback(url: selection.url)
@@ -327,7 +327,10 @@ struct SetupView: View {
                 ForEach(experiment.savedSamples) { sample in
                     RecordingRow(sample: sample, canDelete: experiment.canDeleteSamples,
                                  play: { playback = PlaybackSelection(url: $0) },
-                                 delete: { pendingDeletion = sample })
+                                 delete: { pendingDeletion = sample },
+                                 recovering: experiment.recoveringSampleID == sample.id,
+                                 recover: { Task { await experiment.recoverSample(sample) } },
+                                 deleteRecovery: { experiment.deleteRecovery($0, from: sample) })
                     Divider()
                 }
                 Text("Export to keep a copy outside the app. Deleting the app removes its local recordings.").font(.footnote)
