@@ -441,3 +441,10 @@ because the last revocation left the app disconnected. Then, only when prepared
 and explicitly operator-confirmed, S1 short Unlisted start/receiver/End. Keep the
 remaining physical inventory pending, five-minute TOTAL visits, retained originals
 and separately agreed A2/A7. Issue #26/epic #13 are not complete from delivery alone.
+
+
+The reviewed distribution record is published as
+[PR #61](https://github.com/smith3v/stream14/pull/61), targeting main. The owner
+chose **Later** for the next S0 five-minute setup-only visit. That check did not
+start; do not infer policy-link, reauthorization, camera or broadcast results from
+installation. Resume with the existing attended cards when the owner is available.
