@@ -353,3 +353,30 @@ separately. Phone/session/endurance gates remain unchanged: app disconnected aft
 revocation, five-minute TOTAL routine attended budget, explicit publishing action,
 retained originals and separate agreement for longer runs. No phone/camera/mic,
 provider API or App Store mutation occurred in this packaging stage.
+
+
+## Published handoff and next resume — 2026-11-09
+
+Reviewed PRs now target main in merge order:
+[#58 diagnostics](https://github.com/smith3v/stream14/pull/58),
+[#59 policy/preparation](https://github.com/smith3v/stream14/pull/59), then
+[#60 release 0.3 (4) and phone cards](https://github.com/smith3v/stream14/pull/60).
+They were published without automatic merging. The release archive source remains
+`1ae3f87`; later handoff/card integration changes documentation only. The actual
+app/project/test/config tree remains identical to that archived source.
+
+Fresh F14 preparation `5e35ec3` refreshes the complete connected-phone inventory
+and attended cards. Root independently inspected the actual two-file diff against
+specification and retained evidence; no material findings. Link/content and diff
+whitespace checks passed. Setup/policy agreement/Google reauthorization is S0;
+S1 publishing is a separate selected visit only once ready. Each visit stays
+within five minutes TOTAL, including wrap-up. A2/A7 remain separately agreed,
+unmeasured gates. No phone or publishing action occurred.
+
+Next: verify owner merges and current main; verify signed-out published policy
+URLs; recheck build inventory; complete App Store distribution validation and
+aggregate privacy/export review, then record actual upload/processing/compliance/
+existing-group availability. The retained development-signed Release archive is
+not distribution validation. TestFlight installation and current-build physical
+qualification remain pending. No additional owner account setup was requested;
+the latest App Store sign-in allowed the read-only inventory check above.
