@@ -10,8 +10,10 @@
 
 ## Preparation snapshot — 2026-11-09
 
-This is preparation, not a delivery claim. The working baseline is stacked F12
-`b30dc5f`; final F11 writer-finalization corrections must still be inherited.
+This is preparation, not a delivery claim. The initial baseline was stacked F12
+`b30dc5f`. The final candidate now inherits corrected F11, reviewed F12
+`ef202456`, and current main `f56d275`; the combined checks and independent
+reviews below supersede the initial prerequisite gaps.
 Issue [#26](https://github.com/smith3v/stream14/issues/26) was read live and remains
 open. F10–F12 issues #23–#25 also remain open. Do not upload, change App Store
 settings, bump versions, install on the phone, start capture or contact YouTube as
@@ -23,9 +25,10 @@ Project Debug/Release metadata is still 0.2 (3), bundle
 `com.smith3v.stream14`, automatic signing, iOS deployment target 27.0. These are
 source values, not a live App Store Connect inventory. The historical delivered
 0.2 (3) is recorded in [its release record](2026-11-07-testflight-0.2.md).
-Live App Store Connect version/build availability has not been inspected here.
-If 0.2 (3) is still latest, propose 0.3 (4); first check all existing/processing
-builds and increase the build number if necessary. Update both configurations
+Root subsequently read live App Store Connect Build Uploads / All Statuses on
+2026-11-09 after owner sign-in: 0.2 (3), 0.1 (2), 0.1 (1), all Complete, with no
+newer/processing upload. Existing 0.2 (3) is Testing for Owner MVP with 88 days
+remaining. Plan 0.3 (4), still uncommitted/unreserved; recheck before distribution. Update both configurations
 and the app identity test only after final source and metadata are confirmed.
 
 ## Task 1: Settle prerequisites and policy behavior
@@ -252,9 +255,8 @@ extend it. Stop if setup consumes the budget. Long A2/A7 recording/broadcast run
 require separate explicit agreement and belong to F14. Native fixtures, archive
 success and old MVP owner approval cannot qualify the new TestFlight binary.
 
-Current pending evidence: final parent integration; independent policy/consent/API-data deletion
-review; live version/build inventory; final archive/privacy/linkage audit;
-normal signed validation; upload/processing/compliance/group state; exact-build
+Current pending evidence: reviewed 0.3 (4) version change; published policy URLs;
+configured, normally signed archive/privacy/linkage validation; upload/processing/compliance/group state; exact-build
 TestFlight installation; installed policy links; private short Unlisted A3 smoke;
 actual F12 report export/overhead; F14 acceptance. Issue #26 remains open.
 
@@ -274,9 +276,9 @@ The initial focused native run passed 86 tests in four suites at
 for stale access-denial callbacks and covered by the updated fixture. Final results
 must be recorded after inheriting the final F11/F12 parent. The initial Release build
 passed. No source version bump, signed distribution validation, upload or device
-check occurred. Root's read-only App Store Connect check reached an expired Apple
-sign-in session, so live version/build inventory remains unavailable; no credentials
-or settings were entered. No current latest-build claim is made.
+check occurred. The initial read-only App Store Connect check reached expired Apple sign-in.
+After owner sign-in, root verified the inventory summarized above; no credentials
+were entered by the agent and no settings were changed.
 
 The focused Simulator UI consent/local-rehearsal/deletion-dismissal check passed
 at `/private/tmp/stream14-f13-policy-ui-popover.xcresult` on D6BEAF78 (13 mini,
@@ -305,3 +307,9 @@ Simulator UI checks passed. Exact commands/artifacts and archive limits are
 recorded there. AppAuth's existing linked public invalid-grant error and Google's
 refresh-token-expired error now distinguish confirmed loss from offline/unknown
 refresh failure. No package pin/product changes were needed.
+
+Final independent actual-file/full-diff reviews of F12 `ef202456` and F13
+`63557fb` found no remaining material findings. Ancestry-only normal merges
+`79418b8` and `6da5dcd` inherit main `f56d275`; the latter has an empty whole-tree
+diff from reviewed `63557fb`. The unsigned archive and combined native/UI checks
+remain preparation evidence, not signed delivery or physical acceptance.

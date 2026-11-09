@@ -43,8 +43,8 @@ See the [canonical design](2026-11-01-stream14-design.md),
 | Binary boundary | Only Apple/Swift dynamic loads; no OpenSSL/SRT/RTC undefined-symbol indicators in the audit; Debug UI/private receiver/short-phone environment seams absent |
 | OAuth configuration | This first unsigned archive intentionally used unconfigured local defaults. An account-enabled signed candidate still needs the existing authorized public iOS client/callback configuration outside Git |
 | Policy links | Changed local Markdown links resolve. Exact published main URLs and installed-app links remain pending until the reviewed policy changes are published |
-| App Store Connect inventory | Read-only check reached an expired Apple sign-in session; latest uploaded/processing versions and builds were unavailable. No settings or credentials were entered |
-| Independent review | Initial review identified retention and Restore cleanup issues; corrected to preserve transient failures and expire IDs safely. Final combined-source review is pending |
+| App Store Connect inventory | After owner sign-in, root read Build Uploads / All Statuses on 2026-11-09: only 0.2 (3), 0.1 (2), 0.1 (1), all Complete; no newer/processing upload. 0.2 (3) is Testing for the existing Owner MVP internal group, 88 days remaining. No settings changed |
+| Independent review | Initial review identified retention and Restore cleanup issues; corrected to preserve transient failures and expire IDs safely. Final actual-file/full-diff review at `63557fb` found no remaining material findings |
 
 Hosted fixtures use invented credentials/IDs, synthetic media and local WebKit
 checks; no real Google/YouTube calls or physical camera actions were performed.
@@ -56,13 +56,20 @@ before the final passing combined checks. Final source normally inherited the
 main-ancestry-only F11 update after native/archive checks; that merge changed no
 file bytes. The later combined UI passed on that inherited source.
 
+Final independent F12 review covered `ef202456`; final F13 review covered
+`63557fb`, including transient authorization handling and retention. Both found no
+remaining material findings. Subsequent normal ancestry merges bring F12 to
+`79418b8` and this candidate to `6da5dcd`, inheriting current main `f56d275` after
+PR #57. Before this documentation-only checkpoint, `git diff --exit-code 63557fb
+6da5dcd` was empty: the reviewed/tested file tree is unchanged. No native tests
+were repeated for ancestry bookkeeping or these documentation corrections.
+
 ## Delivery and acceptance still pending
 
-- Verify live App Store Connect inventory after owner sign-in. If the historical
-  0.2 (3) remains latest, 0.3 (4) is a proposal, not a reserved or committed identity.
-  Increment marketing minor for newly merged main changes and keep build numbers
-  increasing; check all existing/processing uploads first.
-- Resolve final independent review, publish the reviewed policy/support/terms and
+- Prepare the next version as 0.3 (4), available in the read-only inventory check
+  above. It is not yet committed or reserved. Use a focused reviewed version change
+  and recheck uploads before actual distribution; keep build numbers increasing.
+- Publish the independently reviewed policy/support/terms and
   verify the exact signed-out public URLs used by the candidate.
 - Configure the actual public OAuth client/callback outside Git and build the
   normally signed archive. Inspect its aggregate privacy report, purpose strings,
