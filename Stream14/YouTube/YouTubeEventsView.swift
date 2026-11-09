@@ -37,7 +37,7 @@ struct YouTubeEventsView: View {
                 }
             }
             Link("Schedule an encoder event in YouTube Studio", destination: URL(string: "https://studio.youtube.com/")!)
-                .font(.footnote)
+                .font(.footnote).frame(minHeight: 44)
         }
     }
 

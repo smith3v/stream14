@@ -25,6 +25,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         var overlayReady: Bool
         var uploadFailed: Bool
         var pipelineRunning: Bool = true
+        var canPrepareNextSession: Bool = true
     }
     let snapshot: () -> Snapshot
     let record: () async -> Void
@@ -39,7 +40,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
                 writerStarted: session.hasStartedWriting, isRecording: session.isRecording,
                 profile: session.profile, overlayURL: session.overlayURL,
                 overlayReady: session.broadcastOverlayReady, uploadFailed: session.uploadState == .failed,
-                pipelineRunning: session.broadcastPipelineRunning)
+                pipelineRunning: session.broadcastPipelineRunning, canPrepareNextSession: session.canPrepareNextSession)
         }
         record = { await session.record() }
         startUpload = { try await session.startUpload($0) }
@@ -134,6 +135,9 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         case "reconnecting":
             state = .live; activeIntent = intent; reconnectStatus = .waiting
             message = "Reconnecting to the same event. Local recording continues while healthy."
+        case "upload-recovered", "active-overlay-unavailable":
+            state = .live; activeIntent = intent; reconnectStatus = .monitoring
+            message = "YouTube confirmed Live. Upload recovered to the same event."
         case "backup-failed":
             state = .live; activeIntent = intent
             message = "Live on YouTube. Local backup is unavailable."
@@ -141,7 +145,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             state = .needsReconciliation
             pendingRemote = PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id)
             message = "YouTube end not confirmed. The event may still be live. Check Studio and reconcile."
-        case "ended":
+        case "ended", "finalizing":
             state = .ended
             message = "The YouTube event ended remotely. Healthy local recording continues. Stop recording when ready."
         default: break
@@ -154,6 +158,20 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     var canResume: Bool { !isWorking && !hasUnsettledMutation && !journalUnavailable && !requiresStudioResolution && authorization.isAuthorized && pendingRemote?.interrupted == true && pendingRemote?.transition == nil && pendingRemote?.streamID != nil }
     var canStart: Bool { !isWorking && activeIntent == nil && pendingRemote == nil && !journalUnavailable && !requiresStudioResolution && authorization.isAuthorized }
     var canEnd: Bool { !isWorking || state != .ending }
+
+    var canPrepareNextSession: Bool {
+        !locksSelection && !hasUnsettledMutation && !requiresStudioResolution && !journalUnavailable &&
+        (state == .idle || state == .ended) && !media.snapshot().isRecording && media.snapshot().canPrepareNextSession
+    }
+
+    /// Clears only settled presentation state. The view independently gates writer
+    /// finalization, and invalidates the old event after this operation succeeds.
+    @discardableResult func prepareNextSession() -> Bool {
+        guard canPrepareNextSession else { return false }
+        state = .idle
+        message = "Choose a new event and check camera and sound. Nothing is being uploaded."
+        return true
+    }
 
     /// UI calls this before displaying the confirmation. No API/media work here.
     func requestConfirmation(channel: YouTubeChannel?, event: YouTubeBroadcast?) {

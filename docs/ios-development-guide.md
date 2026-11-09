@@ -1638,15 +1638,30 @@ phone or real service calls and does not establish the long qualification gates.
 
 ## F10 preparation, session and recordings interface (issue #23)
 
-Use Preparation for profile, YouTube connection/channel/event and help/privacy.
-Open Session to open the camera, rehearse or record locally without Google. Choosing
-a tab, event or settings does not publish. Go Live shows the channel title/ID,
-event, visibility and profile for explicit confirmation. While active, profile and
-URL edits remain locked; Overlay settings explains the lock while Session retains
-manual hide and Reload overlay. Watch the distinct Recording, Upload, YouTube and
-Overlay messages. A backup warning is independent of upload; uncertain End offers
-read-only reconciliation and Studio. Interrupted sessions require the F9 explicit
-camera reopen and same-event Resume confirmation.
+Issue #62 replaces Preparation/Session with one Session workspace. Choose or change
+the scheduled event in its picker, use Check camera and sound to explicitly open
+capture, choose quality before opening capture (or close it to change quality), and
+choose a compatible rear lens beside the preparation preview. Record only needs no
+Google connection. Start recording and streaming confirms the actual channel,
+event, visibility and profile; the coordinator revalidates and admits local writing
+before upload. Setup has no required upload test and never uploads camera media.
+
+Upload and Local saving remain independent through startup, reconnection, writer
+failure and finalization, alongside YouTube and Overlay. End session confirms remote
+completion plus stopping local recording/capture. Stop recording remains available
+when upload fails. Unknown End retains reconciliation and Studio. Prepare next
+session waits for finalization and settled remote/coordinator state, then clears the
+old event selection. A failed local writer cannot restart within the live session;
+read the persistent guidance, retain/review/export the incomplete footage and end
+before opening a new file. The gap is not recovered.
+
+Portrait shows Session / Recordings tabs. Landscape hides the whole native tab bar;
+More → Navigate switches destinations. Rotation preserves selection and outputs.
+Normal landscape keeps preview left and scrolling controls right; accessibility
+text stacks them. More offers routine overlay hide/show and reload; overlay failure
+also offers contextual retry/settings. More → Settings contains YouTube account/data
+actions, Overlay draft/apply/disable, About & Legal and Help. Legal pages remain
+reachable before camera/sign-in and consent presents terms before agreement.
 
 Recordings keeps the original MP4, status, date and size, with Play, Export and
 confirmed Delete. Cancel preserves the file. Exported copies remain after deletion;
@@ -1687,6 +1702,81 @@ native nav/tab bounds. It logs that proof; unknown elements, fully visible text,
 controls and other audit types remain failures. This is a narrow native audit
 limitation, not a general contrast waiver or physical VoiceOver evidence. See the
 F10 handoff for exact retained failed/passing runs and independent review status.
+
+### Session workspace validation — issue #62 (2026-11-09–10)
+
+The change uses main `ea90bd3` as its base. Independent review inspected the full
+diff and files; fixes addressed stale next-session output status, active recovery
+routes and writer-admission readiness. Focused re-review found no remaining
+material issues. The original iCloud checkout's unrelated project/setup edits are
+preserved; the implementation checkout is `/private/tmp/stream14-issue62-fresh`.
+
+Native evidence uses Xcode 27.2, iOS 27.2 SDK and the iPhone 13 mini Simulator
+`D6BEAF78-D273-4952-8349-B50B2824E6A9`. Release generic-iPhone build disables signing;
+it is compile evidence, not installation or TestFlight delivery. Test builds run the
+shared scheme's branded UI-runner action. The focused 61-test run covers
+BroadcastSession, RecordingFinalization, SharedMediaIntegration and SessionWorkspace:
+writer-before-upload, unknown End, upload outage/recovery with uninterrupted local
+writing, writer failure with uninterrupted compressed upload, finalizer protection
+and next-session reset/archive retention.
+
+Result artifacts (temporary, not committed):
+
+- `/private/tmp/stream14-issue62-second.xcresult`: 61 focused native tests passed;
+  eight UI tests passed, with a rotation-helper failure after returning to portrait.
+  The helper incorrectly chose the hidden-bar route while a visible tab was settling;
+  it now uses existence of the native tab, letting XCTest wait for its tap.
+- `/private/tmp/stream14-issue62-final.xcresult`: permission/event fix routes,
+  publishing cancellation, local-only finish and both-direction rotation passed.
+  A legacy viewport helper overscrolled Start; the corrected adaptive helper is
+  verified by the next run. A profile contrast audit returned an unresolvable
+  SwiftUI accessibility node and auto-scrolled to the camera-closed placeholder.
+- `/private/tmp/stream14-issue62-viewport.xcresult`: the primary action fits the
+  usable native viewport at normal/largest text in both landscape directions.
+  This run reproduces the old placeholder contrast failure before the color fix.
+- `/private/tmp/stream14-issue62-contrast.xcresult`: the 44-point compact-camera-panel
+  target check passed; profile contrast remained unresolved. A later run with a
+  compact primary-color Label/Text placeholder still returned an unknown node,
+  despite its exported screenshot showing black text/icon on white.
+  Audit handling has not been broadened to ignore unknown elements.
+- `/private/tmp/stream14-issue62-profile-final.xcresult`: the unresolved profile
+  audit and its primary-color screenshot are retained.
+- `/private/tmp/stream14-issue62-tab-content.xcresult`: rechecks the original
+  selected-tab-only rendering pattern and rotation/output preservation.
+- `/private/tmp/stream14-issue62-release-final.log`: final unsigned Release build passed.
+
+The first UI pass also exposed missing Done on pushed Settings destinations and
+test assumptions about native popover cancellation and hidden tabs; these are fixed.
+No result from those failed passes is presented as an unconditional pass.
+
+Reproduce from the implementation checkout with pinned packages:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -derivedDataPath /private/tmp/stream14-issue62-build \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/BroadcastSessionTests \
+  -only-testing:Stream14Tests/RecordingFinalizationTests \
+  -only-testing:Stream14Tests/SharedMediaIntegrationTests \
+  -only-testing:Stream14Tests/SessionWorkspaceTests \
+  -only-testing:Stream14UITests/SetupScreenTests \
+  -resultBundlePath /private/tmp/stream14-issue62-reproduce-new.xcresult test
+```
+
+Default UI tests never publish camera media. Device/seed-dependent tests skip
+unless explicitly enabled. Debug fixture names additionally include
+`permission-denied`, `no-event`, `writer-pending`, `active-overlay-unavailable`,
+`upload-recovered` and `finalizing`; fixtures are absent from Release. Their local
+record/stop states are presentation-only and create no real file or capture.
+
+Physical 13 mini portrait, both landscape directions, larger text and VoiceOver
+inspection remains pending. Use an attended slot targeting five minutes total;
+fixture-only interface checks need no private camera capture/upload. Actual
+camera/audio route/permission operation, output profile/lens media quality and
+file/receiver exclusion remain separate physical regression evidence. No real
+YouTube publish, TestFlight delivery or long-run qualification is claimed here.
 
 ## Private synthetic RTMPS receiver checkpoint (2026-11-08)
 

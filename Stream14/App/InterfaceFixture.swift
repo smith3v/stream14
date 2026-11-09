@@ -20,11 +20,13 @@ import Foundation
             status: .init(lifeCycleStatus: "ready", privacyStatus: "unlisted"),
             contentDetails: .init(boundStreamId: "fixture-stream", enableAutoStart: false, enableAutoStop: false))
         events.installInterfaceFixture(channel: channel, event: event)
-        let snapshot = BroadcastMedia.Snapshot(captureReady: name != "idle" && name != "policy-unaccepted", canRecord: true,
-            writerStarted: false, isRecording: false, profile: .fullHD, overlayURL: "",
-            overlayReady: name != "overlay-unavailable", uploadFailed: false)
-        let boundary = BroadcastMedia(snapshot: { snapshot }, record: {},
-            startUpload: { _ in throw CancellationError() }, stopUpload: {}, stopAll: {},
+        if name == "no-event" { events.invalidate() }
+        let boundary = BroadcastMedia(snapshot: {
+            BroadcastMedia.Snapshot(captureReady: media.broadcastCaptureReady, canRecord: media.canRecord,
+                writerStarted: false, isRecording: media.isRecording, profile: media.profile, overlayURL: "",
+                overlayReady: media.broadcastOverlayReady, uploadFailed: false,
+                canPrepareNextSession: media.canPrepareNextSession)
+        }, record: {}, startUpload: { _ in throw CancellationError() }, stopUpload: {}, stopAll: {},
             lockConfiguration: { media.broadcastConfigurationLocked = $0 })
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("interface-fixture-" + UUID().uuidString)
         let store = PendingRemoteBroadcastStore(url: directory.appendingPathComponent("remote.json"))
