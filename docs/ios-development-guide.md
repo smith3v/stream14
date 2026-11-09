@@ -1741,9 +1741,21 @@ Result artifacts (temporary, not committed):
   Audit handling has not been broadened to ignore unknown elements.
 - `/private/tmp/stream14-issue62-profile-final.xcresult`: the unresolved profile
   audit and its primary-color screenshot are retained.
-- `/private/tmp/stream14-issue62-tab-content.xcresult`: rechecks the original
-  selected-tab-only rendering pattern and rotation/output preservation.
+- `/private/tmp/stream14-issue62-tab-content.xcresult`: rotation/output preservation
+  passed after restoring the original selected-tab-only rendering pattern. The
+  profile audit still reported an unknown node.
+- `/private/tmp/stream14-issue62-fresh-queries.xcresult`: fresh application/query
+  objects after relaunch did not resolve the same profile contrast report.
 - `/private/tmp/stream14-issue62-release-final.log`: final unsigned Release build passed.
+
+Across focused runs, twelve selected interface tests pass. The legacy
+`testProfileSelectionPersistsAndRemainsAccessibleInLandscape` still fails its native
+contrast audit on a SwiftUI accessibility node XCTest cannot resolve. Its profile
+selection/persistence, target-size and scrolling assertions pass before the audit.
+Exported audit screenshots show the compact camera-closed label/icon and text in
+primary black on white, but this is not a native-audit pass or proof of the audit's
+root cause. No broad exception was added; unknown elements still fail. Retain this
+as an unresolved validation limitation, with the PR draft and issue acceptance open.
 
 The first UI pass also exposed missing Done on pushed Settings destinations and
 test assumptions about native popover cancellation and hidden tabs; these are fixed.
