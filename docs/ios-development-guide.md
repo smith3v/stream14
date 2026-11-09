@@ -1778,11 +1778,13 @@ when the SDK/API later reports lost access, not while the app is offline/unused.
 
 Follow the [F13 preparation and archive checklist](2026-11-09-full-app-testflight-implementation.md).
 It records proposed metadata and distinct validation/upload/processing/install
-checkpoints. The current App Store Connect browser session needs owner sign-in;
-no current build inventory was visible on 2026-11-09. Historical 0.2 (3) is not
-proof the next available build is 4. Do not commit a release bump or upload until
-the live inventory and final reviewed source are verified. No phone action is
-needed for source preparation; the five-minute total attended limit still applies.
+checkpoints. After owner sign-in on 2026-11-09, the read-only Build Uploads / All
+Statuses inventory showed 0.2 (3), 0.1 (2), 0.1 (1), all Complete, and no newer or
+processing upload. The next candidate is 0.3 (4); see its
+[packaging checkpoint](2026-11-09-release-0.3-implementation.md). Recheck live
+inventory before distribution; source identity does not reserve a build number.
+No phone action is needed for source preparation; the five-minute total attended
+limit still applies.
 
 The candidate checks both saved API-ID journals on launch, foreground activation
 and journal use. At 30 days (or for undated/future-dated legacy records) it writes

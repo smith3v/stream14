@@ -323,3 +323,60 @@ upload. Existing 0.2 (3) is Testing in Owner MVP with 88 days remaining. No
 password/code was requested and no settings were changed. No phone, capture, live
 Google/YouTube, upload or distribution action occurred in this handoff. A
 connected/unlocked device alone does not establish attended readiness.
+
+
+## Signed release identity checkpoint — 2026-11-09
+
+F12 [PR #58](https://github.com/smith3v/stream14/pull/58) and F13
+[PR #59](https://github.com/smith3v/stream14/pull/59) are published into main;
+merge in that order. New release branch `codex/release-0.3-candidate` in
+`/private/tmp/stream14-release-0.3-candidate` inherits F13 `9bd5c7d` and commits
+both app configurations and the existing identity assertion to 0.3 (4) at
+`1ae3f87`. No merge/upload occurred. This supersedes the earlier uncommitted
+version/signed-archive gaps, while live inventory must still be rechecked before
+distribution.
+
+Normal signed Release archiving and strict signature verification passed. The
+archive contains the actual configured public Google client/matching callback,
+expected icon/purpose keys, nine parseable manifests and corrected notices;
+Debug/test artifacts were absent. It uses existing **development provisioning**,
+not App Store distribution validation. Two hosted app-configuration cases passed,
+zero failures/skips; no full regression rerun was needed for version metadata.
+[The delivery record](2026-11-09-full-app-testflight.md#account-enabled-03-4-archive-checkpoint--2026-11-09)
+records commands, private evidence paths and exact limitations.
+
+Independent actual-file/full-diff release review found no material findings,
+including the archive and two-case native result. Diff/link checks passed.
+Next: owner merges #58 → #59 → release PR; verify signed-out published policy links; obtain distribution validation/aggregate privacy
+report; then record upload, processing, compliance and existing group assignment
+separately. Phone/session/endurance gates remain unchanged: app disconnected after
+revocation, five-minute TOTAL routine attended budget, explicit publishing action,
+retained originals and separate agreement for longer runs. No phone/camera/mic,
+provider API or App Store mutation occurred in this packaging stage.
+
+
+## Published handoff and next resume — 2026-11-09
+
+Reviewed PRs now target main in merge order:
+[#58 diagnostics](https://github.com/smith3v/stream14/pull/58),
+[#59 policy/preparation](https://github.com/smith3v/stream14/pull/59), then
+[#60 release 0.3 (4) and phone cards](https://github.com/smith3v/stream14/pull/60).
+They were published without automatic merging. The release archive source remains
+`1ae3f87`; later handoff/card integration changes documentation only. The actual
+app/project/test/config tree remains identical to that archived source.
+
+Fresh F14 preparation `5e35ec3` refreshes the complete connected-phone inventory
+and attended cards. Root independently inspected the actual two-file diff against
+specification and retained evidence; no material findings. Link/content and diff
+whitespace checks passed. Setup/policy agreement/Google reauthorization is S0;
+S1 publishing is a separate selected visit only once ready. Each visit stays
+within five minutes TOTAL, including wrap-up. A2/A7 remain separately agreed,
+unmeasured gates. No phone or publishing action occurred.
+
+Next: verify owner merges and current main; verify signed-out published policy
+URLs; recheck build inventory; complete App Store distribution validation and
+aggregate privacy/export review, then record actual upload/processing/compliance/
+existing-group availability. The retained development-signed Release archive is
+not distribution validation. TestFlight installation and current-build physical
+qualification remain pending. No additional owner account setup was requested;
+the latest App Store sign-in allowed the read-only inventory check above.

@@ -1,58 +1,113 @@
-# Attended iPhone session card
+# Attended iPhone session cards
 
-Updated: 2026-11-08. Purpose: prepare the checks that need the owner's taps or observations. Default visit: five minutes TOTAL; builds, selector verification and fixture tests happen on the laptop first. Select the minimum useful checks, not the whole coverage backlog.
+Updated: 2026-11-09. Each routine visit is **five minutes TOTAL**, including
+installation, permission/account prompts, actions and wrap-up. Choose ONE card;
+these are separate visits, not a combined test script. Laptop builds, fixtures,
+selector enumeration and analysis-tool preparation happen first. Stop and record
+INCOMPLETE/BLOCKED if setup consumes the budget; never extend automatically.
 
-## Current readiness
+## Evidence and prerequisites
 
-- iPhone 13 mini is connected; the owner confirmed unlocked/ready and set Auto-Lock to Never. Keep Low Power Mode off while testing.
-- Reviewed short-smoke code is in PR #47. Normally signed Debug app and embedded hosted test bundle are prepared.
-- The first phone invocation selected ZERO tests and made no camera recordings. Exit code zero was not a pass. The cause was a Swift Testing method selector missing parentheses.
-- Off-phone Xcode enumeration now confirms that suite selector Stream14Tests/ShortPhoneSmokeTests selects exactly one method: twoProfilesRetainComposedOriginals(). No tests ran during enumeration.
-- The corrected run has now passed on the phone: one executed pass, zero skips, ten-second test body; see the [attended results](2026-11-08-attended-device-results.md). End-to-end owner timing and newer shared-pipeline qualification remain unverified. Codex must check one executed/passed test and zero skips after the real run, not just xcodebuild's exit code.
-- Public Google iOS client/callback are configured in ignored local build configuration; owner sign-in/callback, SDK restore after relaunch and API-returned intended channel were verified in this session; see the attended results.
-- Broadcasting/reconnect/recovery UI is not ready for owner acceptance yet. Do not ask the owner to test missing Go Live/End/Recover controls or issue raw API commands.
+- The [shared-pipeline local smoke](2026-11-08-shared-pipeline-device-smoke.md)
+  passed on the 13 mini: one executed test, zero failures/skips, 10.173-second body.
+  It predates the current RTMPS correction, interface, recovery and diagnostics.
+- The owner verified intended channel/event, restore after relaunch, local sign-out
+  and revocation in the [account report](2026-11-08-attended-account-event-results.md).
+  Issues #15/#16 are closed. Do not repeat that whole checklist just for coverage.
+  The app was left disconnected: the next account-enabled run needs deliberate
+  reauthorization and the new YouTube policy agreement.
+- Main includes the monitor/testing transition, native Session/Recordings UI and
+  separate-copy recovery. [PR #58](https://github.com/smith3v/stream14/pull/58) adds
+  diagnostics; [PR #59](https://github.com/smith3v/stream14/pull/59) adds reviewed
+  policy/retention preparation. Merge in that order before using their main build.
+  The later [full-app TestFlight candidate](2026-11-09-full-app-testflight.md) has
+  not yet been delivered; historical 0.2 (3) TestFlight is the local-only app.
+- The last installed development app was `f454e9b`, before the monitor correction.
+  Use a newly prepared, normally signed, exact-source candidate. Record Xcode vs
+  TestFlight explicitly; development evidence does not pass A9.
+- Check actual USB/unlocked readiness at the visit; an earlier connected-phone
+  report is not current availability or publishing consent. Auto-Lock Never and
+  Low Power Mode off can help foreground tests; restore owner settings afterwards.
 
-## Suggested next five-minute visit
+## Laptop preflight for every card
 
-| Budget | Codex does | Owner does / success to observe |
-| --- | --- | --- |
-| 0:00–0:30 | Confirms prepared build, Trust/permissions and exact selector; no build/resolve at phone time | Keep phone unlocked, connected, aimed at a non-private test scene. Accept Trust/camera/microphone prompts if needed. If Developer Mode/reboot/setup is needed, record BLOCKED and stop within budget |
-| 0:30–1:45 | Runs ONLY the isolated local short smoke using prepared Debug products; inspects executed/skipped result counts | No taps during the automated run. Two short camera/microphone clips are expected; no Google, website or upload. Codex retains the originals |
-| 1:45–2:00 | Relaunches the normal app WITHOUT the short-test environment, restoring ordinary setup controls | Confirm the normal Connect YouTube control is shown; the isolated test host intentionally has no account driver |
-| 2:00–4:15 | Guides Connect YouTube, then read-only Refresh; does not select/mutate a real event or publish | Complete Google's system-browser account/consent prompts yourself, then tap Refresh and verify the intended YouTube channel. A Google email/“authorized” message alone is not channel verification |
-| 4:15–5:00 | Records callback/channel result, brief playback/report if time remains, stops capture and reconciles any open activity | Report the visible channel or safe error text. Leave passwords, 2FA codes, tokens and keys out of chat. Restore ordinary Auto-Lock when no further unattended testing is planned |
+1. Select reviewed source/build and prepare normal signing/branding in advance.
+   Retain the current recording inventory; update in place, never uninstall/reset.
+2. Pick one card and state the intended media, disruption and event use. Ask for
+   operator confirmation before publishing, intentional lock or forced termination.
+   Aim camera at a non-private test scene. The owner handles credentials/consent;
+   never request passwords, passcodes, codes, tokens or stream keys in chat.
+3. For streaming, privately recheck intended channel/title, Unlisted visibility,
+   encoder eligibility, monitor setting, auto-start/auto-stop and dedicated safe
+   binding. The previous `test app 1` was Unlisted, auto-start Off, auto-stop Off;
+   that old observation does not establish today's state. Prepare a second-device
+   receiver/player before the clock. Use no real match or valuable event.
+4. Prepare private evidence paths and a wrap-up route. If remote state is unknown,
+   preserve that status and reconcile/hand off Studio action; do not claim End.
+   Never abandon a potentially live event simply because the clock expired.
+5. At 4:00 start wrap-up; at 5:00 record what actually finished, what remains open
+   and any operator handoff. No further test starts. Retain originals/copies.
 
-If consent/2FA takes longer, stop at the five-minute budget with the achieved state and pending steps recorded. Do not keep retrying account selection or silently extend the visit. If sign-in is not wanted in this visit, replace it with ONE short manual media observation below.
+## Card S0 — setup or TestFlight identity only
 
-## Owner-attention checks and priorities
+Budget: 0:00–3:30 install/update and verify exact version/build/route, accept
+necessary device prompts, inspect policy/notices links, then deliberate policy
+agreement and Google reauthorization if time permits; 3:30–5:00 record readiness
+and close. Leave Go Live untouched. If install/account setup is slow, this is the
+whole visit. A9 still needs actual full-app TestFlight delivery and regression.
 
-| Priority / check | Exact owner action | Codex verifies | Availability |
-| --- | --- | --- | --- |
-| Required readiness | Unlock once, accept Trust if shown; allow camera/microphone when intentionally opening capture | Device connection and permissions, normal signature; no app uninstall/reset | Ready to check |
-| Google sign-in and callback | Tap Connect YouTube; choose intended account/channel; complete consent/2FA in the supported browser | App returns from callback with required scope; no overlay-WebView authentication, no implicit publish | Ready, owner required |
-| Real channel/event read | Tap Refresh; confirm intended YouTube channel and any event title/date/visibility | API-returned identity and eligible state, clear empty/wrong-channel/error result; reads do not mutate events | Ready after authorization; no event is required merely to verify channel |
-| Restore after relaunch | After Codex relaunches normal app, tap Restore saved connection | SDK-owned Keychain state restores without implicit camera or upload | Ready after successful sign-in, if time remains |
-| Audible mute and short playback | Say a short phrase when prompted; observe mute/unmute and listen to one NEW test recording | Actual audio evidence, not a claim inferred from meter/track existence | Targeted alternative to sign-in |
-| Physical A/V marker | In a separately selected ~15-second manual clip, clap with hands visible at beginning/end when prompted | Off-phone numerical marker alignment and uncertainty; the automated red/green smoke does NOT prove physical sync | Targeted alternative, budget permitting |
-| Lens/route observation | Confirm actual Wide/Ultra Wide appearance or connect/remove an available headset when prompted | Truthful lens/zoom/route and original-file result | Select one when relevant; do not repeat all permutations |
-| VoiceOver/larger text | Enable VoiceOver or largest text only while present; navigate the few changed controls, then restore settings | Correct labels/values/focus and important targets; do not leave owner stuck in an altered accessibility state | Targeted, not alongside all other tests |
-| Home/lock/interruption | Press Home/lock only when specifically prompted; unlock again afterwards | Honest interruption/finalization and explicit resume; original file retained | Targeted; cannot run unattended |
-| Sign-out/revoke/account switch | Confirm the explicit app action only after any event is ended | Honest SDK state clearing, no recording/overlay loss; revocation is not part of unattended smoke | Targeted after sign-in; changes access intentionally |
-| Confirm Go Live/End | Verify channel/title/visibility; explicitly confirm intended start/end of a dedicated unlisted test event | Actual remote state and receiver result, healthy independent file | FUTURE: F7 flow and dedicated event/receiver not ready yet |
-| Crash recovery | Confirm a new expendable test session/termination, then inspect supported recovered copy | Originals retained, measured loss and truthful incomplete/recovered status | FUTURE: selected compressed-writer/app recovery and device A5 not ready |
+## Card S1 — next priority: short Unlisted end-to-end
 
-No incoming call is initiated automatically. No Google password, passcode, 2FA code or stream key is requested in chat. Existing valuable recordings are never deleted/reset as test preparation. A new expendable file is deleted only through the separate deliberate per-file confirmation if the owner chooses it.
+Only select after installation/account/event/receiver preflight is ready. A fresh
+sign-in or event repair that consumes the slot replaces this card with S0.
 
-## Codex preflight before requesting attention
+| Budget | Operator action and observable evidence |
+| --- | --- |
+| 0:00–0:45 | Verify installed identity, intended channel/title/Unlisted visibility and explicit permission to send camera/microphone media and use/end this test event. Confirm Go Live in the app |
+| 0:45–2:30 | Observe separate recording/upload/YouTube labels. Monitor-enabled events pass through testing; Testing/socket-connected alone is not Live. Wait for confirmed Live and second-device playback; observe changing overlay and audible speech, with visible/audible beginning/end claps if feasible |
+| 2:30–3:30 | Confirm End in the app. Require actual confirmed remote completion or record uncertainty and reconciliation; inspect retained file/finalization status separately |
+| 3:30–5:00 | Brief original playback and explicit original/diagnostic export if time remains; record receiver result, stopped capture and retained-file inventory. Defer exports if they would exceed the budget |
 
-1. Select the reviewed source and prepare normally signed/branded Debug products OFF-PHONE. Check the embedded bundle at Stream14.app/PlugIns/Stream14Tests.xctest; it is not a standalone sibling in this build.
-2. Enumerate the prepared tests without execution. With suite selector Stream14Tests/ShortPhoneSmokeTests, require exactly one enabled identifier ending in twoProfilesRetainComposedOriginals(). Stop if enumeration errors, zero tests or unexpected tests appear.
-3. Keep the existing original-file inventory. Install as an update, never uninstall/reset to fix a test or signing problem.
-4. Start a single five-minute operator clock. Run the local-only smoke with the flag, then require one executed passed result and no physical skip. A zero-test run, a skipped test, permission failure or timeout is INCOMPLETE/BLOCKED, never PASS.
-5. For owner sign-in, terminate/relaunch normally with no short-smoke environment. Do not try account tests inside the deliberately isolated nil-driver test host.
-6. Show only concise channel/error/result text. Save private logs, result bundles and originals outside Git; no raw credentials or camera images in public PRs.
-7. End with a short record: what executed, passed/failed/skipped/blocked, exact build, retained file IDs/private evidence paths, restored settings and next pending step.
+A slow transition/receiver means INCOMPLETE, not a pass or an extra five minutes.
+This establishes only observed portions of A3/A1/A5/A9. Off-phone analysis measures
+original/receiver sync with uncertainty; track endpoints or a socket do not prove it.
+One run does not cover both profiles, auto-start variants, failures or endurance.
 
-Off-phone selector evidence: /private/tmp/stream14-short-smoke-enumeration-20261108.json (no errors, one enabled short-smoke identifier). Initial unsuccessful phone attempt: /private/tmp/stream14-short-phone-20261108-084609/smoke.xcresult and smoke.log (zero executed tests; no camera recording). These are private artifacts, not public attachments.
+## Later cards — choose by the remaining gap
 
-See the [five-minute plan and coverage backlog](2026-11-07-connected-iphone-test-plan.md), [short-smoke handoff](2026-11-07-short-phone-smoke-implementation.md), and [epic resume ledger](2026-11-07-epic13-progress.md).
+Each row is its own <=5-minute visit. Allow about 45 seconds readiness and at least
+60 seconds wrap-up; drop optional actions first. Preflight-dependent variants may
+require their own S0 visit. Use the full [coverage inventory](2026-11-07-connected-iphone-test-plan.md)
+for exact IDs and expected results.
+
+| Card / coverage | Selected short action / required observation |
+| --- | --- |
+| S2 composition/audio: L01–L06, A1/A8 | One selected profile, short local clip with alpha/reloads, visible clap and spoken/muted/spoken phases. Inspect actual zoom/lens and frozen profile controls. Retain original for off-phone decode/audio/sync; run the other profile later only if still missing |
+| S3 overlay outage: L07–L09, A1/A4 | New local clip: brief source failure, then >10-second failure, manual hide through source recovery and explicit unhide. Observe preview/file freshness and continuous A/V. A source-only block does not establish upload outage |
+| S4 upload outage: B08/B13, A4 | Dedicated already-ready Unlisted run: one REAL two-minute phone internet loss, restore, observe same-event reconnect/local continuity, then End/reconcile. Budget roughly 0:00–0:45 start, 0:45–2:45 loss, 2:45–3:45 restore/observe, 3:45–5:00 End/wrap. If readiness or retry delays prevent this, leave the remaining gate pending. Retry exhaustion and Wi-Fi/cellular switching are separate variants; mobile-data use needs owner agreement |
+| S5 interruption: I02/I03, A6/A8 | One explicit Home OR lock OR available real audio-route/interruption action during a new short session; confirm honest stop/finalization, no silent camera restart/upload, and explicit same-event resume/new file if budget permits. A YouTube event can remain live: reconcile/end separately within wrap-up. Do not initiate a call automatically |
+| S6 recovery: I07/L10/L11, A5 | One NEW expendable local recording, explicit force-termination at one selected point, relaunch/inspect, Try recovery to separate copy if supported. Original stays unchanged; retain copy and measure playable prefix/lost tail off-phone. Before-first-fragment, after-fragment and finalization points are separate variants; recovery/export may require a later visit |
+| S7 accessibility: P04/P05/G05, A8 | ONE changed screen/state in portrait/both landscapes with large text OR physical VoiceOver navigation; check labels, focus, controls and cancellation. Restore settings. Select remaining screens/states later; Simulator audit is not physical VoiceOver |
+| S8 diagnostics: I08/I10, #25/A2/A9 | Short local sample and deliberate Load/Export qualification summary plus original export; inspect saved phone JSON privately. A separately prepared comparable control can assess overhead in another bounded visit; record device method/uncertainty and restore shipping candidate. Numeric model fixtures do not measure phone overhead |
+| S9 failure presentation: B04/B07/B09–B12/I01/I04–I06, A4/A6 | ONE safe prepared failure variant: startup rejection, remote end, writer failure, unknown End, denial or expired access. Use deterministic fixtures for destructive/quota/rate-limit cases; no quota exhaustion, disk filling or secret exposure. Verify any physical healthy-output independence claimed. New deletion/Studio-resolution policy controls need their own selected attended check after events are settled |
+
+All cards retain originals. Play/export does not authorize deletion. Delete Cancel
+and deliberate deletion apply only to an owner-designated expendable file with its
+separate confirmation. Never run Simulator seeding/privacy-reset scripts on the phone.
+
+## Deferred qualification and result record
+
+The formal A2 **30-minute** run and A7 **three-hour** powered 1080p30 broadcast/local
+run remain pending, with separate explicit agreement for their exact time and
+markers. Five-minute samples, fake clocks and synthetic numeric models do not replace
+those gates. Available iPhone 15/17/Pro coverage also remains pending; a 13 mini
+cannot substitute. Use the [qualification report](qualification-report-template.md)
+for measurements and scope limits.
+
+For every visit record source/installed version/route/device/OS/profile, actual total
+time, selected checklist IDs, pass/fail/blocked/skipped, private original/receiver/
+JSON evidence, executed/skipped counts where automated, restored settings, remote
+state and next step. No raw credentials, private event links or media go in Git.
+A zero-test/physical-skip result is not a phone pass. For the optional local-only
+short harness require exactly one enumerated/executed pass and zero skips, using
+its prepared branded products; it is not the default next broadcast card.
