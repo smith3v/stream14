@@ -118,7 +118,7 @@ enum YouTubeAuthorizationError: Error, Equatable {
         do {
             let result = try await driver.restore()
             try accept(result, operation: operation)
-        } catch { finish(error, operation: operation) }
+        } catch { finish(error, operation: operation, restoring: true) }
     }
 
     func signOut(broadcastActive: Bool = false) {
