@@ -1660,7 +1660,7 @@ native interface suite using the shared scheme and a fresh result path:
 xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
   -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
   -derivedDataPath /private/tmp/stream14-f10-simulator \
-  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
   -disableAutomaticPackageResolution \
   -only-testing:Stream14UITests/SetupScreenTests/testNativeDestinationsNeverStartCaptureOrPublishing \
   -only-testing:Stream14UITests/SetupScreenTests/testPreflightBlockersAndExactPublishingConfirmation \
@@ -1674,6 +1674,27 @@ are recorded in the [F10 stage handoff](2026-11-08-integrated-interface-implemen
 No phone or actual Google/media publishing was used for this interface work.
 Physical VoiceOver/13 mini acceptance and actual file/receiver exclusion remain
 pending; preserve the owner's five-minute total routine phone budget.
+
+F10 Simulator contrast diagnostics can point to static text outside the visible
+scroll area (for example the YouTube heading at y709 on a 375-point landscape
+screen). The focused UI helper excludes only uniquely matched static text proven
+vertically clipped/offscreen in both captured and callback geometries within the
+native nav/tab bounds. It logs that proof; unknown elements, fully visible text,
+controls and other audit types remain failures. This is a narrow native audit
+limitation, not a general contrast waiver or physical VoiceOver evidence. See the
+F10 handoff for exact retained failed/passing runs and independent review status.
+
+## Private synthetic RTMPS receiver checkpoint (2026-11-08)
+
+Use the [receiver procedure and actual measurements](2026-11-08-private-rtmps-receiver-validation.md)
+for normal-TLS laptop-only wire/receiver checks. It uses a fixed Debug Simulator-only
+localhost seam and generated media through the actual shared encoder, with no
+camera, Google request or physical-device trust change. The untrusted TLS rejection,
+trusted socket sends and corrected-header receiver decode were observed, but the
+receiver A/V alignment gate still fails. Do not treat the successful hosted test
+alone as receiver or physical qualification. The record preserves the remaining
+AAC timing investigation and a future five-minute TOTAL phone script using the
+existing Unlisted YouTube event and normal public trust, not a phone CA profile.
 
 ## F11 recording review and separate recovery
 
