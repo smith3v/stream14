@@ -24,9 +24,11 @@ nonisolated struct YouTubeBroadcast: Codable, Equatable, Identifiable, Sendable 
         let privacyStatus: String?
     }
     nonisolated struct ContentDetails: Codable, Equatable, Sendable {
+        nonisolated struct MonitorStream: Codable, Equatable, Sendable { let enableMonitorStream: Bool? }
         let boundStreamId: String?
         let enableAutoStart: Bool?
         let enableAutoStop: Bool?
+        var monitorStream: MonitorStream? = nil
     }
     let id: String
     let snippet: Snippet?
@@ -110,4 +112,4 @@ nonisolated enum YouTubeReadError: Error, Equatable, LocalizedError {
     }
 }
 
-nonisolated enum YouTubeBroadcastTransition: String, Codable, Sendable { case live, complete }
+nonisolated enum YouTubeBroadcastTransition: String, Codable, Sendable { case testing, live, complete }

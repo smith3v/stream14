@@ -223,6 +223,18 @@ import Testing
         #expect(await server.inserts == 1)
     }
 
+    @Test func monitorConstraintIsRecheckedBeforeBindingAfterStreamCreation() async throws {
+        let server = BindingFixtureServer(bound: nil, scenario: "monitorChangesBeforeBind")
+        let (binding, store, _) = try makeBinding(server)
+        await #expect(throws: YouTubeBindingError.ineligibleEvent) {
+            try await binding.prepareConfirmed(eventID: "fixture-event", channelID: "fixture-channel", profile: .fullHD,
+                generation: 1, expectedMonitorEnabled: true)
+        }
+        #expect(await server.inserts == 1)
+        #expect(await server.binds == 0)
+        #expect(try store.load()?.createdStreamID == "created-stream")
+    }
+
     @Test func missingDestinationKeepsKnownIDAndNeverFallsBackToRTMP() async throws {
         let server = BindingFixtureServer(bound: nil, scenario: "missingDestination")
         let (binding, store, _) = try makeBinding(server)
@@ -318,6 +330,7 @@ private actor BindingFixtureServer {
     var inserts = 0
     var binds = 0
     var createdResources = 0
+    var monitorReadCount = 0
     private var bound: String?
     private let eventID: String
     private let scenario: String
@@ -373,7 +386,7 @@ private actor BindingFixtureServer {
         } else if path.hasSuffix("liveStreams") {
             object = ["items": [stream(id: query["id"] ?? "missing")]]
         } else if path.hasSuffix("liveBroadcasts") {
-            if query["id"] != nil { object = ["items": [event()]] }
+            if query["id"] != nil { monitorReadCount += 1; object = ["items": [event()]] }
             else if scenario == "shared", query["pageToken"] == nil {
                 object = ["items": [event()], "nextPageToken": "fixture-next-page"]
             } else if scenario == "shared" {
@@ -393,6 +406,7 @@ private actor BindingFixtureServer {
     private func event(id: String? = nil, state: String = "ready", bound: String? = nil) -> [String: Any] {
         let id = id ?? eventID
         var details: [String: Any] = ["enableAutoStart": false, "enableAutoStop": scenario == "autoStop"]
+        if scenario == "monitorChangesBeforeBind" { details["monitorStream"] = ["enableMonitorStream": monitorReadCount < 2] }
         if let binding = id == eventID ? self.bound : bound { details["boundStreamId"] = binding }
         return ["id": id, "snippet": ["channelId": scenario == "wrongChannel" ? "different-channel" : "fixture-channel",
                 "title": "Fixture Match", "scheduledStartTime": "2026-11-10T12:00:00Z", "isDefaultBroadcast": false],

@@ -216,6 +216,11 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             guard let streamID = pendingRemote?.streamID else { throw StartError.changed }
             try sameBoundEvent(event, intent, streamID: streamID)
         } else { try sameConfirmedEvent(event, intent) }
+        let monitorEnabled = event.contentDetails?.monitorStream?.enableMonitorStream
+        // Insert defaults do not establish the setting of an omitted read field.
+        guard event.contentDetails?.enableAutoStart != false || monitorEnabled != nil else {
+            throw StartError.monitorUnknown
+        }
         message = "Backup is writing. Preparing the confirmed YouTube event…"
         let prepared: PreparedYouTubeIngestion
         if intent.isResume {
@@ -223,11 +228,13 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             prepared = try await binding.prepareResumeConfirmed(context: context, profile: intent.profile, generation: intent.generation)
         } else {
             prepared = try await binding.prepareConfirmed(eventID: intent.event.id, channelID: intent.channel.id,
-                                                         profile: intent.profile, generation: intent.generation)
+                                                         profile: intent.profile, generation: intent.generation,
+                                                         expectedMonitorEnabled: monitorEnabled)
         }
         try check(intent, request)
         if intent.isResume { try sameBoundEvent(prepared.broadcast, intent, streamID: prepared.streamID) }
         else { try sameConfirmedEvent(prepared.broadcast, intent) }
+        guard prepared.broadcast.contentDetails?.monitorStream?.enableMonitorStream == monitorEnabled else { throw StartError.changed }
         guard media.snapshot().writerStarted else { throw StartError.writer }
         // Persist BEFORE first possible publication, including auto-start. On a
         // crash/relaunch we read state rather than publishing or assuming idle.
@@ -237,13 +244,15 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         try check(intent, request)
         admitted = prepared
         state = .waitingForIngestion
-        var transitionSent = false
+        var testingSent = false
+        var liveSent = false
         while true {
             try check(intent, request)
             guard !media.snapshot().uploadFailed else { throw StartError.upload }
             let current = try await client.broadcast(id: intent.event.id, channelID: intent.channel.id, generation: intent.generation)
             try check(intent, request)
             try sameBoundEvent(current, intent, streamID: prepared.streamID)
+            guard current.contentDetails?.monitorStream?.enableMonitorStream == monitorEnabled else { throw StartError.changed }
             switch current.status?.lifeCycleStatus {
             case "live":
                 try setPending(PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id))
@@ -255,18 +264,31 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             let stream = try await client.stream(id: prepared.streamID, channelID: intent.channel.id, generation: intent.generation)
             try check(intent, request)
             if stream.status?.streamStatus == "error" { throw StartError.upload }
-            if intent.event.contentDetails?.enableAutoStart == false, stream.status?.streamStatus == "active",
-               !transitionSent, ["ready", "testing"].contains(current.status?.lifeCycleStatus ?? "") {
-                transitionSent = true // claim before awaiting; ambiguous writes are never resent here
-                state = .goingLive; message = "Ingestion active. Requesting Live; waiting for YouTube confirmation…"
-                do {
-                    _ = try await transition(PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id),
-                                             to: .live, generation: intent.generation)
-                } catch {
+            if intent.event.contentDetails?.enableAutoStart == false, stream.status?.streamStatus == "active" {
+                let lifecycle = current.status?.lifeCycleStatus
+                let target: YouTubeBroadcastTransition?
+                if lifecycle == "ready", current.contentDetails?.monitorStream?.enableMonitorStream == true, !testingSent {
+                    target = .testing
+                    testingSent = true
+                } else if !liveSent, lifecycle == "testing" || (lifecycle == "ready" && current.contentDetails?.monitorStream?.enableMonitorStream == false) {
+                    target = .live
+                    liveSent = true
+                } else { target = nil }
+                if let target {
+                    // Only an authoritative testing read permits advancing from the
+                    // monitor phase. Never retry either POST after an unknown result.
                     try check(intent, request)
-                    // A rejection or lost response can race a remote transition.
-                    // Read on the next iteration, never repeat the POST blindly.
-                    if case YouTubeMutationError.rejected(let error) = error { message = error.localizedDescription }
+                    state = .goingLive
+                    message = target == .testing
+                        ? "Ingestion active. Preparing YouTube monitor stream; YouTube has not confirmed Live."
+                        : "Ingestion active. Requesting Live; waiting for YouTube confirmation…"
+                    do {
+                        _ = try await transition(PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id),
+                                                 to: target, generation: intent.generation)
+                    } catch {
+                        try check(intent, request)
+                        if case YouTubeMutationError.rejected(let error) = error { message = error.localizedDescription }
+                    }
                 }
             }
             try await Task.sleep(for: .seconds(pollSeconds))
@@ -651,12 +673,16 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     private func sameConfirmedEvent(_ event: YouTubeBroadcast, _ intent: BroadcastIntent) throws {
         guard event.ineligibility(channelID: intent.channel.id) == nil,
               event.title == intent.event.title, event.status?.privacyStatus == intent.event.status?.privacyStatus,
-              event.contentDetails?.enableAutoStart == intent.event.contentDetails?.enableAutoStart else { throw StartError.changed }
+              event.contentDetails?.enableAutoStart == intent.event.contentDetails?.enableAutoStart,
+              (intent.event.contentDetails?.monitorStream?.enableMonitorStream == nil ||
+               event.contentDetails?.monitorStream?.enableMonitorStream == intent.event.contentDetails?.monitorStream?.enableMonitorStream) else { throw StartError.changed }
     }
     private func sameBoundEvent(_ event: YouTubeBroadcast, _ intent: BroadcastIntent, streamID: String) throws {
         guard event.contentDetails?.boundStreamId == streamID, event.contentDetails?.enableAutoStop == false,
               event.title == intent.event.title, event.status?.privacyStatus == intent.event.status?.privacyStatus,
-              event.contentDetails?.enableAutoStart == intent.event.contentDetails?.enableAutoStart else { throw StartError.changed }
+              event.contentDetails?.enableAutoStart == intent.event.contentDetails?.enableAutoStart,
+              (intent.event.contentDetails?.monitorStream?.enableMonitorStream == nil ||
+               event.contentDetails?.monitorStream?.enableMonitorStream == intent.event.contentDetails?.monitorStream?.enableMonitorStream) else { throw StartError.changed }
     }
     /// Claim both a durable ambiguity marker and a RAM outstanding-request gate
     /// before dispatch. A deadline cancels the caller but does not settle this
@@ -696,7 +722,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         do { try store.save(context); pendingRemote = context; journalUnavailable = false }
         catch { journalUnavailable = true; throw StartError.journal }
     }
-    private enum StartError: Error { case writer, changed, overlay, upload, ended, remoteUnknown, journal }
+    private enum StartError: Error { case writer, changed, overlay, upload, ended, remoteUnknown, journal, monitorUnknown }
     private func startupMessage(_ error: any Error) -> String {
         let suffix = " Healthy local recording continues while available; Stop recording remains available."
         if error is BroadcastDeadlineError { return "YouTube startup timed out. Upload stopped; reconcile before trying again." + suffix }
@@ -706,6 +732,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         case .writer: return "The local backup did not initialize. No media was published. Inspect the local recording status."
         case .changed: return "The confirmed account, event or media settings changed. Review and confirm again." + suffix
         case .overlay: return "The configured overlay is unavailable. Explicitly disable it or wait for recovery, then review again." + suffix
+        case .monitorUnknown: return "The YouTube monitor-stream setting is unavailable. Refresh or inspect YouTube Studio before Go Live. No media was published." + suffix
         case .journal: return "The pending session could not be saved. No new upload can start until local storage is available." + suffix
         case .ended: return "YouTube reports the event has finished. Upload stopped; choose no replacement automatically." + suffix
         default: return "YouTube startup could not be confirmed. Check YouTube Studio and reconcile any attempted upload." + suffix

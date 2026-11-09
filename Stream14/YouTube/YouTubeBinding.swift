@@ -113,14 +113,16 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         self.client = client; self.store = store; self.timeout = timeout
     }
 
-    func prepareConfirmed(eventID: String, channelID: String, profile: SessionProfile, generation: UInt64) async throws -> PreparedYouTubeIngestion {
+    func prepareConfirmed(eventID: String, channelID: String, profile: SessionProfile, generation: UInt64,
+                          expectedMonitorEnabled: Bool? = nil) async throws -> PreparedYouTubeIngestion {
         guard !isPreparing else { throw YouTubeBindingError.busy }
         isPreparing = true
         defer { isPreparing = false }
         do {
             return try await withThrowingTaskGroup(of: PreparedYouTubeIngestion.self) { group in
                 group.addTask {
-                    try await self.resolve(eventID: eventID, channelID: channelID, profile: profile, generation: generation)
+                    try await self.resolve(eventID: eventID, channelID: channelID, profile: profile, generation: generation,
+                                           expectedMonitorEnabled: expectedMonitorEnabled)
                 }
                 group.addTask { [timeout] in try await Task.sleep(for: timeout); throw YouTubeBindingError.deadline }
                 defer { group.cancelAll() }
@@ -159,10 +161,11 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
             destination: try stream.destination(channelID: channel.id, profile: profile, appCreated: false))
     }
 
-    private func resolve(eventID: String, channelID: String, profile: SessionProfile, generation: UInt64) async throws -> PreparedYouTubeIngestion {
+    private func resolve(eventID: String, channelID: String, profile: SessionProfile, generation: UInt64,
+                         expectedMonitorEnabled: Bool?) async throws -> PreparedYouTubeIngestion {
         let channel = try await client.authorizedChannel(generation: generation)
         guard channel.id == channelID else { throw YouTubeReadError.wrongChannel }
-        var event = try await eligible(eventID, channelID, generation)
+        var event = try await eligible(eventID, channelID, generation, expectedMonitorEnabled: expectedMonitorEnabled)
         let saved = try loadIntent(channelID: channelID, eventID: eventID)
         if let streamID = event.contentDetails?.boundStreamId, !streamID.isEmpty {
             if let saved, saved.matches(channelID: channelID, broadcastID: eventID, profile: profile),
@@ -219,7 +222,7 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         guard let streamID = intent.createdStreamID, !streamID.isEmpty else { throw YouTubeBindingError.unresolvedInsert }
         _ = try await checkedStream(streamID, channelID, profile, generation, appCreated: true)
         try await dedicated(streamID: streamID, eventID: eventID, channelID: channelID, generation: generation)
-        event = try await eligible(eventID, channelID, generation)
+        event = try await eligible(eventID, channelID, generation, expectedMonitorEnabled: expectedMonitorEnabled)
         if let bound = event.contentDetails?.boundStreamId, !bound.isEmpty {
             guard bound == streamID else { throw YouTubeBindingError.bindingConflict }
         } else {
@@ -241,9 +244,17 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         return result
     }
 
-    private func eligible(_ eventID: String, _ channelID: String, _ generation: UInt64) async throws -> YouTubeBroadcast {
+    private func eligible(_ eventID: String, _ channelID: String, _ generation: UInt64,
+                          expectedMonitorEnabled: Bool? = nil) async throws -> YouTubeBroadcast {
         let event = try await client.broadcast(id: eventID, channelID: channelID, generation: generation)
         guard event.ineligibility(channelID: channelID) == nil else { throw YouTubeBindingError.ineligibleEvent }
+        // The coordinator resolved this setting before entering F5. Recheck on
+        // every authoritative pre-mutation read, not only after preparation.
+        if let expectedMonitorEnabled {
+            guard event.contentDetails?.monitorStream?.enableMonitorStream == expectedMonitorEnabled else {
+                throw YouTubeBindingError.ineligibleEvent
+            }
+        }
         return event
     }
 
