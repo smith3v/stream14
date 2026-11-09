@@ -34,7 +34,7 @@ struct RecordingRow: View {
                     .accessibilityIdentifier("recordingProfile-" + sample.id.uuidString)
             }
             if protected {
-                Text("Writer still owns this file. Playback, export, recovery and deletion are unavailable until finalization ends.")
+                Text("Writer still owns this file. Movie playback, original export, recovery and deletion are unavailable until finalization ends.")
                     .font(.caption)
             }
             Text(reviewLabel).font(.caption)
@@ -74,6 +74,7 @@ struct RecordingRow: View {
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("recoveryExplanation-" + sample.id.uuidString)
             }
+            QualificationExportView(sampleID: sample.id, originalProtected: protected)
             ForEach(sample.recoveries ?? []) { recovery in
                 if let directory { recoveryRow(recovery, directory: directory) }
             }

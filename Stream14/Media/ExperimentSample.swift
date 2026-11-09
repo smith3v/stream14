@@ -73,7 +73,7 @@ nonisolated struct ExperimentSample: Codable, Identifiable, Sendable {
     /// a visible entry that can be retried. Never recursively remove a directory.
     func delete(in directory: URL) throws {
         let names = [fileName] + (recoveries ?? []).map(recoveryFileName) +
-            [id.uuidString + ".observations.json", id.uuidString + ".json", id.uuidString + ".review.json"]
+            [id.uuidString + ".qualification.json", id.uuidString + ".observations.json", id.uuidString + ".json", id.uuidString + ".review.json"]
         for name in names {
             let url = directory.appendingPathComponent(name)
             let attributes: [FileAttributeKey: Any]

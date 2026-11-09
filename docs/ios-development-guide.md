@@ -1718,6 +1718,34 @@ codec/writer Mac evidence, exact commands, the measured native AAC-tail trim, an
 remaining physical process-termination/relaunch/playback/export checks. This is
 not A5 acceptance or evidence of three-hour recording/streaming reliability.
 
+## F12 qualification summaries and original analysis
+
+The delivered app collects private bounded numeric checkpoints for each new
+recording in Debug and Release. Load/export the qualification summary from that
+recording's row; exporting media remains a separate action. Old recordings can
+legitimately have no report. A checkpoint can be incomplete after termination;
+"stopped" describes the observer, not file/stream success. Check the latest
+checkpoint time and observation count before relying on the report.
+
+Follow the [qualification report template](qualification-report-template.md) for
+clap markers, native original-file analysis, receiver observation, overhead and
+power/network/ambient controls. The development device harness still clamps to
+900 seconds, while normal app recording remains unlimited. No 30-minute or
+three-hour run is implicitly authorized. Short instrumentation overhead on the
+13 mini and actual installed-app diagnostic export remain pending.
+
+## Private synthetic RTMPS receiver checkpoint (2026-11-08)
+
+Use the [receiver procedure and actual measurements](2026-11-08-private-rtmps-receiver-validation.md)
+for normal-TLS laptop-only wire/receiver checks. It uses a fixed Debug Simulator-only
+localhost seam and generated media through the actual shared encoder, with no
+camera, Google request or physical-device trust change. The untrusted TLS rejection,
+trusted socket sends and corrected-header receiver decode were observed, but the
+receiver A/V alignment gate still fails. Do not treat the successful hosted test
+alone as receiver or physical qualification. The record preserves the remaining
+AAC timing investigation and a future five-minute TOTAL phone script using the
+existing Unlisted YouTube event and normal public trust, not a phone CA profile.
+
 F11's 2026-11-09 combined source has fresh native validation: 160 hosted passes,
 eight opt-in skips and zero failures; 16 focused ownership/recovery tests; unsigned
 Release; and two actual simulator recovery UI flows. The UI evidence includes

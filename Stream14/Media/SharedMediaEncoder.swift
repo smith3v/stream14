@@ -13,6 +13,8 @@ actor SharedMediaEncoder: MediaMixerOutput {
         var bytes = 16 * 1024 * 1024
     }
     struct Metrics: Sendable {
+        var admittedVideoFrames = 0
+        var admittedAudioFrames = 0
         var highWaterBytes = 0
         var highWaterVideoFrames = 0
         var highWaterAudioFrames = 0
@@ -96,13 +98,16 @@ actor SharedMediaEncoder: MediaMixerOutput {
                 return false
             }
             guard let sample = copy() else {
+                if video { state.metrics.rejectedVideoFrames += 1 }
+                else { state.metrics.rejectedAudioFrames += frames }
                 state.failure = .audioFormat
                 state.accepting = false
                 return false
             }
             state.samples.append(Item(sample: sample, bytes: bytes, audioFrames: video ? 0 : frames, video: video))
             state.bytes += bytes
-            if video { state.videos += 1 } else { state.audioFrames += frames }
+            if video { state.videos += 1; state.metrics.admittedVideoFrames += 1 }
+            else { state.audioFrames += frames; state.metrics.admittedAudioFrames += frames }
             state.metrics.highWaterBytes = max(state.metrics.highWaterBytes, state.bytes)
             state.metrics.highWaterVideoFrames = max(state.metrics.highWaterVideoFrames, state.videos)
             state.metrics.highWaterAudioFrames = max(state.metrics.highWaterAudioFrames, state.audioFrames)

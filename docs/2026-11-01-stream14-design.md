@@ -1372,6 +1372,85 @@ See the [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) for reproduc
 commands and limits. Physical force termination/relaunch, playback/export and A5
 remain pending; no phone or YouTube session was used for this evidence.
 
+### F12 private delivered-build qualification instrumentation (2026-11-08)
+
+The Release app uses the same numeric hooks as Debug, without test environment
+variables. Encoder admission updates existing finite intake counters. The file
+consumer tracks valid encoded offers, successful native appends, rejected packets,
+startup queue high water and video PTS gaps. Transport uses a fixed-size cumulative
+counter shared by reconnect generations; it counts admission, local send completion,
+pre-origin skips, rejection and admitted packets discarded on failure/stop. Observation continues if upload outlives the local backup; file counters freeze
+when its writer is released. Final close follows bounded transport shutdown and
+reports unresolved admitted sends explicitly. A local
+send acknowledgment is not evidence of YouTube playback. The file's estimated
+missing 30 Hz intervals are an inference from PTS, not measured camera/pipeline drops.
+Raw PCM counts use PCM frames, encoded audio counts use AAC packets; do not add them.
+Camera/HaishinKit pre-boundary drops and native internal codec/writer/socket queues
+are not exposed by these counters. High water covers only the app-owned raw intake,
+file startup queue and transport retained queue including in-flight sends.
+
+One per-session ten-second task, associated with the original recording, samples `ContinuousClock` elapsed time,
+`TASK_VM_INFO.phys_footprint`, resident mappings and thermal state outside callbacks.
+`phys_footprint` is charged memory for this task; resident mappings are a different
+measure, and neither establishes total device memory cost. WebKit runs in separate
+processes and GPU/driver/media allocations may be charged elsewhere. Unsupported
+queries are absent, never zero. Simulator/macOS results do not qualify the 13 mini.
+The report retains first observation, lifetime count, peaks, worst heat, online
+charged-footprint regression and a rolling 120-observation window. The lifetime
+regression summarizes growth, but does not prove absence of transient growth or
+memory stability; use full-run external Instruments evidence where needed. Missing
+coverage, suspension, checkpoint failure and unmeasured child processes remain
+explicit limits. Lack of a crash is not a pass.
+
+An actor atomically replaces one <=128 KiB `.qualification.json` checkpoint next to
+each recording, excluded from backup. No per-frame task, file append or disk polling
+is added. Retained per-record files grow only as the owner creates recordings;
+per-session diagnostic memory/file size/task count are bounded. Existing deliberate
+recording deletion removes its checkpoint; originals are never auto-cleaned. A crash
+retains the last checkpoint, marked checkpoint rather than complete. Stopped means
+the observer stopped, not that the recording, stream or qualification passed.
+
+The export schema allows numbers, safe enums and a locally random diagnostic UUID
+only. It includes no URL, path, query, header, credentials, account/channel/event
+identity, wall clock, SDK/error description, raw API payload or media. Decoding and
+re-encoding the typed model discards unknown keys. Export is an explicit Share
+operation. No analytics, remote telemetry or new dependency is present. Elapsed
+intervals use the existing SystemBootTime reason 35F9.1; boot time and host epochs
+never enter this report. [Apple's required-reason reference](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitype)
+permits exporting elapsed intervals between in-app events under that reason. Own
+container metadata remains covered by C617.1 and preferences by CA92.1. Recheck
+submission requirements again at F13; this is not App Store approval.
+
+See the [qualification report template](qualification-report-template.md) and
+`Tools/qualification/Analyze.swift` for original-file and receiver measurements.
+A short attended 13 mini instrumentation-overhead run, actual installed-app export,
+physical start/end clap markers, whole-run memory evidence and A1–A9 acceptance
+remain pending. Development harnesses retain the 900-second cap; ordinary user
+recording is unlimited. No prior MVP measurement claim is changed by this work.
+
+### Private receiver evidence checkpoint — 2026-11-08
+
+A laptop-only synthetic fixture now exercises the actual shared encoder, compressed
+file fan-out and acknowledged RTMPSConnection into an independent normal-TLS
+receiver. The [receiver record](2026-11-08-private-rtmps-receiver-validation.md)
+records a canonical native AAC sequence-header bug and legacy66ms CTS addition,
+two isolated fork correction candidates, native packet/decoder measurements and
+limits. After those candidates, receiver H264/AAC decode succeeds but decoded audio
+still leads video by about59–70ms across two generations, exceeding35ms. AAC
+priming/trim versus receiver normalization remains unresolved; no guessed delay,
+production pin adoption, physical sync or full-app gate completion is authorized by
+this evidence. The app's existing immutable fork pin remains unchanged here.
+
+
+The focused receiver correction selects owned-fork revision
+`497f742c5f2c04cf3ca085378e660a273e351788`: canonical native AAC-LC sequence headers
+and zero added CTS for the explicit compressed-video path. Encoder output, AAC
+priming compensation, payloads, shared clock and queue limits are unchanged.
+Independent source review and native package regressions support these narrow fixes;
+receiver-file A/V alignment and physical YouTube markers remain pending. The private
+localhost fixture is compiled only into Debug Simulator products. Historical evidence
+for earlier revisions is not retroactively reclassified.
+
 F11 review correction (independently re-reviewed and natively tested 2026-11-09): the UI finalization deadline
 must not release file ownership. One retained native finalizer/UUID excludes the
 changing original from inspection, playback/export, recovery and deletion until
@@ -1380,3 +1459,14 @@ callback releases protection without promoting a timed-out failed original to
 complete. Track/duration-only structural validation leaves decoded-start review
 unset; only `RecordingRecovery.inspect` may persist readable-start status. See the
 F11 handoff's final validation section for fresh tests, UI evidence and physical limits.
+
+
+F12/F11 integration — 2026-11-09: the protected native finalizer UUID and one-task
+ownership survive a UI wait deadline. The diagnostic observer does not retire that
+ownership or promote a failed movie after a late callback. Its optional
+`nativeFinalizationOutstanding` boolean records only what was true at that
+checkpoint; `end: stopped` still means observer stop, not native completion or
+readable media. A safe numeric checkpoint Load/Share is independent from the
+protected original movie and never opens that media. Original playback/export,
+recovery/deletion and decoded-start inspection keep F11's protection. Historical
+reports without this optional flag remain readable, with finalizer state unknown.

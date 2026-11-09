@@ -247,6 +247,10 @@ struct SetupView: View {
             }
             Text("Recording: " + experiment.message)
                 .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("mediaStatus")
+            if !experiment.qualificationWarning.isEmpty {
+                Text(experiment.qualificationWarning)
+                    .font(.footnote).fixedSize(horizontal: false, vertical: true)
+            }
             if let started = experiment.startedAt {
                 Text(started, style: .timer).monospacedDigit().accessibilityLabel("Recording duration")
             }

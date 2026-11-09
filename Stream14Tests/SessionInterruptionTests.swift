@@ -114,6 +114,52 @@ import UIKit
         }
     }
 
+    @Test func qualificationSurvivesFileStopOrFailureUntilWholeSessionClose() async throws {
+        for injection in [LocalRecorder.Injection.none, .finalization] {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let media = session()
+            let totals = QualificationTransportCounter()
+            let publisher = RTMPSPublisher(diagnostics: totals, send: { _, _ in }, close: {}, failed: { _ in })
+            publisher.activate()
+            let encoder = try SharedMediaEncoder(profile: .hd, output: { _ in }, failed: { _ in })
+            media.installBroadcastFixture(encoder: encoder, publisher: publisher)
+            let sample = ExperimentSample()
+            try sample.save(in: directory)
+            let writer = try await recorder(sample: sample, directory: directory, injection: injection)
+            media.installWriterFixture(writer, sample: sample, directory: directory)
+            media.beginQualificationFixture(transport: totals)
+            await media.stopRecording()
+            #expect(media.hasUpload && media.broadcastPipelineRunning)
+            let checkpoint = QualificationCheckpoint()
+            let afterFile = try await checkpoint.load(id: sample.id, directory: directory)
+            #expect(afterFile.end == .checkpoint)
+            #expect(afterFile.recording == (injection == .none ? .completed : .failed))
+            let frozenFileFrames = afterFile.file.writtenVideo
+            #expect(encoder.offer(try LocalRecorderTests.video(90, profile: .hd)))
+            let codec = try SharedMediaCodec(profile: .hd)
+            let packets = try codec.append(LocalRecorderTests.video(90, profile: .hd))
+            let packet = try #require(packets.first)
+            #expect(publisher.offer(packet))
+            try await until { totals.snapshot.acknowledgedPackets == 1 }
+            await media.checkpointQualificationFixture()
+            let continuing = try await checkpoint.load(id: sample.id, directory: directory)
+            #expect(continuing.end == .checkpoint)
+            #expect(continuing.encoder.admittedVideo == 1)
+            #expect(continuing.transport.admittedPackets == 1)
+            #expect(continuing.transport.acknowledgedPackets == 1)
+            #expect(continuing.file.writtenVideo == frozenFileFrames)
+            #expect(continuing.observationCount > afterFile.observationCount)
+            media.interrupt(.camera)
+            try await until { media.phase == .idle }
+            let final = try await checkpoint.load(id: sample.id, directory: directory)
+            #expect(final.end == .stopped && final.transport.unresolvedPackets == 0)
+            #expect(final.transport.acknowledgedPackets == 1 && final.file.writtenVideo == frozenFileFrames)
+            codec.invalidate()
+        }
+    }
+
     private func session() -> MediaSession {
         MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in }, profile: .hd,
             persistProfile: { _ in }, authorizeCapture: { false })

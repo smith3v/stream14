@@ -32,7 +32,8 @@ struct RTMPSPublisherTests {
     @Test func stalledSendOverflowClosesWithoutWaitingAndKeepsInFlightCharged() async throws {
         let samples = try videoPackets(3)
         let gate = SendGate()
-        let publisher = RTMPSPublisher(limits: .init(bytes: 1_000_000, packets: 2),
+        let diagnostics = QualificationTransportCounter()
+        let publisher = RTMPSPublisher(limits: .init(bytes: 1_000_000, packets: 2), diagnostics: diagnostics,
             send: { sample, origin in try await gate.send(sample, origin: origin) },
             close: { await gate.close() }, failed: { _ in })
         publisher.activate()
@@ -51,6 +52,10 @@ struct RTMPSPublisherTests {
         await publisher.stop()
         #expect(publisher.metrics.retainedPackets == 0)
         #expect(publisher.metrics.retainedBytes == 0)
+        #expect(diagnostics.snapshot.generations == 1)
+        #expect(diagnostics.snapshot.admittedPackets == 2)
+        #expect(diagnostics.snapshot.rejectedPackets == 1)
+        #expect(diagnostics.snapshot.discardedAdmittedPackets == 2)
         #expect(await gate.calls == 1)
         #expect(await gate.closes == 1)
     }

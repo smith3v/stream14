@@ -75,6 +75,7 @@ struct SharedMediaEncoderTests {
         #expect(encoder.offer(try LocalRecorderTests.video(30, profile: .hd)))
         #expect(encoder.offer(try LocalRecorderTests.video(31, profile: .hd)))
         #expect(!encoder.offer(try LocalRecorderTests.video(32, profile: .hd)))
+        #expect(encoder.metrics.admittedVideoFrames == 2)
         #expect(encoder.metrics.highWaterVideoFrames == 2)
         #expect(encoder.metrics.rejectedVideoFrames == 1)
         #expect(encoder.metrics.highWaterBytes <= 16 * 1024 * 1024)

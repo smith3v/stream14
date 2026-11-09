@@ -52,6 +52,12 @@ final class MediaSession {
     private let saveOverlayURL: @MainActor (String) throws -> Void
     private var overlayForeground = false
     var canEditOverlayURL: Bool { !broadcastConfigurationLocked && !busy && !stopRequested && (phase == .idle || phase == .preview) }
+    private var qualificationTask: Task<Void, Never>?
+    private let qualificationCheckpoint = QualificationCheckpoint()
+    private var qualificationReport: QualificationReport?
+    private var qualificationStart: ContinuousClock.Instant?
+    private var qualificationTransport = QualificationTransportCounter()
+    var qualificationWarning = ""
     private var recorder: LocalRecorder?
     private let fileFinalization = RecordingFinalization()
     var protectedRecordingID: UUID? { recordingID ?? fileFinalization.recordingID }
@@ -496,6 +502,7 @@ final class MediaSession {
                     self?.interrupt(.encoderFailure)
                 }
             }
+            startQualification()
             await encoder.start()
             await mixer.addOutput(encoder)
             previousIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
@@ -616,6 +623,7 @@ final class MediaSession {
         let (failures, continuation) = AsyncStream<RTMPSPublisher.Failure>.makeStream(bufferingPolicy: .bufferingNewest(1))
         let publisher = try await RTMPSPublisher.connected(to: prepared,
             canPublish: { retry || recorder?.hasStarted == true },
+            diagnostics: qualificationTransport,
             failed: { failure in continuation.yield(failure); continuation.finish() })
         guard !Task.isCancelled, !stopRequested, stopGeneration == uploadStopGeneration, phase == .recording, sample?.id == recordingID else {
             await publisher.stop()
@@ -728,16 +736,21 @@ final class MediaSession {
         }
     }
 
-    private func finishRecording(keepEncoding: Bool = false) async {
+    private func finishRecording(keepEncoding: Bool = false, closingSession: Bool = false) async {
+        await checkpointQualification()
         if !keepEncoding, let sharedEncoder {
             await mixer.removeOutput(sharedEncoder)
             do { try await sharedEncoder.finish() }
             catch { failure = true }
+            await checkpointQualification()
             self.sharedEncoder = nil
             encoderErrorTask?.cancel(); encoderErrorTask = nil
         }
         guard let recorder else {
-            if !keepEncoding { restoreIdleTimer() }
+            if !keepEncoding {
+                if !closingSession { await finishQualification() }
+                restoreIdleTimer()
+            }
             return
         }
         mediaDestinations?.detachRecorder()
@@ -782,10 +795,77 @@ final class MediaSession {
         }
         errorTask?.cancel()
         errorTask = nil
+        await checkpointQualification()
         self.recorder = nil
+        if !keepEncoding && !closingSession { await finishQualification() }
         refreshSamples()
         startedAt = nil
         if !keepEncoding { restoreIdleTimer() }
+    }
+
+    private func finishQualification() async {
+        qualificationTask?.cancel(); qualificationTask = nil
+        await checkpointQualification(stopped: true)
+        qualificationReport = nil
+        qualificationStart = nil
+    }
+
+    #if DEBUG
+    func beginQualificationFixture(transport: QualificationTransportCounter) {
+        startQualification()
+        qualificationTransport = transport
+    }
+    func checkpointQualificationFixture() async { await checkpointQualification() }
+    #endif
+
+    private func startQualification() {
+        qualificationTask?.cancel()
+        qualificationReport = QualificationReport(profile: profile)
+        qualificationStart = ContinuousClock.now
+        qualificationTransport = QualificationTransportCounter()
+        qualificationWarning = ""
+        qualificationTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard self != nil else { return }
+                await self?.checkpointQualification()
+                do { try await Task.sleep(for: .seconds(10)) } catch { return }
+            }
+        }
+    }
+
+    private func checkpointQualification(stopped: Bool = false) async {
+        guard var report = qualificationReport, let start = qualificationStart,
+              let id = sample?.id, let directory else { return }
+        let duration = start.duration(to: .now).components
+        report.observe(QualificationReport.memory(elapsed: Double(duration.seconds) + Double(duration.attoseconds) / 1e18))
+        if let metrics = sharedEncoder?.metrics {
+            report.encoder = .init(admittedVideo: metrics.admittedVideoFrames,
+                admittedPCMFrames: metrics.admittedAudioFrames, rejectedVideo: metrics.rejectedVideoFrames,
+                rejectedPCMFrames: metrics.rejectedAudioFrames, highWaterBytes: metrics.highWaterBytes,
+                highWaterVideo: metrics.highWaterVideoFrames, highWaterPCMFrames: metrics.highWaterAudioFrames)
+        }
+        if let metrics = recorder?.metrics {
+            report.file = .init(offeredVideo: metrics.offeredVideo ?? 0,
+                offeredAudioPackets: metrics.offeredAudio ?? 0, writtenVideo: metrics.videoWritten,
+                writtenAudioPackets: metrics.audioWritten ?? 0, rejectedVideo: metrics.videoDropped,
+                rejectedAudioPackets: metrics.audioDropped,
+                estimatedMissing30HzIntervals: metrics.missingOutputFrames ?? 0,
+                videoGapsAtLeast500ms: metrics.videoStalls, largestVideoGapSeconds: metrics.largestVideoGap,
+                startupHighWaterBytes: metrics.startupHighWaterBytes ?? 0,
+                startupHighWaterPackets: metrics.startupHighWaterPackets ?? 0)
+        }
+        report.nativeFinalizationOutstanding = fileFinalization.recordingID == id
+        report.recording = switch sample?.status {
+        case .completed: .completed
+        case .interrupted: .interrupted
+        case .failed: .failed
+        default: .pending
+        }
+        report.transport = qualificationTransport.snapshot
+        report.end = stopped ? .stopped : .checkpoint
+        qualificationReport = report
+        do { try await qualificationCheckpoint.save(report, id: id, directory: directory) }
+        catch { qualificationWarning = "Qualification summary could not be saved. Recording is unaffected." }
     }
 
     private func restoreIdleTimer() {
@@ -805,7 +885,7 @@ final class MediaSession {
         // Socket shutdown never delays file finalization. This is one control
         // task per stop operation, not a retained task per media callback.
         let uploadClosing = interruptedUploadClosing ?? publisher.map { publisher in Task { await publisher.stop() } }
-        await finishRecording()
+        await finishRecording(closingSession: true)
         mediaDestinations = nil
         overlayTask?.cancel()
         overlayTask = nil
@@ -835,6 +915,7 @@ final class MediaSession {
             _ = try? await withBroadcastDeadline(seconds: 3) { await uploadClosing.value }
         }
         interruptedUploadClosing = nil
+        await finishQualification()
         uploadAffinity.endCaptureSession()
         uploadState = .idle
         phase = .idle
