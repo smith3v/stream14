@@ -1717,3 +1717,13 @@ See the [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) for producti
 codec/writer Mac evidence, exact commands, the measured native AAC-tail trim, and
 remaining physical process-termination/relaunch/playback/export checks. This is
 not A5 acceptance or evidence of three-hour recording/streaming reliability.
+
+F11's 2026-11-09 combined source has fresh native validation: 160 hosted passes,
+eight opt-in skips and zero failures; 16 focused ownership/recovery tests; unsigned
+Release; and two actual simulator recovery UI flows. The UI evidence includes
+native playback/export-sheet presentation, relaunch persistence, Cancel/confirmed
+copy-only deletion and unreadable-source failure. Both synthetic originals remained
+byte-identical. The documented F10 clipped-static-text audit allowance applies;
+this is not physical VoiceOver, complete media integrity or A5 qualification.
+The [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) records exact commands,
+artifacts, independent review fixes and the still-pending phone acceptance.

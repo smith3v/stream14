@@ -157,3 +157,116 @@ build/test/UI jobs are **NOT RUN** for this fix: automatic approval review was
 blocked by account usage limits. No reroute or retry of that rejected native job
 was attempted. The prior 13-test and Release results precede these changes and do
 not validate them. Focused source re-review and native validation remain required.
+
+## Final combined validation — 2026-11-09
+
+Normal native approval succeeded after the earlier usage-related review failure.
+That earlier blocked build was never rerouted or counted as a pass. The branch
+normally inherited final F10 `01d4c48` / main `f454e9b`, reviewed fork `497f742`,
+and the reviewed monitor correction `afaa5ae` (`78d24b7`, `80aa31c` merges).
+The one F10 EOF blank-line cleanup was also retained. Independent focused source
+re-review of `7d3d846` resolved both P1/P2 findings with no further material issue.
+
+Fresh checks of these fixes and prerequisites, not the older source snapshot:
+
+- Focused native tests: **16 passed / 4 suites**, 11.712-second test body. Includes
+  held-finalizer deadline/ownership, admission/late callback, structural-review
+  persistence, retained originals/copies and native writer/passthrough behavior.
+  Log `/private/tmp/stream14-f11-review-fixes-focused.log`; result bundle
+  `/private/tmp/stream14-f11-tests/Logs/Test/Test-Stream14-2026.11.09_07-18-47-+0100.xcresult`.
+- Final unsigned Release: **BUILD SUCCEEDED** on final source `5500c34`.
+  Log `/private/tmp/stream14-f11-final-release.log`.
+- Actual native recovery UI: **2/2 passed** on the dedicated iPhone 13 mini / iOS
+  27.2 simulator. Successful recovery (99.494 seconds) creates another UUID copy,
+  preserves interrupted original provenance through relaunch, opens native playback
+  and the export sheet's Save to Files option, exercises Cancel then confirms
+  deletion of only that new copy. Failure flow (18.749 seconds) keeps the unreadable
+  pre-fragment original exportable with an honest failed attempt.
+  Log `/private/tmp/stream14-f11-ui-recovery3.log`; result bundle
+  `/private/tmp/stream14-f11-ui-recovery3.xcresult`.
+- Both seeded original MP4 files remained byte-identical to their retained
+  synthetic sources after every UI attempt and the confirmed copy deletion.
+  Log `/private/tmp/stream14-f11-ui-original-preservation.log`.
+- Two actual UI screenshots were exported and visually inspected under
+  `/private/tmp/stream14-f11-ui-evidence`, with `manifest.json` mapping filenames
+  to the original-retained and distinct-recovery-copy views. Copy duration, tail
+  warning, playback/export/delete controls and original retention are legible.
+
+The two earlier UI success-path runs stopped at native contrast diagnostics for
+partially clipped text; their other passing steps are not substituted for the
+final full-flow pass. Recovery actions now use the same descriptive, minimum
+44-point icon controls as originals. Repeated metadata fields have per-recording
+or per-copy identifiers. The unchanged independently reviewed F10 audit helper
+then proved three clipped static-text frames outside the nav/tab viewport before
+and during the callback. All visible text, controls and other audit types retain
+their checks. This is not an unfiltered audit or a physical VoiceOver claim.
+
+### Reproduce the native checks
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=E0ABEB8B-B5A5-4FC9-AD6A-FA6A5908A78C' \
+  -derivedDataPath /private/tmp/stream14-f11-tests \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/RecordingFinalizationTests \
+  -only-testing:Stream14Tests/RecordingRecoveryTests \
+  -only-testing:Stream14Tests/RecordingDeletionTests \
+  -only-testing:Stream14Tests/LocalRecorderTests test
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=E0ABEB8B-B5A5-4FC9-AD6A-FA6A5908A78C' \
+  -derivedDataPath /private/tmp/stream14-f11-tests \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -disableAutomaticPackageResolution -only-testing:Stream14Tests test
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath /private/tmp/stream14-f11-release \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+```
+
+For recovery UI, build normally with `build-for-testing` first, which brands/signs
+its purple runner. Use a disposable simulator with the app installed; never reset,
+uninstall or delete originals to prepare this test. Seed only expendable synthetic
+files with `Tools/fragment-recovery/seed-simulator.py`, passing simulator UUID,
+readable post-fragment file, unreadable pre-fragment file and a new JSON output.
+It adds fresh UUID copies and never removes existing artifacts. Merge that JSON
+into the generated `Stream14UITests.EnvironmentVariables` in a **copy** of the
+built `.xctestrun`, stored alongside the original in Build/Products so relative
+product paths resolve. The existing private test configuration is
+`/private/tmp/stream14-f11-tests/Build/Products/Stream14-recovery-ui.xctestrun`.
+
+```sh
+xcodebuild test-without-building \
+  -xctestrun /private/tmp/stream14-f11-tests/Build/Products/Stream14-recovery-ui.xctestrun \
+  -destination 'platform=iOS Simulator,id=E0ABEB8B-B5A5-4FC9-AD6A-FA6A5908A78C' \
+  -parallel-testing-enabled NO \
+  -only-testing:Stream14UITests/SetupScreenTests/testSeparateRecoveryPersistsAndCopyDeletionKeepsOriginal \
+  -only-testing:Stream14UITests/SetupScreenTests/testUnreadableRecoveryFailureRetainsOriginalExportAndFailedAttempt \
+  -resultBundlePath /private/tmp/stream14-f11-ui-another-new-run.xcresult
+```
+
+Final full hosted-suite result is recorded below. Root owns the
+reviewed PR publication into main. The stage references issue #24 without closing
+it: physical forced termination/relaunch/playback/export, measured actual-phone
+fragment loss and A5 remain pending. No phone, camera, microphone capture or live
+YouTube/RTMPS call was used by this stage. The owner's later phone budget remains
+root-coordinated. The older synthetic process-termination evidence above applies
+to that exact retained source snapshot; lifecycle-only ownership fixes were then
+checked with the fresh tests above, not a repeated kill qualification.
+
+### Full hosted regression and final handoff
+
+Full hosted native regression on the final source **passed**: XCResult reports
+**160 passed, 8 skipped, 0 failed (168 total)** across 28 suites; test body
+83.443 seconds. The skipped cases require opt-in physical-device/private-receiver
+execution and were not enabled. Log `/private/tmp/stream14-f11-final-hosted.log`,
+parsed native summary `/private/tmp/stream14-f11-final-hosted-summary.json`, result
+bundle `/private/tmp/stream14-f11-tests/Logs/Test/Test-Stream14-2026.11.09_07-28-57-+0100.xcresult`.
+The Swift Testing line's “168 tests” includes those eight skipped tests; it must
+not be reported as 168 executed passes. Fresh focused, full hosted, Release and
+UI processes all completed and were reaped before handoff. Local links and full
+diff whitespace checks passed. The PR body is prepared privately at
+`/private/tmp/stream14-f11-pr-body.md`; root owns publication into main and the
+remaining physical acceptance. No issue closure or automatic merge is implied.

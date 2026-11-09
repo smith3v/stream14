@@ -1372,11 +1372,11 @@ See the [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) for reproduc
 commands and limits. Physical force termination/relaunch, playback/export and A5
 remain pending; no phone or YouTube session was used for this evidence.
 
-F11 review correction (source only, not yet validated): the UI finalization deadline
+F11 review correction (independently re-reviewed and natively tested 2026-11-09): the UI finalization deadline
 must not release file ownership. One retained native finalizer/UUID excludes the
 changing original from inspection, playback/export, recovery and deletion until
 its actual finish callback returns, and blocks creation of another writer. A late
 callback releases protection without promoting a timed-out failed original to
 complete. Track/duration-only structural validation leaves decoded-start review
 unset; only `RecordingRecovery.inspect` may persist readable-start status. See the
-F11 handoff's independent-review section for pending validation.
+F11 handoff's final validation section for fresh tests, UI evidence and physical limits.
