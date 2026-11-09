@@ -66,14 +66,14 @@ were repeated for ancestry bookkeeping or these documentation corrections.
 
 ## Delivery and acceptance still pending
 
-- Prepare the next version as 0.3 (4), available in the read-only inventory check
-  above. It is not yet committed or reserved. Use a focused reviewed version change
-  and recheck uploads before actual distribution; keep build numbers increasing.
+- The focused source now sets 0.3 (4), as recorded below. Recheck uploads before
+  actual distribution; this archive does not reserve a build number.
 - Publish the independently reviewed policy/support/terms and
   verify the exact signed-out public URLs used by the candidate.
-- Configure the actual public OAuth client/callback outside Git and build the
-  normally signed archive. Inspect its aggregate privacy report, purpose strings,
-  linked code/SDK manifests/notices and final export-compliance questions. Current
+- The account-enabled Release archive below passed the local bundle/signature
+  audit with development provisioning. Obtain actual App Store distribution
+  validation and Organizer aggregate privacy report, and resolve final
+  export-compliance questions. Current
   Apple SDK/privacy/TestFlight requirements were checked against official sources
   linked in the release plan; recheck at actual upload.
 - Record Organizer validation, authorized upload, processing/review, encryption
@@ -93,3 +93,74 @@ were repeated for ancestry bookkeeping or these documentation corrections.
 - Record actual upload/expiry dates and replace before TestFlight's 90-day window
   ends, using a higher build without deleting originals. Upload/availability is
   separate from installation, acceptance and long-run qualification.
+
+
+## Account-enabled 0.3 (4) archive checkpoint — 2026-11-09
+
+A separate release stage changes both app configurations and the existing hosted
+identity assertion to **0.3 (4)** at `1ae3f87`, inheriting reviewed candidate
+`9bd5c7d`. Prerequisite PRs [#58](https://github.com/smith3v/stream14/pull/58)
+and [#59](https://github.com/smith3v/stream14/pull/59) target main; merge #58 before
+#59 and this release change. Source below those prerequisites is not yet a merged
+main release. No automatic merge or upload was performed.
+
+The existing authorized public OAuth client, matching callback and Apple team
+were copied only into ignored `Config/Local.xcconfig`. No token, account, stream
+identifier, signing identity or profile is in this source change. Actual archive:
+`/private/tmp/stream14-release-0.3-signed.xcarchive`. It passed normal Release
+archiving and `codesign --verify --deep --strict` using ordinary trust services.
+It has an unexpired **development** provisioning profile matching the app;
+this is not App Store distribution signing/validation or upload readiness.
+
+The actual archived Info.plist reports `com.smith3v.stream14`, 0.3 (4), minimum
+iOS 27, configured Google client with matching callback, teal AppIcon, camera and
+microphone purpose strings mentioning confirmed YouTube use, no other usage
+purpose keys and no background modes. Nine bundled privacy manifests parsed;
+app reasons remain CA92.1/35F9.1/C617.1, tracking false and app collection empty.
+Notices include fork `497f742`. No test bundles, HTML fixtures or Debug launch
+seams were found. Dynamic load paths are Apple/Swift; the symbol audit found no
+OpenSSL/SRT/RTC indicators. These checks do not replace the aggregate SDK privacy
+report or App Store export-compliance determination. Safe numeric/boolean audit:
+`/private/tmp/stream14-release-0.3-archive-audit.json`.
+
+The **two existing hosted AppConfigurationTests passed**, zero skips/failures,
+on iPhone 13 mini Simulator iOS 27.2, Xcode 27.2 (27B52). The native result summary
+confirms two Swift Testing cases actually executed, distinct from XCTest's empty
+wrapper. Result `/private/tmp/stream14-release-0.3-identity.xcresult`; private log
+`/private/tmp/stream14-release-0.3-identity.log`. The inherited full 181-pass suite
+was not repeated for the version-only change.
+
+Reproducible native commands from the release clone:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
+  -disableAutomaticPackageResolution \
+  -derivedDataPath /private/tmp/stream14-release-0.3-build \
+  -archivePath /private/tmp/stream14-release-0.3-signed.xcarchive archive
+codesign --verify --deep --strict \
+  /private/tmp/stream14-release-0.3-signed.xcarchive/Products/Applications/Stream14.app
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Debug \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
+  -disableAutomaticPackageResolution \
+  -derivedDataPath /private/tmp/stream14-release-0.3-test-build \
+  -resultBundlePath /private/tmp/stream14-release-0.3-identity.xcresult \
+  -only-testing:Stream14Tests/AppConfigurationTests -parallel-testing-enabled NO test
+```
+
+Use new archive/result paths on rerun; the commands above identify retained
+artifacts and must not overwrite evidence. The stage did not install or operate
+the phone, start capture, call Google/YouTube, change App Store settings or upload.
+Published main policy links, App Store distribution validation, aggregate privacy
+report, upload/processing/compliance/group state, exact TestFlight installation
+and all remaining physical/service acceptance gates remain pending.
+
+
+Independent release review inspected the actual full diff against main, the
+focused delta from reviewed F13, archived Info.plist/privacy resources, safe audit
+and native two-case result summary. It independently verified the archive's
+strict signature and found no material findings at source `1ae3f87` plus these
+documentation updates. `git diff --check` and changed-document local file links
+passed. No extra native run was needed for the documentation-only handoff.

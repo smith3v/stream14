@@ -323,3 +323,33 @@ upload. Existing 0.2 (3) is Testing in Owner MVP with 88 days remaining. No
 password/code was requested and no settings were changed. No phone, capture, live
 Google/YouTube, upload or distribution action occurred in this handoff. A
 connected/unlocked device alone does not establish attended readiness.
+
+
+## Signed release identity checkpoint — 2026-11-09
+
+F12 [PR #58](https://github.com/smith3v/stream14/pull/58) and F13
+[PR #59](https://github.com/smith3v/stream14/pull/59) are published into main;
+merge in that order. New release branch `codex/release-0.3-candidate` in
+`/private/tmp/stream14-release-0.3-candidate` inherits F13 `9bd5c7d` and commits
+both app configurations and the existing identity assertion to 0.3 (4) at
+`1ae3f87`. No merge/upload occurred. This supersedes the earlier uncommitted
+version/signed-archive gaps, while live inventory must still be rechecked before
+distribution.
+
+Normal signed Release archiving and strict signature verification passed. The
+archive contains the actual configured public Google client/matching callback,
+expected icon/purpose keys, nine parseable manifests and corrected notices;
+Debug/test artifacts were absent. It uses existing **development provisioning**,
+not App Store distribution validation. Two hosted app-configuration cases passed,
+zero failures/skips; no full regression rerun was needed for version metadata.
+[The delivery record](2026-11-09-full-app-testflight.md#account-enabled-03-4-archive-checkpoint--2026-11-09)
+records commands, private evidence paths and exact limitations.
+
+Independent actual-file/full-diff release review found no material findings,
+including the archive and two-case native result. Diff/link checks passed.
+Next: owner merges #58 → #59 → release PR; verify signed-out published policy links; obtain distribution validation/aggregate privacy
+report; then record upload, processing, compliance and existing group assignment
+separately. Phone/session/endurance gates remain unchanged: app disconnected after
+revocation, five-minute TOTAL routine attended budget, explicit publishing action,
+retained originals and separate agreement for longer runs. No phone/camera/mic,
+provider API or App Store mutation occurred in this packaging stage.
