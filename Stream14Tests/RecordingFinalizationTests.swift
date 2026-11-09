@@ -81,6 +81,7 @@ struct RecordingFinalizationTests {
         // No movie is opened; a held native owner protects this UUID while the
         // observer independently writes/reads its own small numeric checkpoint.
         media.installWriterFixture(LocalRecorder(), sample: sample, directory: directory)
+        await media.holdFileFinalizationFixture {} // enter active fixture phase without capture
         media.beginQualificationFixture(transport: QualificationTransportCounter())
         var nativeCallback: CheckedContinuation<LocalRecorder.Metrics, Never>?
         let waiting = Task {

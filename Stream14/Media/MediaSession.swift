@@ -826,6 +826,7 @@ final class MediaSession {
         qualificationWarning = ""
         qualificationTask = Task { [weak self] in
             while !Task.isCancelled {
+                guard self != nil else { return }
                 await self?.checkpointQualification()
                 do { try await Task.sleep(for: .seconds(10)) } catch { return }
             }
