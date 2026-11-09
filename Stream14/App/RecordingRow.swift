@@ -27,8 +27,12 @@ struct RecordingRow: View {
                 .accessibilityIdentifier("recordingStatus-" + sample.id.uuidString)
             if let duration = sample.duration {
                 Text("Duration: " + duration.formatted(.number.precision(.fractionLength(1))) + " seconds")
+                    .accessibilityIdentifier("recordingDuration-" + sample.id.uuidString)
             }
-            if let profile = sample.profile { Text(profile).font(.caption) }
+            if let profile = sample.profile {
+                Text(profile).font(.caption)
+                    .accessibilityIdentifier("recordingProfile-" + sample.id.uuidString)
+            }
             if protected {
                 Text("Writer still owns this file. Playback, export, recovery and deletion are unavailable until finalization ends.")
                     .font(.caption)
@@ -68,6 +72,7 @@ struct RecordingRow: View {
                     .accessibilityIdentifier("recoverRecording-" + sample.id.uuidString)
                 Text("Recovery may omit unfinished fragments or trim the tail. The original is kept; inspect playback.")
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("recoveryExplanation-" + sample.id.uuidString)
             }
             ForEach(sample.recoveries ?? []) { recovery in
                 if let directory { recoveryRow(recovery, directory: directory) }
@@ -106,8 +111,10 @@ struct RecordingRow: View {
                 .accessibilityIdentifier("recoveryStatus-" + recovery.id.uuidString)
             if let duration = recovery.duration {
                 Text("Duration: " + duration.formatted(.number.precision(.fractionLength(1))) + " seconds · may be truncated")
+                    .accessibilityIdentifier("recoveryDuration-" + recovery.id.uuidString)
             }
             Text(size.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "Copy file unavailable")
+                .accessibilityIdentifier("recoveryMetadata-" + recovery.id.uuidString)
             HStack(spacing: 12) { recoveryActions(recovery, url: url, available: !protected && size != nil) }
                 .labelStyle(.iconOnly)
         }
@@ -132,4 +139,3 @@ struct RecordingRow: View {
         .accessibilityIdentifier("deleteRecovery-" + recovery.id.uuidString)
     }
 }
-
