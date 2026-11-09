@@ -140,3 +140,48 @@ the passing result above is the resulting run. An earlier ordinary-sandbox build
 could not access Xcode caches/codec services; approved native checks supplied the
 reported passes. None of these infrastructure failures was treated as media
 acceptance or caused deletion of an original.
+
+
+## Validated F11 parent integration — 2026-11-09
+
+The source now normally merges final F11 `72069f4` via `926916b`. That parent has
+its own 160 executed passes/eight opt-in skips, 16 focused checks, Release build
+and two recovery UI passes; its former compact-UI rerun limit above is superseded
+by that new parent evidence. Physical recovery/A5 limits remain unchanged.
+
+F12 preserves the retained finalizer UUID, single native finish task and exact
+decoded-start review semantics. Diagnostic Load/Share still reads only the separate
+allowlisted checkpoint while the original is protected. A new optional historical
+`nativeFinalizationOutstanding` flag discloses a retained native operation at the
+checkpoint; observer `stopped` never means native completion. A late callback may
+release protection/review but does not promote a failed original's status.
+The parent merge and this focused adjustment were independently reviewed with no
+material findings. New affected validation results:
+
+- **14 tests in three affected suites passed** (5.032 seconds), covering observer
+  lifetime, typed bounds/redaction/checkpoint recovery and held finalizer ownership.
+  The new protected-checkpoint test passed in 0.049 seconds. Result:
+  `/private/tmp/stream14-f12-parent-final-focused2.xcresult`; log
+  `/private/tmp/stream14-f12-parent-final-tests2.log` (native process exited 0).
+- **Unsigned Release passed** after the parent merge and final observer guard.
+  `/private/tmp/stream14-f12-parent-final-release.log`. Actual bundle privacy reasons
+  and helper syntax checks again passed; no new collection/tracking declaration.
+- **The diagnostic Load/Share UI passed** in 36.116 seconds using a new failed-row
+  fixture with observer stopped and native-finalization-outstanding at checkpoint.
+  Save to Files was available. Result `/private/tmp/stream14-f12-parent-ui2.xcresult`,
+  log `/private/tmp/stream14-f12-parent-ui2.log`. Screenshot inspected at
+  `/private/tmp/stream14-f12-parent-ui-attachments/F086A6BC-6C22-46AD-B65A-A66A4CDBC70F.png`:
+  the failed status, available numeric export and explicit outstanding-at-checkpoint
+  warning fit the small screen. No movie was supplied/opened by this fixture.
+- Runner branding/icon and normal Simulator signature were verified again. The
+  independent review covered the parent ownership integration and optional flag
+  (`1107eb8`) with no material findings. `4bfdc45` corrects only the fixture's active
+  phase and stops the weak observer loop when its owner no longer exists.
+
+The first new fixture run had 13 passes and one test setup failure: it had never
+entered recording phase, so Stop correctly did nothing. The corrected fixture
+uses the existing no-capture phase seam; the fresh passing run above supersedes it.
+The first UI seed attempt stopped before launch because the owned Simulator was
+shutdown; only that Simulator was booted, and a new result path retained both
+attempts. No original was deleted/reset or overwritten. Physical overhead,
+installed-phone diagnostic export, markers and long qualification remain pending.

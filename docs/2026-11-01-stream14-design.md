@@ -1459,3 +1459,14 @@ callback releases protection without promoting a timed-out failed original to
 complete. Track/duration-only structural validation leaves decoded-start review
 unset; only `RecordingRecovery.inspect` may persist readable-start status. See the
 F11 handoff's final validation section for fresh tests, UI evidence and physical limits.
+
+
+F12/F11 integration — 2026-11-09: the protected native finalizer UUID and one-task
+ownership survive a UI wait deadline. The diagnostic observer does not retire that
+ownership or promote a failed movie after a late callback. Its optional
+`nativeFinalizationOutstanding` boolean records only what was true at that
+checkpoint; `end: stopped` still means observer stop, not native completion or
+readable media. A safe numeric checkpoint Load/Share is independent from the
+protected original movie and never opens that media. Original playback/export,
+recovery/deletion and decoded-start inspection keep F11's protection. Historical
+reports without this optional flag remain readable, with finalizer state unknown.
