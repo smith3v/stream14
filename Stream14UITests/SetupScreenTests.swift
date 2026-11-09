@@ -447,6 +447,87 @@ final class SetupScreenTests: XCTestCase {
         add(screenshot)
     }
 
+    func testSeparateRecoveryPersistsAndCopyDeletionKeepsOriginal() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["STREAM14_RECOVERY_FIXTURE_ID"] != nil,
+            "Seed a dedicated Simulator with an expendable interrupted source first.")
+        let id = try XCTUnwrap(ProcessInfo.processInfo.environment["STREAM14_RECOVERY_FIXTURE_ID"])
+        let app = fixtureApp()
+        app.tabBars.buttons["Recordings"].tap()
+        let recover = app.buttons["recoverRecording-" + id]
+        scrollTo(recover, in: app)
+        let row = app.otherElements["recordingRow-" + id]
+        let copies = row.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "recoveryStatus-"))
+        let previousIDs = Set(copies.allElementsBoundByIndex.map(\.identifier))
+        recover.tap()
+        let feedback = app.staticTexts["recordingsStatus"]
+        expectation(for: NSPredicate(format: "label CONTAINS %@", "Recovered copy saved"), evaluatedWith: feedback)
+        waitForExpectations(timeout: 30)
+        XCTAssertEqual(copies.count, previousIDs.count + 1)
+        let newID = try XCTUnwrap(copies.allElementsBoundByIndex.map(\.identifier).first { !previousIDs.contains($0) })
+            .replacingOccurrences(of: "recoveryStatus-", with: "")
+        XCTAssertEqual(app.staticTexts["recordingStatus-" + id].label, "interrupted")
+        app.terminate()
+        app.launch()
+        app.tabBars.buttons["Recordings"].tap()
+        XCTAssertTrue(copies.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["recordingStatus-" + id].label, "interrupted")
+        let play = row.buttons["playRecovery-" + newID]
+        scrollTo(play, in: app)
+        XCTAssertTrue(play.isEnabled)
+        play.tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        let export = row.buttons["exportRecovery-" + newID]
+        scrollTo(export, in: app)
+        try auditInterface(app)
+        let recoveredScreenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        recoveredScreenshot.name = "Distinct recovery copy and original interrupted status"
+        recoveredScreenshot.lifetime = .keepAlways
+        add(recoveredScreenshot)
+        export.tap()
+        XCTAssertTrue(app.cells["Save to Files"].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launch()
+        app.tabBars.buttons["Recordings"].tap()
+        let remove = row.buttons["deleteRecovery-" + newID]
+        scrollTo(remove, in: app)
+        remove.tap()
+        XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 3))
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(remove.exists)
+        remove.tap()
+        app.alerts.buttons["Delete recovery copy"].tap()
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: remove)
+        waitForExpectations(timeout: 5)
+        XCTAssertTrue(app.buttons["exportRecording-" + id].isEnabled)
+        XCTAssertTrue(app.staticTexts["recordingStatus-" + id].exists)
+        XCTAssertTrue(feedback.label.contains("Original recording is retained"))
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenshot.name = "Original retained after selective recovery deletion"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
+    func testUnreadableRecoveryFailureRetainsOriginalExportAndFailedAttempt() throws {
+        let environment = ProcessInfo.processInfo.environment
+        try XCTSkipUnless(environment["STREAM14_RECOVERY_UNREADABLE_ID"] != nil,
+            "Seed an expendable pre-fragment interrupted source first.")
+        let id = try XCTUnwrap(environment["STREAM14_RECOVERY_UNREADABLE_ID"])
+        let app = fixtureApp()
+        app.tabBars.buttons["Recordings"].tap()
+        let recover = app.buttons["recoverRecording-" + id]
+        scrollTo(recover, in: app)
+        recover.tap()
+        let feedback = app.staticTexts["recordingsStatus"]
+        expectation(for: NSPredicate(format: "label CONTAINS %@", "Recovery could not finish"), evaluatedWith: feedback)
+        waitForExpectations(timeout: 20)
+        XCTAssertTrue(app.buttons["exportRecording-" + id].isEnabled)
+        XCTAssertEqual(app.staticTexts["recordingStatus-" + id].label, "interrupted")
+        let row = app.otherElements["recordingRow-" + id]
+        XCTAssertTrue(row.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "recoveryStatus-")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["recordingReview-" + id].label.contains("unreadable"))
+    }
+
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
         XCTAssertTrue(element.waitForExistence(timeout: 5))
         for attempt in 0..<64 {

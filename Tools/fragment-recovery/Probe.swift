@@ -17,6 +17,17 @@ import CryptoKit
             let url = URL(fileURLWithPath: args[2])
             if args[1] == "write" { try await write(url, mode: args[3]); return }
             if args[1] == "inspect" { try await inspect(url); return }
+            #if APP_WRITER
+            if args[1] == "app-review" {
+                let result = try await RecordingRecovery().inspect(url)
+                emit(["readableStartDuration": result.duration]); return
+            }
+            if args[1] == "app-recover" {
+                let result = try await RecordingRecovery().recover(original: url,
+                    destination: URL(fileURLWithPath: args[3]))
+                emit(["recoveredStartDuration": result.duration]); return
+            }
+            #endif
             if args[1] == "export" {
                 let asset = AVURLAsset(url: url)
                 guard let export = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else {
@@ -28,6 +39,9 @@ import CryptoKit
         } catch { emit(["error": String(describing: error)]); exit(1) }
     }
     static func write(_ url: URL, mode: String) async throws {
+        #if APP_WRITER
+        try await AppWriter.write(url, mode: mode)
+        #else
         let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
         writer.movieFragmentInterval = CMTime(seconds: 10, preferredTimescale: 600)
         let video = AVAssetWriterInput(mediaType: .video, outputSettings: [
@@ -100,6 +114,7 @@ import CryptoKit
         // Remain alive so parent can detect a kill that happened after completion.
         if mode == "finalize" { try await Task.sleep(for: .seconds(2)) }
         emit(["checkpoint": "normal-complete"])
+        #endif
     }
     static func inspect(_ url: URL) async throws {
         let asset = AVURLAsset(url: url)

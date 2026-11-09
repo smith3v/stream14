@@ -1699,3 +1699,31 @@ receiver A/V alignment gate still fails. Do not treat the successful hosted test
 alone as receiver or physical qualification. The record preserves the remaining
 AAC timing investigation and a future five-minute TOTAL phone script using the
 existing Unlisted YouTube event and normal public trust, not a phone CA profile.
+
+## F11 recording review and separate recovery
+
+The Recordings library retains original completed/interrupted/failed provenance.
+It also shows duration, readable-start review and distinct recovered/failed-copy
+states. UUID files remain visible if metadata is absent or malformed. A readable
+start is a lightweight native audio/video decode check, not proof of whole-file
+integrity; inspect playback. Use **Try recovery to separate copy** on an incomplete
+recording to request native passthrough remux. It may preserve only completed
+fragments, omit the tail or fail before the first ten-second fragment. The original
+is always retained, including after failed recovery. Export originals/copies
+explicitly. Confirm deletion for a selected copy or the complete selected group.
+App deletion still loses files held only inside the app.
+
+See the [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) for production
+codec/writer Mac evidence, exact commands, the measured native AAC-tail trim, and
+remaining physical process-termination/relaunch/playback/export checks. This is
+not A5 acceptance or evidence of three-hour recording/streaming reliability.
+
+F11's 2026-11-09 combined source has fresh native validation: 160 hosted passes,
+eight opt-in skips and zero failures; 16 focused ownership/recovery tests; unsigned
+Release; and two actual simulator recovery UI flows. The UI evidence includes
+native playback/export-sheet presentation, relaunch persistence, Cancel/confirmed
+copy-only deletion and unreadable-source failure. Both synthetic originals remained
+byte-identical. The documented F10 clipped-static-text audit allowance applies;
+this is not physical VoiceOver, complete media integrity or A5 qualification.
+The [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) records exact commands,
+artifacts, independent review fixes and the still-pending phone acceptance.

@@ -21,6 +21,7 @@ nonisolated final class LocalRecorder: Sendable {
         var video: AVAssetWriterInput?
         var audio: AVAssetWriterInput?
         var started = false
+        var finishing = false
         var failed = false
         var origin = CMTime.invalid
         var receivedVideoTime = CMTime.invalid
@@ -43,13 +44,14 @@ nonisolated final class LocalRecorder: Sendable {
 
     func start(_ url: URL, injection: Injection = .none, profile: SessionProfile = .fullHD) throws {
         try state.withLock { state in
-            guard state.writer == nil, injection != .initialization else { throw Failure.initialization }
+            guard state.writer == nil, !state.finishing, injection != .initialization else { throw Failure.initialization }
             var isDirectory: ObjCBool = false
             guard FileManager.default.fileExists(atPath: url.deletingLastPathComponent().path,
                                                   isDirectory: &isDirectory), isDirectory.boolValue else {
                 throw Failure.initialization
             }
             let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+            writer.movieFragmentInterval = CMTime(seconds: 10, preferredTimescale: 600)
             // Compression settings are nil when the actual formats arrive.
             // Creating the destination first catches initialization/path errors
             // before a session or publisher is allowed to start.
@@ -146,6 +148,7 @@ nonisolated final class LocalRecorder: Sendable {
 
     func finish() async throws -> Metrics {
         let terminal = state.withLock { state -> (AVAssetWriter?, Bool, Metrics) in
+            guard !state.finishing else { return (nil, false, state.metrics) }
             let success = state.started && !state.failed && state.audioWritten > 0 &&
                 state.metrics.videoWritten > 0 && state.injection != .finalization
             if state.started, state.writer?.status == .writing {
@@ -153,6 +156,7 @@ nonisolated final class LocalRecorder: Sendable {
                 state.audio?.markAsFinished()
             }
             let writer = state.writer
+            state.finishing = writer != nil
             // Never call cancelWriting here: it can remove an original file.
             state.writer = nil
             state.video = nil
@@ -161,6 +165,7 @@ nonisolated final class LocalRecorder: Sendable {
             return (writer, success, state.metrics)
         }
         guard let writer = terminal.0 else { throw Failure.finalization }
+        defer { state.withLock { $0.finishing = false } }
         if writer.status == .writing { await writer.finishWriting() }
         // A returned URL is insufficient: completion must be confirmed after finish.
         guard terminal.1, writer.status == .completed, writer.error == nil else {
