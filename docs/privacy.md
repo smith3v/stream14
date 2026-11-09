@@ -123,9 +123,11 @@ Google consent. Manage remote events/media in YouTube Studio.
 Revoke Google access also requests SDK-managed remote revocation. You can revoke
 access directly in [Google Account security settings](https://security.google.com/settings/security/permissions).
 The app cannot observe external revocation while offline or unused. When SDK
-restore/token refresh or an API authorization rejection reveals lost access,
-the app clears saved API data and stops upload while healthy local recording can
-continue. A storage failure is reported and publishing remains blocked; retry
+restore/token refresh fails (other than cancellation), or the API rejects
+authorization,
+the app conservatively clears saved API data and stops upload while healthy local recording can
+continue. A failed restore can also mean a connection problem; cleanup does not claim that
+Google revoked access. A storage failure is reported and publishing remains blocked; retry
 local deletion after resolving storage.
 
 Before deleting identifiers, the app saves a nonidentifying **Studio resolution

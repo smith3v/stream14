@@ -1416,7 +1416,9 @@ Ordinary sign-out retains reconciliation journals. Explicit local data deletion,
 in-app revoke (even if remote revocation fails), and detected SDK/API access loss
 remove saved API-derived channel/event/stream IDs from both journals and invalidate
 RAM readiness. Revoke uses the SDK; local deletion does not revoke remotely or end
-a YouTube event. External revocation can only be observed on later SDK/API access.
+a YouTube event. External revocation can only be observed on later SDK/API access. SDK restore
+failures can be ambiguous, so failed restore also conservatively erases identifiers
+without claiming remote revocation; cancellation alone retains journals.
 Cleanup stops upload, preserving healthy local recording, originals/recovery
 copies, private numeric diagnostics and overlay settings. No YouTube media-delete
 request is sent. Successful End/terminal reconciliation already removes the

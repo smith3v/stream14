@@ -42,6 +42,20 @@ import UIKit
         #expect(erasures == 4 && !auth.isAuthorized)
     }
 
+    @Test func ambiguousRestoreFailureErasesConservativelyWithoutClaimingRevocation() async {
+        let driver = FakeGoogleAuthorizationDriver()
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
+        var erasures = 0
+        auth.onDeleteAPIData = { erasures += 1; return true }
+        driver.failure = .unavailable
+        await auth.restore()
+        #expect(erasures == 1 && !auth.isAuthorized)
+        #expect(!auth.message.contains("revoked"))
+        driver.failure = .cancelled
+        await auth.restore()
+        #expect(erasures == 1)
+    }
+
     @Test func deletionFailureIsVisibleAndNeverReportedAsSuccess() {
         let auth = YouTubeAuthorization(driver: FakeGoogleAuthorizationDriver(), configured: true, policyAccepted: true)
         auth.onDeleteAPIData = { false }

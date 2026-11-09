@@ -202,11 +202,15 @@ enum YouTubeAuthorizationError: Error, Equatable {
         message = "Google authorized. YouTube channel identity will be checked before selecting an event."
     }
 
-    private func finish(_ error: any Error, operation: UInt64) {
+    private func finish(_ error: any Error, operation: UInt64, restoring: Bool = false) {
         guard operation == generation else { driver?.signOut(); return }
         driver?.signOut()
         account = nil
-        if [.authorizationRequired, .noPreviousSignIn, .missingScope].contains(error as? YouTubeAuthorizationError) {
+        // SDK restore does not always distinguish revoked consent from network
+        // failure. Conservatively erase API IDs on failed restore, never claim
+        // revocation from that failure. Cancellation alone retains journals.
+        if (restoring && error as? YouTubeAuthorizationError != .cancelled && !(error is CancellationError)) ||
+            [.authorizationRequired, .noPreviousSignIn, .missingScope].contains(error as? YouTubeAuthorizationError) {
             _ = clearAPIData()
         }
         switch error as? YouTubeAuthorizationError {
