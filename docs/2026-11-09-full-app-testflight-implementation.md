@@ -293,3 +293,15 @@ legacy undated/future-dated records, and preserves the original acquisition age
 through phase updates. No background execution while unused is claimed. Fixtures
 cover the exact boundary, offline preservation, partial deletion failure and late
 writes. The earlier blanket Restore-erasure approach was removed before handoff.
+
+
+## Final combined-source preparation checks
+
+See the [separate full-app delivery record](2026-11-09-full-app-testflight.md).
+The source normally inherited final F12 `ef202456` and F11's reviewed main ancestry
+`f20b330`. Native combined checks passed **181 tests, eight opt-in skips, zero
+failures** in 30 suites; the unsigned Release archive passed; two combined
+Simulator UI checks passed. Exact commands/artifacts and archive limits are
+recorded there. AppAuth's existing linked public invalid-grant error and Google's
+refresh-token-expired error now distinguish confirmed loss from offline/unknown
+refresh failure. No package pin/product changes were needed.
