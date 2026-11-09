@@ -1,9 +1,10 @@
 # stream14 beta support
 
-stream14's delivered 0.2 (3) beta records locally. The full-app candidate source
-adds optional broadcasting to an existing scheduled YouTube encoder event;
-its TestFlight delivery and exact-build qualification remain pending. See the
-[full-app preparation record](2026-11-09-full-app-testflight-implementation.md).
+stream14's full-app 0.3 (4) beta is available in the existing internal TestFlight
+group, and the owner confirmed installation. It adds optional broadcasting to an
+existing scheduled YouTube encoder event; current-build regression and physical
+qualification remain pending. The historical 0.2 (3) beta records locally. See the
+[full-app delivery record](2026-11-09-full-app-testflight.md).
 
 Both versions target iOS 27 or later and the iPhone 13 mini. Camera video,
 microphone audio and an optional HTTPS web overlay share the composed preview and

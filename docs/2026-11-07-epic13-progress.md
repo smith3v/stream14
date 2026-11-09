@@ -417,3 +417,27 @@ build-specific test notes and existing internal-group availability verification.
 Do not infer these from upload success. Phone installation/current-build playback,
 private Unlisted A3 and all remaining physical qualification are still pending.
 No phone/camera/microphone/YouTube action occurred during distribution.
+
+
+## TestFlight available and installed — 2026-11-09
+
+The actual 0.3 (4) build completed processing. Root saved the displayed encryption
+answer **None of the algorithms mentioned above** for proprietary/standard-outside-
+Apple-OS encryption, matching the inspected OS-only boundary; the build became
+Ready to Test. Full-app beta information and build-specific What to Test were
+saved. Only existing Owner MVP internal access (one existing tester) was assigned.
+The final build list showed **0.3 (4) Testing**, Owner MVP, Expires in 90 days.
+No new tester/public link/legal agreement/global App Store privacy response changed.
+
+The owner explicitly confirmed **Installed 0.3 (4) through TestFlight** after the
+in-place update instructions. Record this as owner installation confirmation,
+not independently observed phone regression or media acceptance. Go Live was to
+remain untouched; no capture/publishing result is claimed. This supersedes earlier
+upload/processing/install-pending checkpoints. Exact separate delivery states are
+in the [delivery record](2026-11-09-full-app-testflight.md).
+
+Next is a selected S0 installed-policy-links/consent/Google-reauthorization visit
+because the last revocation left the app disconnected. Then, only when prepared
+and explicitly operator-confirmed, S1 short Unlisted start/receiver/End. Keep the
+remaining physical inventory pending, five-minute TOTAL visits, retained originals
+and separately agreed A2/A7. Issue #26/epic #13 are not complete from delivery alone.

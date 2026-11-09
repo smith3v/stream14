@@ -1,6 +1,6 @@
 # Full-app TestFlight candidate — preparation record
 
-Updated: 2026-11-09. **0.3 (4) uploaded and Processing; compliance and internal availability await verification. Issue #26 remains open.**
+Updated: 2026-11-09. **0.3 (4) is Testing in Owner MVP; the owner confirmed installation through TestFlight. Current-build regression and physical qualification remain pending. Issue #26 remains open.**
 The previous [0.2 (3) local-only delivery](2026-11-07-testflight-0.2.md) and owner
 MVP evidence remain historical. This record identifies the later full-app source
 and its outstanding delivery/acceptance checkpoints.
@@ -216,7 +216,7 @@ No app-defined encryption algorithm or additional cryptographic implementation
 was found. This supports assessing operating-system-only encryption, not a claim
 that the app uses no encryption; answer the actual compliance question separately.
 
-### Current validation/account blocker
+### Initial validation/account blocker — resolved below
 
 An initial `method=validation, destination=export` attempt exited 70 before service
 validation: the installed Xcode requires `destination=upload` for that method.
@@ -292,3 +292,62 @@ validation/upload logs, private export options and archived identity. It found n
 material issues or privacy/overclaim defects. Runtime/project/test/config bytes
 still match `1ae3f87`; diff whitespace checks passed. Root's later Processing
 observation above remains distinct from those locally verified upload results.
+
+
+## Internal availability and owner installation — 2026-11-09
+
+Root followed the actual App Store Connect build from Processing to **Missing
+Compliance**. The displayed encryption question distinguished proprietary
+algorithms, standard algorithms outside Apple's operating-system encryption,
+both, and none of those algorithms. On the inspected OS-only implementation
+boundary above, **None of the algorithms mentioned above** was selected and saved.
+The build then showed **Ready to Test**. This is the actual saved compliance
+checkpoint; it does not claim the app uses no encryption.
+
+Root saved build-specific **What to Test** describing a short local clip,
+operator-confirmed dedicated Unlisted Go Live/receiver/End, the five-minute TOTAL
+routine budget, deferred long qualification, retained originals and no secrets in
+feedback. The full-app Beta Description/review notes and existing correct Beta
+Privacy URL had already been verified separately. Only the existing **Owner MVP**
+internal group, containing its existing one tester, was assigned. The final iOS
+build list showed **0.3 (4) — Testing**, **Owner MVP**, **Expires in 90 days**.
+Installs showed a dash at that read; no installation was inferred from that metric.
+No new tester, public link, external review, legal agreement or global App Store
+privacy-questionnaire change was made.
+
+After root requested an in-place TestFlight update without uninstalling or
+removing recordings and with Go Live left untouched, the owner explicitly replied:
+**“Installed 0.3 (4) through TestFlight.”** This is owner-confirmed installation of
+the exact build, distinct from independently observed phone UI or media regression.
+No current-build recording, camera/microphone, receiver playback, policy-link
+opening, Google reauthorization or publishing pass is inferred from installation.
+
+| Checkpoint | Actual result |
+| --- | --- |
+| Local archive / signature | Passed on exact app source `1ae3f87`, identical to merged main app tree |
+| Native distribution validation | Exit 0 / EXPORT SUCCEEDED after owner Xcode sign-in |
+| Actual upload | Exit 0 / Upload succeeded / EXPORT SUCCEEDED at 15:45 Amsterdam |
+| Processing / compliance | Processing completed; actual displayed encryption answer saved; Ready to Test |
+| Beta information | Full-app information and build-specific What to Test saved; correct existing Beta Privacy URL retained |
+| Existing internal access | 0.3 (4) Testing in Owner MVP, 90-day expiry display; no tester expansion |
+| Exact TestFlight installation | Owner-confirmed 0.3 (4) through TestFlight |
+| Current-build regression / physical qualification | Pending; installation is not acceptance |
+
+Next use S0 to inspect the installed policy links and deliberately agree/reauthorize
+Google if needed: the previous attended revocation left the app disconnected.
+Do not repeat completed historical #15/#16 checks without a changed requirement.
+Select S1 only after account/event/receiver readiness and fresh explicit operator
+permission to use/end a dedicated Unlisted test event. Remaining composition,
+receiver/original playback, audible mute/route, recovery, interruption, reconnect,
+accessibility and diagnostic export/overhead evidence remain scoped to the
+[phone inventory](2026-11-07-connected-iphone-test-plan.md) and
+[attended cards](2026-11-08-attended-iphone-session.md). Each routine visit includes
+setup and wrap-up within five minutes TOTAL. A2/A7 long qualification is still
+pending and separately agreed. Issue #26 and epic #13 remain open; no capture or
+YouTube publishing occurred during these distribution and installation checkpoints.
+
+Final independent review inspected the actual full six-document diff against
+merged main, including the privacy assessment, delivery/installation checkpoints
+and status-only privacy/support introductions. No material privacy, factual-claim
+or resume-gap findings remained. Current local-link and whitespace checks passed;
+no native app tests were repeated for documentation-only changes.
