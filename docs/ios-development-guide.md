@@ -1516,15 +1516,19 @@ local preview does not upload camera or microphone media.
    retains the actual local writer before any binding or upload; a writer startup
    failure publishes no media. Changed confirmation metadata requires review again.
 4. Watch the independent local recording, Upload and YouTube messages. Socket
-   connection is not Live. Manual events request live only after active ingestion;
-   auto-start events may become visible from the confirmed first upload and are
+   connection is not Live. Manual events wait for active ingestion. When the
+   existing event enables its monitor stream, the app automatically requests testing
+   and waits for YouTube to confirm it before requesting live, under the same Go Live
+   intent. Testing is not Live. Disabled monitor streams go directly to live. If the
+   monitor setting is unavailable on an authoritative refresh, no binding/upload
+   starts; refresh or inspect Studio. Auto-start events may become visible from the confirmed first upload and are
    polled without a redundant transition. Startup is bounded to 60 seconds.
 5. **Cancel YouTube startup** or a startup/API failure stops the upload while a
    healthy local file continues. **Stop recording** remains deliberate. A failed
    broadcast attempt never automatically deletes files. If the app requests
    reconciliation, use **Reconcile YouTube status** or **Open YouTube Studio**;
    reconciliation is read only and does not restart upload or repeat a mutation.
-   An uncertain Live request remains blocked even if an early read says upcoming;
+   An uncertain testing/Live request remains blocked even if an early read says upcoming;
    the earlier request could still apply. Resolve that exact event in Studio, then
    reconcile a confirmed live/finished state. The app never silently discards this
    transition barrier. While a previous request is still outstanding, wait for its
@@ -1660,7 +1664,7 @@ native interface suite using the shared scheme and a fresh result path:
 xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
   -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
   -derivedDataPath /private/tmp/stream14-f10-simulator \
-  -clonedSourcePackagesDirPath /private/tmp/stream14-f7-packages \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
   -disableAutomaticPackageResolution \
   -only-testing:Stream14UITests/SetupScreenTests/testNativeDestinationsNeverStartCaptureOrPublishing \
   -only-testing:Stream14UITests/SetupScreenTests/testPreflightBlockersAndExactPublishingConfirmation \
@@ -1674,6 +1678,27 @@ are recorded in the [F10 stage handoff](2026-11-08-integrated-interface-implemen
 No phone or actual Google/media publishing was used for this interface work.
 Physical VoiceOver/13 mini acceptance and actual file/receiver exclusion remain
 pending; preserve the owner's five-minute total routine phone budget.
+
+F10 Simulator contrast diagnostics can point to static text outside the visible
+scroll area (for example the YouTube heading at y709 on a 375-point landscape
+screen). The focused UI helper excludes only uniquely matched static text proven
+vertically clipped/offscreen in both captured and callback geometries within the
+native nav/tab bounds. It logs that proof; unknown elements, fully visible text,
+controls and other audit types remain failures. This is a narrow native audit
+limitation, not a general contrast waiver or physical VoiceOver evidence. See the
+F10 handoff for exact retained failed/passing runs and independent review status.
+
+## Private synthetic RTMPS receiver checkpoint (2026-11-08)
+
+Use the [receiver procedure and actual measurements](2026-11-08-private-rtmps-receiver-validation.md)
+for normal-TLS laptop-only wire/receiver checks. It uses a fixed Debug Simulator-only
+localhost seam and generated media through the actual shared encoder, with no
+camera, Google request or physical-device trust change. The untrusted TLS rejection,
+trusted socket sends and corrected-header receiver decode were observed, but the
+receiver A/V alignment gate still fails. Do not treat the successful hosted test
+alone as receiver or physical qualification. The record preserves the remaining
+AAC timing investigation and a future five-minute TOTAL phone script using the
+existing Unlisted YouTube event and normal public trust, not a phone CA profile.
 
 ## F11 recording review and separate recovery
 
@@ -1720,6 +1745,16 @@ receiver A/V alignment gate still fails. Do not treat the successful hosted test
 alone as receiver or physical qualification. The record preserves the remaining
 AAC timing investigation and a future five-minute TOTAL phone script using the
 existing Unlisted YouTube event and normal public trust, not a phone CA profile.
+
+F11's 2026-11-09 combined source has fresh native validation: 160 hosted passes,
+eight opt-in skips and zero failures; 16 focused ownership/recovery tests; unsigned
+Release; and two actual simulator recovery UI flows. The UI evidence includes
+native playback/export-sheet presentation, relaunch persistence, Cancel/confirmed
+copy-only deletion and unreadable-source failure. Both synthetic originals remained
+byte-identical. The documented F10 clipped-static-text audit allowance applies;
+this is not physical VoiceOver, complete media integrity or A5 qualification.
+The [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) records exact commands,
+artifacts, independent review fixes and the still-pending phone acceptance.
 
 
 ## F13 policy consent and safe local YouTube-data deletion

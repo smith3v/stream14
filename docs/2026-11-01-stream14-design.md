@@ -568,7 +568,7 @@ refresh before calls. Never use the overlay browser to collect Google credential
 | liveStreams.list, id=… | Resolve an existing bound stream, RTMPS endpoint/key, ingestion activity and health |
 | liveStreams.insert | Create an app-owned ingestion stream only when the event has no binding |
 | liveBroadcasts.bind | Bind that new stream to the selected upcoming event |
-| liveBroadcasts.transition | Explicit transitions to live and complete when the current state permits them |
+| liveBroadcasts.transition | Required internal testing phase where enabled, then explicit live/complete transitions when current state permits them |
 
 `broadcastStatus`, `id`, and `mine` are alternative filters for liveBroadcasts.list;
 do not combine them. Use the endpoint reference rather than copying an example
@@ -625,8 +625,10 @@ Inspect auto-start/auto-stop settings before transmitting:
   supposedly private preparation state. Poll for confirmation instead of issuing
   a redundant transition.
 - For manual start, publish only after Go Live, wait for the bound stream to become
-  active, then request live and verify the event's lifecycle. The optional testing
-  state is not required for v1; local rehearsal supplies the preflight check.
+  active, then honor `contentDetails.monitorStream.enableMonitorStream`: true requires
+  one internal testing transition and a confirmed testing read before live; false
+  proceeds directly to live. This protocol prerequisite is part of the same explicit
+  Go Live intent, without an optional testing mode or changed event settings.
 - Never repeat a timed-out transition without first reading the current state.
   If the event is completed, do not create another event or claim to resume it.
 
@@ -663,19 +665,20 @@ F6's guarded connection cannot attach after cancellation.
 
 The client sends bodyless `liveBroadcasts/transition` POSTs once, with
 `id`, `broadcastStatus` and `part=snippet,status,contentDetails`. Manual events
-wait for active ingestion before one live request; auto-start events only poll.
+wait for active ingestion, complete the required monitor phase when enabled, then
+send one live request; auto-start events only poll.
 A current broadcast read must return `live` before the coordinator presents Live.
-No optional testing transition is implemented. Unknown/late states or deadline
+No optional testing UI is implemented. Unknown/late states or deadline
 expiry stop startup upload and require read reconciliation before a new start.
 
 A backup-excluded, protected local journal retains only unresolved channel/event
 IDs before any possible upload, including auto-start, plus a transition type and
-operation ID before a live/complete mutation. Relaunch never reconnects or
+operation ID before each testing/live/complete mutation. Relaunch never reconnects or
 publishes; it offers read-only reconciliation using the current authorized channel.
 Corrupt/unwritable journal state disables Go Live rather than overwriting evidence.
 Pending IDs are cleared only after a confirmed terminal event or an upcoming event
 with inactive/ready ingestion and no ambiguous transition. A currently upcoming
-read cannot clear an uncertain live request: it may still apply later, including
+read cannot clear an uncertain testing or live request: it may still apply later, including
 after relaunch. Resolve that exact event in Studio and reconcile its live/terminal
 state; the app supplies no blind reset/retry override. A RAM outstanding-request
 gate also prevents reconciliation or a second mutation while the original request
@@ -694,6 +697,32 @@ local file finalization/status remains separately owned/presented by MediaSessio
 Expired authorization can be reconnected after upload/startup has stopped; an
 active session requires End first. F8/F9 still own ongoing remote supervision,
 reconnect and full interruption/degradation behavior.
+
+Required monitor-phase correction (2026-11-08): the [broadcast resource reference](https://developers.google.com/youtube/data/live/reference/rest/v3/liveBroadcasts#contentDetails.monitorStream.enableMonitorStream)
+requires testing before live when `enableMonitorStream` is true, and forbids testing
+when false. The [migration guide](https://developers.google.com/youtube/data/live/guides/migration-guide-default-broadcasts#testing_your_broadcast)
+also identifies true as the creation default. That insert default does not prove
+an omitted read field: Codable retains missing/null monitor settings as unknown.
+An authoritative by-ID read with full contentDetails can supply a setting omitted
+from discovery; if still unknown, manual startup fails before binding/resource
+mutations or upload, retaining any healthy local file. A known confirmed setting
+must stay unchanged across preparation and startup reads. F5 receives that resolved
+setting and checks each authoritative pre-insert/pre-bind read before mutating;
+a later changed or missing value cannot create/bind a stream before rejection.
+
+Manual startup sends testing only from ready with active ingestion, then waits
+for a separate read of testing before live; testStarting only polls. A testing
+read already present during startup skips the testing POST. Both phases share the
+original 60-second deadline, authorization/epoch checks and durable mutation UUID
+barrier. Neither ambiguous nor rejected POST is automatically repeated within the
+attempt. Read-confirmed testing permits the subsequent distinct live POST; an
+unconfirmed testing mutation remains pending across timeout/relaunch, with read-only
+reconciliation and explicit End/Studio available. Testing never displays Live.
+Cancellation, End and account change fence late testing responses just like live.
+The monitor phase adds no resources or event-setting changes and leaves auto-start
+POST behavior and recorder ownership unchanged.
+Offline fixture and native build results are recorded in the [correction handoff](2026-11-08-monitor-transition-implementation.md);
+actual attended YouTube acceptance remains separate.
 
 The [F7 handoff](2026-11-08-broadcast-session-implementation.md) records fixture,
 build/review evidence and pending signed-phone/unlisted end-to-end acceptance.
@@ -1283,6 +1312,29 @@ acceptance. Physical VoiceOver, the smallest phone in hand, actual receiver/file
 control exclusion, keyboard/permission operation and long qualification remain
 separate pending evidence; Simulator snapshots cannot establish them.
 
+### Private receiver evidence checkpoint — 2026-11-08
+
+A laptop-only synthetic fixture now exercises the actual shared encoder, compressed
+file fan-out and acknowledged RTMPSConnection into an independent normal-TLS
+receiver. The [receiver record](2026-11-08-private-rtmps-receiver-validation.md)
+records a canonical native AAC sequence-header bug and legacy66ms CTS addition,
+two isolated fork correction candidates, native packet/decoder measurements and
+limits. After those candidates, receiver H264/AAC decode succeeds but decoded audio
+still leads video by about59–70ms across two generations, exceeding35ms. AAC
+priming/trim versus receiver normalization remains unresolved; no guessed delay,
+production pin adoption, physical sync or full-app gate completion is authorized by
+this evidence. The app's existing immutable fork pin remains unchanged here.
+
+
+The focused receiver correction selects owned-fork revision
+`497f742c5f2c04cf3ca085378e660a273e351788`: canonical native AAC-LC sequence headers
+and zero added CTS for the explicit compressed-video path. Encoder output, AAC
+priming compensation, payloads, shared clock and queue limits are unchanged.
+Independent source review and native package regressions support these narrow fixes;
+receiver-file A/V alignment and physical YouTube markers remain pending. The private
+localhost fixture is compiled only into Debug Simulator products. Historical evidence
+for earlier revisions is not retroactively reclassified.
+
 ### F11 implementation — persistent review and native recovery (2026-11-08)
 
 The selected compressed MP4 `LocalRecorder` configures a ten-second fragment
@@ -1398,6 +1450,26 @@ Independent source review and native package regressions support these narrow fi
 receiver-file A/V alignment and physical YouTube markers remain pending. The private
 localhost fixture is compiled only into Debug Simulator products. Historical evidence
 for earlier revisions is not retroactively reclassified.
+
+F11 review correction (independently re-reviewed and natively tested 2026-11-09): the UI finalization deadline
+must not release file ownership. One retained native finalizer/UUID excludes the
+changing original from inspection, playback/export, recovery and deletion until
+its actual finish callback returns, and blocks creation of another writer. A late
+callback releases protection without promoting a timed-out failed original to
+complete. Track/duration-only structural validation leaves decoded-start review
+unset; only `RecordingRecovery.inspect` may persist readable-start status. See the
+F11 handoff's final validation section for fresh tests, UI evidence and physical limits.
+
+
+F12/F11 integration — 2026-11-09: the protected native finalizer UUID and one-task
+ownership survive a UI wait deadline. The diagnostic observer does not retire that
+ownership or promote a failed movie after a late callback. Its optional
+`nativeFinalizationOutstanding` boolean records only what was true at that
+checkpoint; `end: stopped` still means observer stop, not native completion or
+readable media. A safe numeric checkpoint Load/Share is independent from the
+protected original movie and never opens that media. Original playback/export,
+recovery/deletion and decoded-start inspection keep F11's protection. Historical
+reports without this optional flag remain readable, with finalizer state unknown.
 
 
 ### Full-app F13 policy consent and API-data deletion — 2026-11-09

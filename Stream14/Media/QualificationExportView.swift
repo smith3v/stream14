@@ -14,11 +14,15 @@ nonisolated struct QualificationExport: Transferable {
 /// Reads only the allowlisted checkpoint, never the recording manifest or errors.
 struct QualificationExportView: View {
     let sampleID: UUID
+    var originalProtected = false
     @State private var report: QualificationReport?
     @State private var unavailable = false
     @State private var loading = false
     var body: some View {
         VStack(alignment: .leading) {
+            if originalProtected {
+                Text("This summary is separate from the protected original movie.").font(.caption)
+            }
             if let report {
                 ShareLink(item: QualificationExport(report: report), preview: SharePreview("Qualification summary")) {
                     Label("Export qualification summary", systemImage: "chart.xyaxis.line")
@@ -28,6 +32,9 @@ struct QualificationExportView: View {
                 Button("Refresh qualification summary", action: load).frame(minHeight: 44).disabled(loading)
                 Text("Numeric media and memory summary only. Last checkpoint: \(report.elapsedSeconds.formatted(.number.precision(.fractionLength(0)))) seconds; \(report.end == .stopped ? "stopped" : "may be incomplete").")
                     .font(.caption)
+                if report.nativeFinalizationOutstanding == true {
+                    Text("Native movie finalization was still outstanding at this checkpoint.").font(.caption)
+                }
             } else {
                 Button("Load qualification summary", action: load).frame(minHeight: 44).disabled(loading)
                     .accessibilityIdentifier("loadQualification-" + sampleID.uuidString)
