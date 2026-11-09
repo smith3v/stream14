@@ -1416,9 +1416,9 @@ Ordinary sign-out retains reconciliation journals. Explicit local data deletion,
 in-app revoke (even if remote revocation fails), and detected SDK/API access loss
 remove saved API-derived channel/event/stream IDs from both journals and invalidate
 RAM readiness. Revoke uses the SDK; local deletion does not revoke remotely or end
-a YouTube event. External revocation can only be observed on later SDK/API access. SDK restore
-failures can be ambiguous, so failed restore also conservatively erases identifiers
-without claiming remote revocation; cancellation alone retains journals.
+a YouTube event. External revocation can only be observed on later SDK/API access. Unknown/offline SDK restore
+failures retain nonexpired exact-event reconciliation context; only explicit loss
+classifications trigger cleanup. Cancellation does not erase journals.
 Cleanup stops upload, preserving healthy local recording, originals/recovery
 copies, private numeric diagnostics and overlay settings. No YouTube media-delete
 request is sent. Successful End/terminal reconciliation already removes the
@@ -1441,3 +1441,15 @@ recording, deleted ID files, late save rejection, relaunch and pending-mutation
 acknowledgement blocking. The full-app release preparation record preserves actual
 results and pending App Store/TestFlight/device evidence. No long-run reliability
 or legal/provider review acceptance follows from these tests.
+
+
+Both API-ID journals now carry optional acquisition timestamps. New contexts date
+only when acquired; phase/state saves preserve the stored age. On launch,
+foreground activation and journal use, an entry aged at least 30 days, legacy
+undated entry or future clock-invalid entry converts the whole stored context to
+the durable nonidentifying Studio barrier before deleting identifiers. No automatic
+API mutation or background-execution promise is introduced. Apps unused past the
+bound clean on next launch/activation; partial cleanup failure remains blocked and
+retries before acknowledging Studio resolution. The 30-day retention policy follows
+YouTube Developer Policies III.E.4.c. Transient/offline Restore preserves a fresh
+pending intent, so a temporary outage does not destroy exact-event resume.

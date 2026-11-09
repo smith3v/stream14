@@ -285,3 +285,11 @@ initially selected preview instead of idle, and the native confirmation was a
 popover with a dismiss region instead of a Cancel button. The fixture and test now
 match those actual states. No capture/provider request was made. Latest additional
 client401/storage-failure tests await the final combined-source run.
+
+Independent review requested a 30-day bound for authorized API identifiers. The
+revised source retains fresh journals on unknown/offline Restore and expires both
+journals on launch/activation/use. Expiry uses marker-before-erasure, including
+legacy undated/future-dated records, and preserves the original acquisition age
+through phase updates. No background execution while unused is claimed. Fixtures
+cover the exact boundary, offline preservation, partial deletion failure and late
+writes. The earlier blanket Restore-erasure approach was removed before handoff.

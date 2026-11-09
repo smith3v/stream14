@@ -122,12 +122,11 @@ Google consent. Manage remote events/media in YouTube Studio.
 
 Revoke Google access also requests SDK-managed remote revocation. You can revoke
 access directly in [Google Account security settings](https://security.google.com/settings/security/permissions).
-The app cannot observe external revocation while offline or unused. When SDK
-restore/token refresh fails (other than cancellation), or the API rejects
-authorization,
-the app conservatively clears saved API data and stops upload while healthy local recording can
-continue. A failed restore can also mean a connection problem; cleanup does not claim that
-Google revoked access. A storage failure is reported and publishing remains blocked; retry
+The app cannot observe external revocation while offline or unused. When the SDK explicitly reports invalid authorization, token access fails,
+or the API rejects authorization, the app clears saved API data and stops upload
+while healthy local recording can continue. An unknown/offline restore failure
+retains nonexpired journals for exact-event reconciliation and permits a safe retry;
+it does not establish revocation. A storage failure is reported and publishing remains blocked; retry
 local deletion after resolving storage.
 
 Before deleting identifiers for prior or in-flight requests, the app saves a nonidentifying **Studio resolution
@@ -138,7 +137,15 @@ requests in Studio, then explicitly confirm that resolution in the app; this
 removes the marker without a remote request. An outstanding mutation must settle
 before confirmation is allowed. Deletion never silently permits another Go Live.
 Ordinary successful End/terminal reconciliation clears the pending-session journal;
-binding history remains until explicit deletion or access-loss cleanup.
+binding history remains until explicit deletion, confirmed access-loss cleanup or
+expiry. Both journals keep acquisition timestamps and are checked on app launch,
+activation and journal use. Identifiers expire at 30 days; phase updates do not
+renew that age. Undated legacy records or a future timestamp are treated as stale.
+Before erasure the app saves the same nonidentifying guard, preserving safety.
+There is no promised background task: if the app remains unused, cleanup occurs
+when it next launches/activates. A failed cleanup remains blocked and is retried.
+Newly obtained contexts have new timestamps; this beta does not silently renew
+old API identifiers merely by re-saving them.
 
 GoogleSignIn 10.1.0's bundled privacy manifest declares Google-side account/contact,
 coarse location, user/device identifiers and usage/other data for app functionality

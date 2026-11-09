@@ -1748,3 +1748,9 @@ no current build inventory was visible on 2026-11-09. Historical 0.2 (3) is not
 proof the next available build is 4. Do not commit a release bump or upload until
 the live inventory and final reviewed source are verified. No phone action is
 needed for source preparation; the five-minute total attended limit still applies.
+
+The candidate checks both saved API-ID journals on launch, foreground activation
+and journal use. At 30 days (or for undated/future-dated legacy records) it writes
+the Studio guard before erasing IDs. Saving a phase never refreshes their age.
+No background cleanup while unused is promised; the next launch/activation checks
+expiry. Unknown/offline Restore preserves fresh journals for safe exact-event retry.

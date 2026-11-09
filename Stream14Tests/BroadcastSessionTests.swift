@@ -4,6 +4,34 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct BroadcastSessionTests {
+    @Test func activationExpiresEitherJournalDuringLocalUseAndPreservesUnrelatedOriginal() async throws {
+        for source in ["binding", "remote"] {
+            let h = try await Harness()
+            defer { h.cleanup() }
+            let original = h.directory.appendingPathComponent("original.mp4")
+            try Data([1, 2, 3]).write(to: original)
+            let expired = Date().addingTimeInterval(-30 * 24 * 60 * 60)
+            if source == "binding" {
+                let directory = h.directory.appendingPathComponent("bindings")
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                var intent = PendingBroadcastIntent(channelID: "invented-channel", broadcastID: "invented-event", profile: .hd)
+                intent.verifiedAt = expired
+                try JSONEncoder().encode([intent]).write(to: directory.appendingPathComponent("binding-intent.json"))
+            } else {
+                var pending = PendingRemoteBroadcast(channelID: "invented-channel", eventID: "invented-event")
+                pending.verifiedAt = expired
+                try JSONEncoder().encode(pending).write(to: h.directory.appendingPathComponent("remote.json"))
+            }
+            h.session.expireStoredYouTubeData()
+            await h.session.waitForOperation()
+            #expect(h.session.requiresStudioResolution && !h.session.canStart)
+            #expect(try Data(contentsOf: original) == Data([1, 2, 3]))
+            let relaunched = h.makeSession()
+            #expect(relaunched.requiresStudioResolution && relaunched.pendingRemote == nil)
+            #expect(h.server.transitions.isEmpty)
+        }
+    }
+
     @Test func deletingWithoutPriorYouTubeRequestsDoesNotInventStudioWork() async throws {
         let h = try await Harness()
         defer { h.cleanup() }

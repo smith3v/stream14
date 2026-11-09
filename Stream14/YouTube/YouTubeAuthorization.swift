@@ -118,7 +118,7 @@ enum YouTubeAuthorizationError: Error, Equatable {
         do {
             let result = try await driver.restore()
             try accept(result, operation: operation)
-        } catch { finish(error, operation: operation, restoring: true) }
+        } catch { finish(error, operation: operation) }
     }
 
     func signOut(broadcastActive: Bool = false) {
@@ -202,15 +202,13 @@ enum YouTubeAuthorizationError: Error, Equatable {
         message = "Google authorized. YouTube channel identity will be checked before selecting an event."
     }
 
-    private func finish(_ error: any Error, operation: UInt64, restoring: Bool = false) {
+    private func finish(_ error: any Error, operation: UInt64) {
         guard operation == generation else { driver?.signOut(); return }
         driver?.signOut()
         account = nil
-        // SDK restore does not always distinguish revoked consent from network
-        // failure. Conservatively erase API IDs on failed restore, never claim
-        // revocation from that failure. Cancellation alone retains journals.
-        if (restoring && error as? YouTubeAuthorizationError != .cancelled && !(error is CancellationError)) ||
-            [.authorizationRequired, .noPreviousSignIn, .missingScope].contains(error as? YouTubeAuthorizationError) {
+        // Unknown/network restore errors retain exact reconciliation context.
+        // Only explicit SDK loss classifications erase API-derived identifiers.
+        if [.authorizationRequired, .missingScope].contains(error as? YouTubeAuthorizationError) {
             _ = clearAPIData()
         }
         switch error as? YouTubeAuthorizationError {

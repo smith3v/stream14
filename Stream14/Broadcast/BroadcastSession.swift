@@ -98,6 +98,9 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         authorization.onDeleteAPIData = { [weak self] in self?.eraseYouTubeAPIData() ?? false }
         requiresStudioResolution = store.requiresStudioResolution || binding.requiresStudioResolution
         do {
+            let bindingExpired = try binding.expireStaleAPIData()
+            let remoteExpired = try store.expireIfNeeded()
+            requiresStudioResolution = requiresStudioResolution || bindingExpired || remoteExpired
             // Once IDs have been erased, the marker is the only reconciliation context.
             if requiresStudioResolution {
                 // Retry an interrupted/failed deletion before permitting acknowledgement.
@@ -518,6 +521,18 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         } catch {
             journalUnavailable = true
             message = "The Studio resolution guard could not be cleared. Resolve local storage and retry data deletion."
+        }
+    }
+
+    /// Called on activation even when the owner uses only local rehearsal.
+    func expireStoredYouTubeData() {
+        do {
+            let bindingExpired = try binding.expireStaleAPIData()
+            let remoteExpired = try store.expireIfNeeded()
+            if bindingExpired || remoteExpired { eraseYouTubeAPIData() }
+        } catch {
+            journalUnavailable = true
+            message = "Saved YouTube data could not be checked or expired. Publishing is blocked; resolve local storage and retry deletion."
         }
     }
 

@@ -116,6 +116,7 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
     }
 
     var requiresStudioResolution: Bool { store.requiresStudioResolution }
+    func expireStaleAPIData() throws -> Bool { try store.expireIfNeeded() }
     var hasSavedAPIData: Bool { store.hasSavedAPIData }
     func eraseAPIData(requiringStudioResolution: Bool = true) throws {
         try store.eraseAPIData(requiringStudioResolution: requiringStudioResolution)

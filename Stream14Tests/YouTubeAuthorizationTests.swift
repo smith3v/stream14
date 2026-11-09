@@ -42,18 +42,30 @@ import UIKit
         #expect(erasures == 4 && !auth.isAuthorized)
     }
 
-    @Test func ambiguousRestoreFailureErasesConservativelyWithoutClaimingRevocation() async {
+    @Test func offlineRestorePreservesNonexpiredPendingIntentAndNeverClaimsRevocation() async {
         let driver = FakeGoogleAuthorizationDriver()
         let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("offline-restore-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PendingBroadcastIntentStore(directory: directory)
+        let intent = PendingBroadcastIntent(channelID: "invented-channel", broadcastID: "invented-event", profile: .hd)
+        try? store.save(intent)
         var erasures = 0
-        auth.onDeleteAPIData = { erasures += 1; return true }
+        auth.onDeleteAPIData = { erasures += 1; return (try? store.eraseAPIData()) != nil }
         driver.failure = .unavailable
         await auth.restore()
-        #expect(erasures == 1 && !auth.isAuthorized)
+        #expect(erasures == 0 && !auth.isAuthorized)
+        #expect((try? store.load()) == intent)
         #expect(!auth.message.contains("revoked"))
         driver.failure = .cancelled
         await auth.restore()
-        #expect(erasures == 1)
+        #expect(erasures == 0)
+        driver.failure = .noPreviousSignIn
+        await auth.restore()
+        #expect(erasures == 0 && (try? store.load()) == intent)
+        driver.failure = .authorizationRequired
+        await auth.restore()
+        #expect(erasures == 1 && store.requiresStudioResolution)
     }
 
     @Test func deletionFailureIsVisibleAndNeverReportedAsSuccess() {

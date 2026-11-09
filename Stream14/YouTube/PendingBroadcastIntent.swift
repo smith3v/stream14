@@ -9,6 +9,7 @@ nonisolated struct PendingBroadcastIntent: Codable, Equatable, Sendable {
     let profile: String
     var phase: Phase
     var createdStreamID: String?
+    var verifiedAt: Date?
 
     init(channelID: String, broadcastID: String, profile: SessionProfile) {
         operationID = UUID()
@@ -16,6 +17,7 @@ nonisolated struct PendingBroadcastIntent: Codable, Equatable, Sendable {
         self.broadcastID = broadcastID
         self.profile = profile.rawValue
         phase = .notCreated
+        verifiedAt = Date()
     }
 
     func matches(channelID: String, broadcastID: String, profile: SessionProfile) -> Bool {
@@ -25,17 +27,20 @@ nonisolated struct PendingBroadcastIntent: Codable, Equatable, Sendable {
 
 @MainActor final class PendingBroadcastIntentStore {
     private let directory: URL?
+    private let now: () -> Date
     private let write: (Data, URL) throws -> Void
 
-    init(directory: URL? = nil, write: @escaping (Data, URL) throws -> Void = {
+    init(directory: URL? = nil, now: @escaping () -> Date = Date.init, write: @escaping (Data, URL) throws -> Void = {
         try $0.write(to: $1, options: [.atomic, .completeFileProtectionUnlessOpen])
     }) {
         self.directory = directory
+        self.now = now
         self.write = write
     }
 
     func load(channelID: String? = nil, broadcastID: String? = nil) throws -> PendingBroadcastIntent? {
         guard !requiresStudioResolution else { throw YouTubeBindingError.studioResolutionRequired }
+        if try expireIfNeeded() { throw YouTubeBindingError.studioResolutionRequired }
         let intents = try journal()
         guard let channelID, let broadcastID else { return intents.last }
         return intents.first { $0.channelID == channelID && $0.broadcastID == broadcastID }
@@ -59,13 +64,33 @@ nonisolated struct PendingBroadcastIntent: Codable, Equatable, Sendable {
 
     func save(_ intent: PendingBroadcastIntent) throws {
         guard !requiresStudioResolution else { throw YouTubeBindingError.studioResolutionRequired }
+        if try expireIfNeeded() { throw YouTubeBindingError.studioResolutionRequired }
+        guard isFresh(intent.verifiedAt) else {
+            try eraseAPIData()
+            throw YouTubeBindingError.studioResolutionRequired
+        }
         var intents = try journal()
         if let index = intents.firstIndex(where: { $0.channelID == intent.channelID && $0.broadcastID == intent.broadcastID }) {
-            intents[index] = intent
+            var update = intent
+            update.verifiedAt = intents[index].verifiedAt
+            intents[index] = update
         } else { intents.append(intent) }
         let encoded = try JSONEncoder().encode(intents)
         guard encoded.count <= 1_048_576 else { throw YouTubeBindingError.intentUnavailable }
         try write(encoded, location())
+    }
+
+    func expireIfNeeded() throws -> Bool {
+        guard !requiresStudioResolution else { return true }
+        guard try journal().contains(where: { !isFresh($0.verifiedAt) }) else { return false }
+        try eraseAPIData()
+        return true
+    }
+
+    private func isFresh(_ date: Date?) -> Bool {
+        guard let date else { return false }
+        let age = now().timeIntervalSince(date)
+        return age >= 0 && age < 30 * 24 * 60 * 60
     }
 
     // Persist the nonidentifying guard before removing IDs. Late mutation callbacks
