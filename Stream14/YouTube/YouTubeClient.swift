@@ -9,6 +9,7 @@ nonisolated struct YouTubeClient: Sendable {
     private let send: Send
     private let token: Token
     private let current: Current
+    private let accessDenied: @MainActor @Sendable (UInt64) -> Void
     private let sleep: @Sendable (Double) async throws -> Void
 
     init(authorization: YouTubeAuthorization) {
@@ -21,6 +22,7 @@ nonisolated struct YouTubeClient: Sendable {
         let session = URLSession(configuration: configuration, delegate: YouTubeReadSessionDelegate(), delegateQueue: nil)
         self.init(token: { try await authorization.freshAccessToken(expectedGeneration: $0) },
                   current: { authorization.generation == $0 && authorization.isAuthorized },
+                  accessDenied: { authorization.accessWasDenied(expectedGeneration: $0) },
                   send: { request in
                       let (data, response) = try await session.data(for: request)
                       guard let response = response as? HTTPURLResponse else { throw YouTubeReadError.malformedResponse }
@@ -28,9 +30,9 @@ nonisolated struct YouTubeClient: Sendable {
                   })
     }
 
-    init(token: @escaping Token, current: @escaping Current, send: @escaping Send,
+    init(token: @escaping Token, current: @escaping Current, accessDenied: @escaping @MainActor @Sendable (UInt64) -> Void = { _ in }, send: @escaping Send,
          sleep: @escaping @Sendable (Double) async throws -> Void = { try await Task.sleep(for: .seconds($0)) }) {
-        self.token = token; self.current = current; self.send = send; self.sleep = sleep
+        self.token = token; self.current = current; self.send = send; self.sleep = sleep; self.accessDenied = accessDenied
     }
 
     func authorizedChannel(generation: UInt64) async throws -> YouTubeChannel {
@@ -94,6 +96,7 @@ nonisolated struct YouTubeClient: Sendable {
             do { accessToken = try await token(generation) }
             catch {
                 if error is CancellationError || (error as? YouTubeAuthorizationError) == .cancelled { throw CancellationError() }
+                if error as? YouTubeAuthorizationError == .unavailable { throw YouTubeReadError.network }
                 throw YouTubeReadError.authorizationRequired
             }
             try await check(generation)
@@ -133,6 +136,7 @@ nonisolated struct YouTubeClient: Sendable {
                 continue
             }
             let failure = Self.failure(status: response.statusCode, data: data, resource: resource)
+            if failure == .authorizationRequired { await accessDenied(generation) }
             if [.rateLimited, .unavailable].contains(failure), retries < 2 {
                 let delay = Self.retryDelay(response, fallback: pow(2, Double(retries)))
                 // Respect a longer server delay by returning a wait message; do not
@@ -244,6 +248,7 @@ extension YouTubeClient {
         do { accessToken = try await token(generation) }
         catch {
             if error is CancellationError || (error as? YouTubeAuthorizationError) == .cancelled { throw CancellationError() }
+            if error as? YouTubeAuthorizationError == .unavailable { throw YouTubeReadError.network }
             throw YouTubeReadError.authorizationRequired
         }
         try await check(generation)
@@ -269,7 +274,9 @@ extension YouTubeClient {
         // No automatic refresh/retry for writes. Timeouts/server failures may have
         // applied remotely; a definite API rejection permits a later explicit try.
         if (400..<500).contains(response.statusCode), response.statusCode != 408 {
-            throw YouTubeMutationError.rejected(Self.failure(status: response.statusCode, data: data, resource: resource))
+            let failure = Self.failure(status: response.statusCode, data: data, resource: resource)
+            if failure == .authorizationRequired { await accessDenied(generation) }
+            throw YouTubeMutationError.rejected(failure)
         }
         throw YouTubeMutationError.uncertain
     }

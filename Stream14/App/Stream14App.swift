@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct Stream14App: App {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var authorization: YouTubeAuthorization
     @State private var media: MediaSession
     @State private var broadcast: BroadcastSession
@@ -49,6 +50,9 @@ struct Stream14App: App {
         WindowGroup {
             SetupView(authorization: authorization, youtubeEvents: youtubeEvents, experiment: media, broadcast: broadcast)
                 .onOpenURL { authorization.handle($0) }
+                .onChange(of: scenePhase) {
+                    if scenePhase == .active { broadcast.expireStoredYouTubeData() }
+                }
                 .onChange(of: authorization.generation) {
                     youtubeEvents.accountChanged()
                     broadcast.accountChanged()

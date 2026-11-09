@@ -271,3 +271,55 @@ PRs #51–#54 are merged; current main is `f454e9b`. The owner confirmed the sig
 Preflight found Google's required monitor/testing transition for monitor-enabled events. The focused correction is independently reviewed through `0a10b41`, with the pre-binding changed-setting race fixed. Final native validation: 151 passes, eight opt-in skips, zero failures; iPhone SDK Release passed. A corrected signed candidate still needs installation and operator-confirmed live testing.
 
 F11 independent review found two unresolved material issues: timed-out native writers need UUID protection until the actual finish callback ends before inspection/recovery/deletion, and structural track/duration validation must not claim decoded-start readability. Its author is usage-blocked; no blocked rebuild is counted as a pass. F12 diagnostics code/review, 27 focused tests, Release/privacy, native analysis and Simulator Load/Share checks passed, but its F11 ancestry still needs these fixes and final integrated validation. F10's six affected UI checks and actual native-bound visibility probe passed; final test-only helper review/handoff remains. All future PRs target main, with dependency order in their descriptions; no automatic merges.
+
+
+## Reviewed F12/F13 handoff — 2026-11-09
+
+This checkpoint supersedes the earlier F10/F11 review and integration blockers
+above. Main `f56d275` includes merged PRs #55–#57: required monitor transition,
+integrated interface and protected native-finalization/recovered-copy handling.
+Issues #15/#16 are closed on owner account/event evidence; implementation merges
+do not close the remaining physical/service/release criteria.
+
+F12 branch `codex/issue-25-qualification-metrics` in
+`/private/tmp/stream14-epic13-f12-diagnostics` is at `79418b8`, an ancestry-only
+normal merge of reviewed `ef202456` with main. Final affected checks passed:
+14 tests in three suites, Release build, and failed-row numeric Load/Share UI.
+Independent actual-file/full-diff review found no remaining material findings.
+Physical instrumentation overhead/export and A1–A9 qualification remain open.
+
+F13 branch `codex/issue-26-testflight-candidate` in
+`/private/tmp/stream14-epic13-f13-release-preparation` normally inherited F12/main
+at `6da5dcd`, byte-identical to independently reviewed `63557fb` before this
+documentation checkpoint. Combined hosted results: 181 passed, eight opt-in skips,
+zero failures in 30 suites; two Simulator UI checks and unsigned Release archive
+passed. Final review found no remaining material findings. Exact artifacts and
+limits are in the [full-app preparation record](2026-11-09-full-app-testflight.md).
+Root handles publication of both PRs into main, F12 before F13; no automatic merge.
+
+Next resume steps:
+
+1. Verify current branch/PR/main state and publish the reviewed F12/F13 handoffs.
+   Keep the unrelated original iCloud checkout and private signing setup intact.
+2. Prepare a focused reviewed version change to 0.3 (4), available in the live
+   read-only inventory check below; source remains 0.2 (3). Recheck before upload.
+   Do not claim signed distribution from the unsigned archive.
+3. Following owner merges, verify published policy URLs, configure the authorized
+   public OAuth client outside Git, prepare a normally signed archive, and record
+   validation/upload/processing/compliance/internal-group checkpoints separately.
+4. Coordinate the next attended phone visit within five minutes TOTAL, including
+   setup and wrap-up. Reauthorize Google deliberately: the owner revoked access
+   and left the installed app disconnected. Confirm a fresh Unlisted event and
+   obtain explicit operator Go Live/End confirmation before sending camera/audio.
+   The installed development app predates the monitor/interface/recovery changes;
+   a prepared corrected candidate is not proof of installation or TestFlight.
+5. Keep receiver/original playback, recovery, diagnostic export/overhead and
+   interruption/reconnect checks pending until observed. Longer A2/A7 and full
+   qualification require separate explicit agreement; retain all originals.
+
+After owner sign-in, root read App Store Connect Build Uploads / All Statuses on
+2026-11-09: only 0.2 (3), 0.1 (2), 0.1 (1), all Complete, no newer/processing
+upload. Existing 0.2 (3) is Testing in Owner MVP with 88 days remaining. No
+password/code was requested and no settings were changed. No phone, capture, live
+Google/YouTube, upload or distribution action occurred in this handoff. A
+connected/unlocked device alone does not establish attended readiness.

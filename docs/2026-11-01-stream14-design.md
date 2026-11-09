@@ -1470,3 +1470,58 @@ readable media. A safe numeric checkpoint Load/Share is independent from the
 protected original movie and never opens that media. Original playback/export,
 recovery/deletion and decoded-start inspection keep F11's protection. Historical
 reports without this optional flag remain readable, with finalizer state unknown.
+
+
+### Full-app F13 policy consent and API-data deletion — 2026-11-09
+
+YouTube connection/restore now requires explicit acceptance of the dated privacy
+policy and service/YouTube terms. Persist only that app-local policy-version choice;
+local rehearsal/recordings remain available without agreement or Google. Keep the
+privacy, service terms, YouTube terms and Google access-settings links visible.
+The own service terms identify YouTube API Services and the applicable YouTube
+Terms of Service, separate from the BSD source license. This implements the
+[YouTube policy](https://developers.google.com/youtube/terms/developer-policies)
+III.A disclosure/consent requirements for the candidate; publication and exact-build
+acceptance are release checkpoints, not established by the source change.
+
+Ordinary sign-out retains reconciliation journals. Explicit local data deletion,
+in-app revoke (even if remote revocation fails), and detected SDK/API access loss
+remove saved API-derived channel/event/stream IDs from both journals and invalidate
+RAM readiness. Revoke uses the SDK; local deletion does not revoke remotely or end
+a YouTube event. External revocation can only be observed on later SDK/API access. Unknown/offline SDK restore
+failures retain nonexpired exact-event reconciliation context; only explicit loss
+classifications trigger cleanup. Cancellation does not erase journals.
+Cleanup stops upload, preserving healthy local recording, originals/recovery
+copies, private numeric diagnostics and overlay settings. No YouTube media-delete
+request is sent. Successful End/terminal reconciliation already removes the
+pending-session journal; binding history otherwise remains until this cleanup.
+
+Deleting an unknown mutation's IDs must not permit another write blindly. Each
+store first atomically persists a protected nonidentifying Studio-resolution
+marker, then deletes its ID file. When no saved/in-flight request exists, deletion
+does not invent a Studio obligation. Both stores reject late journal writes while
+marked. The marker blocks start/resume across relaunch; a restart retries incomplete
+erasure before allowing acknowledgement. Explicit confirmation that prior
+requests were resolved in Studio clears the marker, only with no in-flight binding
+or unsettled transition. It sends no API mutation. Storage failure stays visible
+and blocks publishing; there is no automatic guard clearing or automatic recording
+deletion. The markers contain no identity, operation identifier or timestamp.
+
+The native auth/client/binding/broadcast fixtures cover consent, stale access-loss
+generation, local sign-out versus deletion/revoke, failure visibility, retained
+recording, deleted ID files, late save rejection, relaunch and pending-mutation
+acknowledgement blocking. The full-app release preparation record preserves actual
+results and pending App Store/TestFlight/device evidence. No long-run reliability
+or legal/provider review acceptance follows from these tests.
+
+
+Both API-ID journals now carry optional acquisition timestamps. New contexts date
+only when acquired; phase/state saves preserve the stored age. On launch,
+foreground activation and journal use, an entry aged at least 30 days, legacy
+undated entry or future clock-invalid entry converts the whole stored context to
+the durable nonidentifying Studio barrier before deleting identifiers. No automatic
+API mutation or background-execution promise is introduced. Apps unused past the
+bound clean on next launch/activation; partial cleanup failure remains blocked and
+retries before acknowledging Studio resolution. The 30-day retention policy follows
+YouTube Developer Policies III.E.4.c. Transient/offline Restore preserves a fresh
+pending intent, so a temporary outage does not destroy exact-event resume.

@@ -1755,3 +1755,37 @@ byte-identical. The documented F10 clipped-static-text audit allowance applies;
 this is not physical VoiceOver, complete media integrity or A5 qualification.
 The [F11 handoff](2026-11-08-f11-recording-recovery-handoff.md) records exact commands,
 artifacts, independent review fixes and the still-pending phone acceptance.
+
+
+## F13 policy consent and safe local YouTube-data deletion
+
+The candidate requires explicit privacy/service/YouTube agreement before Connect
+or Restore. Local recording remains usable without it. Preparation keeps direct
+policy/terms/Google access links visible. Ordinary Sign out clears account
+readiness but retains pending request IDs. Delete saved YouTube data additionally
+removes those IDs; Revoke Google access also requests SDK revocation. Recordings,
+recovery copies, private numeric diagnostics and the overlay URL remain. Remote
+YouTube videos/events are managed separately in Studio. A failed revoke is reported;
+local deletion does not claim remote revocation or remote event completion.
+
+Deleted identifiers are replaced by a nonidentifying Studio-resolution guard.
+Before confirming its removal, inspect/finish previous events and pending stream
+requests in Studio. The app cannot reconcile identities it has deleted and never
+silently clears this guard merely because you reconnect. Outstanding mutations
+must settle before confirmation; failed local erasure blocks publishing until
+storage is resolved and deletion retried. External revocation is only observable
+when the SDK/API later reports lost access, not while the app is offline/unused.
+
+Follow the [F13 preparation and archive checklist](2026-11-09-full-app-testflight-implementation.md).
+It records proposed metadata and distinct validation/upload/processing/install
+checkpoints. The current App Store Connect browser session needs owner sign-in;
+no current build inventory was visible on 2026-11-09. Historical 0.2 (3) is not
+proof the next available build is 4. Do not commit a release bump or upload until
+the live inventory and final reviewed source are verified. No phone action is
+needed for source preparation; the five-minute total attended limit still applies.
+
+The candidate checks both saved API-ID journals on launch, foreground activation
+and journal use. At 30 days (or for undated/future-dated legacy records) it writes
+the Studio guard before erasing IDs. Saving a phase never refreshes their age.
+No background cleanup while unused is promised; the next launch/activation checks
+expiry. Unknown/offline Restore preserves fresh journals for safe exact-event retry.

@@ -1,7 +1,10 @@
 # stream14 beta privacy
 
-Effective: 2026-11-08. This policy covers local recording, optional Google
-authorization, and explicitly confirmed YouTube broadcasting.
+Effective: 2026-11-09. This policy covers the full-app candidate source, including local recording, optional Google
+authorization, and explicitly confirmed YouTube broadcasting. The delivered
+0.2 (3) local-only beta has no Google/YouTube features; full-app delivery and
+exact-build qualification are still pending. stream14 uses YouTube API Services;
+see the [service terms](terms.md) and [YouTube Terms of Service](https://www.youtube.com/t/terms).
 
 ## Camera, microphone and local files
 
@@ -14,8 +17,18 @@ your recordings or metadata automatically. No Photos permission is requested.
 
 You choose whether to export an original recording through Apple's share interface.
 The selected destination or recipient then handles that copy under its own policies.
-Delete recording requires confirmation and removes the selected original and its
-metadata from the app. Exported copies remain where you saved them. Deleting the
+Recovery is an explicit attempt to remux readable fragments to a separate local
+copy. The original remains, including if recovery fails. A readable start is not
+proof of complete-file integrity. New recordings also have bounded numeric
+qualification checkpoints: elapsed/sample timing, codec/profile, per-output
+admissions and drop/queue observations, thermal state, and supported memory
+observations. A checkpoint may be incomplete after termination. Reports contain
+no account/event identifiers, URLs, tokens or raw media. Reports remain local and
+are excluded from backup; export is a deliberate action separate from media export.
+
+Confirmed deletion removes the selected recording/copy and its associated local
+metadata/review/qualification files. A group deletion names the affected originals
+and recovery copies before confirmation. Exported copies remain where you saved them. Deleting the
 app removes its local recordings; export anything you want to keep first.
 
 ## Web overlays and network requests
@@ -42,7 +55,10 @@ Connect YouTube opens Google's supported system-browser authorization through th
 Google Sign-In SDK. Google receives authorization requests and handles account
 selection, consent and token services under its [privacy policy](https://policies.google.com/privacy).
 The app requests YouTube access to read and manage the selected broadcast;
-connecting alone never uploads camera or microphone media. Without Google setup,
+connecting alone never uploads camera or microphone media. Before Connect or
+Restore, you must explicitly agree to this privacy policy and the linked service/
+YouTube terms. Only that nonsecret policy-version choice is saved in app-only
+UserDefaults; local rehearsal does not require YouTube agreement. Without Google setup,
 local recording remains available and no Google authorization request is made.
 
 The SDK stores its credentials in the iPhone Keychain. stream14 does not copy them
@@ -50,8 +66,10 @@ to preferences, files, an app backend or overlay JavaScript. A fresh access toke
 is held in memory only for authorized API use. Sign out removes this iPhone's SDK
 session; Revoke Google access additionally requests revocation from Google. If
 revocation fails, the app says so and you can review access in your Google Account.
-These actions clear the app's in-memory YouTube channel/event information and keep
-local recordings and overlay settings. When you explicitly refresh scheduled events,
+Local sign-out clears in-memory account/channel/event readiness but retains pending
+request journals for safe reconciliation; it is distinct from data deletion.
+Revoke additionally deletes saved YouTube API data on this iPhone, even if the
+remote revoke request fails. Local recordings and overlay settings remain. When you explicitly refresh scheduled events,
 the app sends authorized read requests directly to YouTube and holds channel/event
 metadata in memory for selection. It does not save raw API responses or ingestion
 keys, and selecting an event alone does not publish or change it.
@@ -60,7 +78,7 @@ The broadcast-preparation component keeps a small local request journal
 containing channel, event and any created stream identifiers, the chosen media
 profile and request phase. This prevents duplicate stream creation after a network
 error or app restart. The journal is excluded from backups and contains no Google
-token, ingestion address or stream key. Signing out hides account-dependent state
+token, ingestion address or stream key. Ordinary sign-out hides account-dependent state
 but retains this duplicate-prevention record; an unresolved creation requires
 checking YouTube Studio before another stream can be created. Preparation is used
 only from the confirmed Go Live flow, not from listing or selecting events.
@@ -89,9 +107,45 @@ A separate protected, backup-excluded pending-session journal stores unresolved
 channel/event IDs and any outstanding transition type/operation ID. It contains
 no Google token, stream key, ingestion address, event title or overlay URL. It
 prevents a relaunch or unknown transition from silently starting another upload.
-Signing out retains this reconciliation record; relaunch only offers read-only
+Ordinary sign-out retains this reconciliation record; relaunch only offers read-only
 reconciliation. An ambiguous mutation is not erased merely because an immediate
 read still reports an upcoming event.
+
+### Deleting YouTube data and revoking access
+
+Choose **Delete saved YouTube data** and confirm while YouTube activity is stopped.
+This signs out locally and removes saved channel/event/stream identifiers from both
+journals, plus in-memory API readiness. It preserves local recordings, recovery
+copies, their private numeric diagnostics, overlay settings and the policy choice.
+It sends no remote delete/End request and does not delete YouTube videos or revoke
+Google consent. Manage remote events/media in YouTube Studio.
+
+Revoke Google access also requests SDK-managed remote revocation. You can revoke
+access directly in [Google Account security settings](https://security.google.com/settings/security/permissions).
+The app cannot observe external revocation while offline or unused. When the SDK explicitly reports invalid authorization, token refresh confirms an expired/invalid grant,
+or the API rejects authorization, the app clears saved API data and stops upload
+while healthy local recording can continue. An unknown/offline restore or token-refresh failure
+retains nonexpired journals for exact-event reconciliation and permits a safe retry;
+it does not establish revocation. A storage failure is reported and publishing remains blocked; retry
+local deletion after resolving storage.
+
+Before deleting identifiers for prior or in-flight requests, the app saves a nonidentifying **Studio resolution
+required** marker. The marker contains no account, event, stream, operation ID or
+timestamp. It survives relaunch and blocks publishing/late journal writes so an
+unknown remote mutation cannot be repeated blindly. Resolve previous event/stream
+requests in Studio, then explicitly confirm that resolution in the app; this
+removes the marker without a remote request. An outstanding mutation must settle
+before confirmation is allowed. Deletion never silently permits another Go Live.
+Ordinary successful End/terminal reconciliation clears the pending-session journal;
+binding history remains until explicit deletion, confirmed access-loss cleanup or
+expiry. Both journals keep acquisition timestamps and are checked on app launch,
+activation and journal use. Identifiers expire at 30 days; phase updates do not
+renew that age. Undated legacy records or a future timestamp are treated as stale.
+Before erasure the app saves the same nonidentifying guard, preserving safety.
+There is no promised background task: if the app remains unused, cleanup occurs
+when it next launches/activates. A failed cleanup remains blocked and is retried.
+Newly obtained contexts have new timestamps; this beta does not silently renew
+old API identifiers merely by re-saving them.
 
 GoogleSignIn 10.1.0's bundled privacy manifest declares Google-side account/contact,
 coarse location, user/device identifiers and usage/other data for app functionality

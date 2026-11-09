@@ -66,6 +66,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     private(set) var pendingRemote: PendingRemoteBroadcast?
     private(set) var isWorking = false
     private(set) var journalUnavailable = false
+    private(set) var requiresStudioResolution = false
     enum ReconnectStatus: Equatable { case inactive, monitoring, waiting, connecting, exhausted, authorizationRequired, stopped }
     private(set) var reconnectStatus: ReconnectStatus = .inactive
     private(set) var reconnectAttempts = 0
@@ -94,8 +95,19 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         self.media = media; self.store = store; self.startupSeconds = startupSeconds
         self.endSeconds = endSeconds; self.pollSeconds = pollSeconds; self.writerSeconds = writerSeconds
         self.reconnectClock = reconnectClock
+        authorization.onDeleteAPIData = { [weak self] in self?.eraseYouTubeAPIData() ?? false }
+        requiresStudioResolution = store.requiresStudioResolution || binding.requiresStudioResolution
         do {
-            pendingRemote = try store.load()
+            let bindingExpired = try binding.expireStaleAPIData()
+            let remoteExpired = try store.expireIfNeeded()
+            requiresStudioResolution = requiresStudioResolution || bindingExpired || remoteExpired
+            // Once IDs have been erased, the marker is the only reconciliation context.
+            if requiresStudioResolution {
+                // Retry an interrupted/failed deletion before permitting acknowledgement.
+                try store.eraseAPIData()
+                try binding.eraseAPIData()
+                pendingRemote = nil
+            } else { pendingRemote = try store.load() }
             if var context = pendingRemote {
                 context.interrupted = true
                 try store.save(context)
@@ -103,6 +115,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
                 state = .needsReconciliation
                 message = "YouTube status is unknown after the previous session. Reconcile or inspect YouTube Studio before starting."
             }
+            if requiresStudioResolution { message = Self.studioResolutionMessage }
         } catch {
             journalUnavailable = true
             message = "The pending YouTube session could not be read. Local rehearsal is available; resolve local storage before Go Live."
@@ -138,8 +151,8 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
 
     var locksSelection: Bool { confirmation != nil || isWorking || activeIntent != nil || pendingRemote != nil }
     var requiresEndFirst: Bool { isWorking || [.starting, .waitingForIngestion, .goingLive, .live, .ending].contains(state) }
-    var canResume: Bool { !isWorking && !hasUnsettledMutation && !journalUnavailable && authorization.isAuthorized && pendingRemote?.interrupted == true && pendingRemote?.transition == nil && pendingRemote?.streamID != nil }
-    var canStart: Bool { !isWorking && activeIntent == nil && pendingRemote == nil && !journalUnavailable && authorization.isAuthorized }
+    var canResume: Bool { !isWorking && !hasUnsettledMutation && !journalUnavailable && !requiresStudioResolution && authorization.isAuthorized && pendingRemote?.interrupted == true && pendingRemote?.transition == nil && pendingRemote?.streamID != nil }
+    var canStart: Bool { !isWorking && activeIntent == nil && pendingRemote == nil && !journalUnavailable && !requiresStudioResolution && authorization.isAuthorized }
     var canEnd: Bool { !isWorking || state != .ending }
 
     /// UI calls this before displaying the confirmation. No API/media work here.
@@ -488,6 +501,64 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             if request == epoch { isWorking = false; operation = nil }
         }
     }
+
+    private static let studioResolutionMessage = "Saved YouTube data was deleted. Previous requests may still exist in YouTube Studio. Resolve their events/streams there, then explicitly confirm resolution before publishing again. Local recording remains available."
+
+    /// Called on explicit deletion/revoke or detected access loss. Persist the
+    /// global nonidentifying guard before erasing identifiers or cancelling work.
+    @discardableResult func eraseYouTubeAPIData() -> Bool {
+        let needsGuard = requiresStudioResolution || store.requiresStudioResolution || binding.requiresStudioResolution ||
+            store.hasSavedAPIData || binding.hasSavedAPIData || activeIntent != nil || pendingRemote != nil ||
+            hasUnsettledMutation || binding.isPreparing
+        requiresStudioResolution = needsGuard
+        var erased = true
+        do { try store.eraseAPIData(requiringStudioResolution: needsGuard) } catch { erased = false }
+        do { try binding.eraseAPIData(requiringStudioResolution: needsGuard) } catch { erased = false }
+        cancelSupervision(); epoch &+= 1; operation?.cancel()
+        confirmation = nil; activeIntent = nil; pendingRemote = nil; admitted = nil
+        isWorking = true; state = needsGuard ? .needsReconciliation : .idle
+        journalUnavailable = !erased
+        media.lockConfiguration(false)
+        let request = epoch
+        operation = Task {
+            await media.stopUpload()
+            if request == epoch { isWorking = false; operation = nil }
+        }
+        message = erased ? (needsGuard ? Self.studioResolutionMessage : "No saved YouTube request remains. Local recording is available.") :
+            "YouTube data could not be completely deleted. Publishing is blocked. Resolve local storage and retry deletion; local recordings remain."
+        return erased
+    }
+
+    /// This explicit owner acknowledgement is the only way to remove the erased
+    /// context's guard. Never inferred from reconnecting, selecting, or relaunch.
+    func confirmDeletedDataResolvedInStudio() {
+        guard requiresStudioResolution, !journalUnavailable, !isWorking,
+              !hasUnsettledMutation, !binding.isPreparing else { return }
+        do {
+            try store.confirmStudioResolution()
+            try binding.confirmStudioResolution()
+            requiresStudioResolution = false
+            state = .idle
+            message = "You confirmed previous YouTube requests were resolved in Studio. Refresh and review a new event before Go Live."
+        } catch {
+            journalUnavailable = true
+            message = "The Studio resolution guard could not be cleared. Resolve local storage and retry data deletion."
+        }
+    }
+
+    /// Called on activation even when the owner uses only local rehearsal.
+    func expireStoredYouTubeData() {
+        do {
+            let bindingExpired = try binding.expireStaleAPIData()
+            let remoteExpired = try store.expireIfNeeded()
+            if bindingExpired || remoteExpired { eraseYouTubeAPIData() }
+        } catch {
+            journalUnavailable = true
+            message = "Saved YouTube data could not be checked or expired. Publishing is blocked; resolve local storage and retry deletion."
+        }
+    }
+
+    var canDeleteYouTubeData: Bool { !requiresEndFirst && !hasUnsettledMutation && !binding.isPreparing }
 
     func accountChanged() {
         confirmation = nil

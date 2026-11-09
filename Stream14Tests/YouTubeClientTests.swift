@@ -4,6 +4,27 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.timeLimit(.minutes(1))) struct YouTubeClientTests {
+    @Test func authorizationRejectionRequestsGenerationBoundDataCleanupForReadsAndWrites() async {
+        for mutation in [false, true] {
+            let server = ReadFixtureServer([.error(401, "authError"), .error(401, "authError")])
+            var rejected: [UInt64] = []
+            let client = YouTubeClient(token: { _ in "invented-token" }, current: { _ in true },
+                accessDenied: { rejected.append($0) }, send: { try await server.send($0) }, sleep: { _ in })
+            if mutation {
+                await #expect(throws: YouTubeMutationError.rejected(.authorizationRequired)) {
+                    try await client.transitionBroadcast(eventID: "fixture-event", channelID: "fixture-channel", to: .complete, generation: 17)
+                }
+                #expect(await server.requests.count == 1)
+            } else {
+                await #expect(throws: YouTubeReadError.authorizationRequired) {
+                    try await client.authorizedChannel(generation: 17)
+                }
+                #expect(await server.requests.count == 2)
+            }
+            #expect(rejected == [17])
+        }
+    }
+
     @Test func channelsAndEveryUpcomingPageUseCorrectReadOnlyFilters() async throws {
         let server = ReadFixtureServer([.fixture("channel"), .fixture("upcoming-first"), .fixture("upcoming-last")])
         let client = makeClient(server)
@@ -223,7 +244,7 @@ import UIKit
         Dictionary(uniqueKeysWithValues: URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!.queryItems!.map { ($0.name, $0.value ?? "") })
     }
     private func authorized() async -> YouTubeAuthorization {
-        let value = YouTubeAuthorization(driver: ReadAuthorizationDriver(), configured: true)
+        let value = YouTubeAuthorization(driver: ReadAuthorizationDriver(), configured: true, policyAccepted: true)
         await value.restore()
         return value
     }

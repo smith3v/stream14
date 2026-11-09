@@ -1,5 +1,7 @@
 # TestFlight delivery record — MVP and updates
 
+The later full-app candidate has a [separate preparation/delivery record](2026-11-09-full-app-testflight.md). It is not uploaded or delivered; the historical MVP/update evidence below remains separate.
+
 Updated: 2026-11-07. **Version 0.2 (3) is Testing in Owner MVP**, with compliance
 completed and release-specific What to Test notes saved. See the
 [0.2 release record](2026-11-07-testflight-0.2.md). Installation of this update has

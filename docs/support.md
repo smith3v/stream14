@@ -1,12 +1,14 @@
 # stream14 beta support
 
-stream14 is currently a local-recording beta for iPhone with iOS 27 or later.
-Rear-camera video, microphone audio and an optional HTTPS web overlay are saved
-as a local H.264/AAC MP4. YouTube login and broadcasting are not available.
-Performance qualification targets the iPhone 13 mini; longer-run qualification is
-still pending. Keep the app in the foreground and the rear camera upright in
-landscape while recording. Backgrounding or interruptions stop the session; start
-again explicitly after returning.
+stream14's delivered 0.2 (3) beta records locally. The full-app candidate source
+adds optional broadcasting to an existing scheduled YouTube encoder event;
+its TestFlight delivery and exact-build qualification remain pending. See the
+[full-app preparation record](2026-11-09-full-app-testflight-implementation.md).
+
+Both versions target iOS 27 or later and the iPhone 13 mini. Camera video,
+microphone audio and an optional HTTPS web overlay share the composed preview and
+local H.264/AAC MP4. Long-run qualification remains pending. Keep the app foreground;
+backgrounding or interruptions stop capture and require an explicit restart.
 
 ## Report a problem
 
@@ -17,23 +19,50 @@ with tokens, device identifiers or signing/account information. TestFlight's
 feedback option is another route for installed beta testers; check attachments
 before submitting. Never send passwords or verification codes.
 
-## Common checks
+## Full-app candidate checks
 
-- Allow camera and microphone in iOS Settings for stream14 if previously denied.
-- Choose Overlay → Use reference URL → Load overlay to try the reference page.
-  Close Overlay, open the camera and record. A separate scoring backend's health
-  is not proved by a successful document load.
-- Network loss should hide an unavailable overlay after approximately ten seconds;
-  local camera/audio recording continues while capture and writing are healthy.
-  A fresh successful page/render restores it unless Hide overlay manually is on.
-- Stop before playback/export. Export original file uses the system share sheet;
-  choose Save to Files and verify the saved file opens.
-- To reclaim space, choose Delete recording, check the date and confirm. Exported
-  copies remain. There is no automatic cleanup.
-- Export important recordings before deleting/reinstalling the app. Prefer an
-  in-place TestFlight update. A beta expires; install a replacement build from
-  TestFlight when available. See the [delivery record](testflight-delivery.md).
+- **Preparation** selects profile, connects YouTube and refreshes the actual
+  channel/event. Read and agree to the privacy policy/service terms before Connect
+  or Restore. Google is optional for local rehearsal. Google Testing users and
+  TestFlight testers are separate; Testing authorization can expire after seven days.
+- **Session** opens the camera for preview, local recording and manual overlay
+  hide/reload. Allow camera/microphone in iOS Settings if previously denied.
+  Apply an empty overlay URL to disable an unavailable source deliberately.
+- Selecting a tab/event or opening preview never publishes. **Go Live** shows
+  channel, event, visibility and profile for confirmation. Auto-start events may
+  become Live from first confirmed upload. Check the intended Unlisted test event
+  and its auto-stop setting in Studio before any qualification upload.
+- Recording, Upload and YouTube states are separate. A healthy local file continues
+  after upload failure. A backup warning does not establish YouTube failure.
+  **End broadcast** requires confirmation; uncertain End needs Studio/read-only
+  reconciliation. After interruption, reopen camera and explicitly confirm Resume
+  for the same event. Nothing automatically resumes on app launch.
+- A source failure hides the overlay after about ten seconds; fresh source/render
+  restores it unless manually hidden. Camera/local writing remain independent.
+- **Recordings** retains originals and completion/failure provenance. Play and
+  Export use the original; verify the Files copy opens. An incomplete file may
+  offer recovery to a separate copy. Recovery may omit an unfinished tail or fail;
+  a readable start does not prove the complete file is intact. Originals remain.
+- A new recording's qualification summary is private numeric evidence; load/export
+  it separately from media. Missing/incomplete reports and unavailable observations
+  are legitimate and do not prove a successful broadcast.
+- Delete only after checking the selected original/copy/group and confirming.
+  Exported copies remain. No automatic cleanup occurs. Export important files
+  before app removal; prefer in-place TestFlight updates.
+- **Sign out on this iPhone** retains pending API request journals for safety.
+  **Delete saved YouTube data** removes their identifiers and signs out locally;
+  it does not end a remote event or revoke consent. **Revoke Google access** also
+  requests remote SDK revocation. Use [Google access settings](https://security.google.com/settings/security/permissions)
+  for external revocation. After data deletion/access loss, resolve previous
+  requests in Studio and explicitly confirm resolution before publishing again.
+  A nonidentifying guard remains until then. Recordings and overlay settings remain.
 
-See the [privacy policy](privacy.md) and the in-app Third-party notices. The
+The old local-only beta uses its historical Overlay/Open camera controls. Its
+[delivery record](testflight-delivery.md) remains separate. A routine attended phone
+check has a five-minute total budget including setup; longer qualification needs
+explicit agreement. Beta expiration does not delete recordings: install a verified
+replacement in place and retain/export valuable files.
+
+See the [privacy policy](privacy.md), [service terms](terms.md), [YouTube terms](https://www.youtube.com/t/terms) and the in-app Third-party notices. The
 [BSD-3-Clause source license](../LICENSE) covers the source; it is not a privacy
 policy or a promise of uninterrupted beta availability.

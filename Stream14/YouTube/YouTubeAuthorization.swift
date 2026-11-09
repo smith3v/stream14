@@ -46,10 +46,17 @@ enum YouTubeAuthorizationError: Error, Equatable {
     private(set) var generation: UInt64 = 0
     private(set) var isWorking = false
     private(set) var message: String
+    private(set) var policyAccepted: Bool
+    @ObservationIgnored private let savePolicyAcceptance: (Bool) -> Void
+    @ObservationIgnored var onDeleteAPIData: (() -> Bool)?
+    private func clearAPIData() -> Bool { onDeleteAPIData?() ?? true }
     let isConfigured: Bool
     @ObservationIgnored private let driver: (any GoogleAuthorizationDriving)?
 
-    init(driver: (any GoogleAuthorizationDriving)?, configured: Bool) {
+    init(driver: (any GoogleAuthorizationDriving)?, configured: Bool, policyAccepted: Bool = false,
+         savePolicyAcceptance: @escaping (Bool) -> Void = { _ in }) {
+        self.policyAccepted = policyAccepted
+        self.savePolicyAcceptance = savePolicyAcceptance
         self.driver = driver
         isConfigured = configured
         message = configured ? "YouTube is disconnected. Local recording is available." :
@@ -58,7 +65,7 @@ enum YouTubeAuthorizationError: Error, Equatable {
 
     #if DEBUG
     static func interfaceFixture() -> YouTubeAuthorization {
-        let value = YouTubeAuthorization(driver: nil, configured: true)
+        let value = YouTubeAuthorization(driver: nil, configured: true, policyAccepted: true)
         value.account = GoogleAuthorizationAccount(id: "fixture-account", grantedScopes: [requiredScope])
         value.message = "Fixture YouTube connection. No Google requests."
         return value
@@ -67,10 +74,32 @@ enum YouTubeAuthorizationError: Error, Equatable {
 
     convenience init(bundle: Bundle = .main) {
         let config = GoogleAuthorizationConfiguration(info: bundle.infoDictionary ?? [:])
-        self.init(driver: config.map { GoogleAuthorizationDriver(configuration: $0) }, configured: config != nil)
+        self.init(driver: config.map { GoogleAuthorizationDriver(configuration: $0) }, configured: config != nil,
+            policyAccepted: UserDefaults.standard.bool(forKey: "YouTubePolicy20261109"),
+            savePolicyAcceptance: { UserDefaults.standard.set($0, forKey: "YouTubePolicy20261109") })
     }
 
-    var isAuthorized: Bool { account != nil && !isWorking }
+    var isAuthorized: Bool { policyAccepted && account != nil && !isWorking }
+
+    func acceptYouTubePolicy() {
+        policyAccepted = true
+        savePolicyAcceptance(true)
+    }
+
+    /// Local deletion is distinct from remote revocation and never deletes media.
+    func deleteYouTubeData(broadcastActive: Bool = false) {
+        guard !broadcastActive, !isWorking else { return }
+        invalidate(); driver?.signOut()
+        message = clearAPIData() ? "YouTube data deleted locally. Google access is unchanged; review Google Account permissions to revoke it." :
+            "YouTube data deletion failed. Publishing is blocked; resolve local storage and retry deletion."
+    }
+
+    func accessWasDenied(expectedGeneration: UInt64? = nil) {
+        if let expectedGeneration, expectedGeneration != generation { return }
+        invalidate(); driver?.signOut()
+        message = clearAPIData() ? "YouTube authorization is unavailable. Saved YouTube API data was cleared; check Google access and YouTube Studio before reconnecting." :
+            "YouTube authorization is unavailable and local data deletion failed. Resolve local storage and retry deletion."
+    }
 
     func connect(presenting: UIViewController, broadcastActive: Bool = false) async {
         guard begin(broadcastActive: broadcastActive), let driver else { return }
@@ -108,9 +137,11 @@ enum YouTubeAuthorizationError: Error, Equatable {
             try await driver.disconnect()
             guard operation == generation else { return }
             driver.signOut()
-            message = "Google access revoked and this iPhone signed out."
+            message = clearAPIData() ? "Google access revoked and local YouTube data deleted. Recordings and overlay settings remain." :
+                "Google access revoked, but local YouTube data deletion failed. Resolve local storage and retry deletion."
         } catch {
             guard operation == generation else { return }
+            _ = clearAPIData()
             // A failed revoke must not be reported as revoked. Keep local state clear.
             driver.signOut()
             message = "Signed out locally. Google access could not be revoked; check your Google Account permissions and retry connecting if needed."
@@ -132,9 +163,14 @@ enum YouTubeAuthorizationError: Error, Equatable {
             if Task.isCancelled || error is CancellationError || error as? YouTubeAuthorizationError == .cancelled {
                 throw YouTubeAuthorizationError.cancelled
             }
+            if error as? YouTubeAuthorizationError == .unavailable {
+                if expectedGeneration == generation { message = "YouTube token refresh is temporarily unavailable. Check the connection and retry; saved reconciliation data is retained." }
+                throw YouTubeAuthorizationError.unavailable
+            }
             if expectedGeneration == generation {
                 invalidate()
                 driver.signOut()
+                _ = clearAPIData()
                 message = "YouTube authorization expired or could not be refreshed. Connect again."
             }
             throw YouTubeAuthorizationError.authorizationRequired
@@ -145,6 +181,10 @@ enum YouTubeAuthorizationError: Error, Equatable {
 
     private func begin(broadcastActive: Bool) -> Bool {
         guard !broadcastActive else { message = "End the broadcast before changing YouTube accounts."; return false }
+        guard policyAccepted else {
+            message = "Read and agree to the privacy policy and YouTube terms before connecting. Local recording remains available."
+            return false
+        }
         guard isConfigured, driver != nil, !isWorking else { return false }
         invalidate()
         isWorking = true
@@ -170,6 +210,11 @@ enum YouTubeAuthorizationError: Error, Equatable {
         guard operation == generation else { driver?.signOut(); return }
         driver?.signOut()
         account = nil
+        // Unknown/network restore errors retain exact reconciliation context.
+        // Only explicit SDK loss classifications erase API-derived identifiers.
+        if [.authorizationRequired, .missingScope].contains(error as? YouTubeAuthorizationError) {
+            _ = clearAPIData()
+        }
         switch error as? YouTubeAuthorizationError {
         case .cancelled: message = "YouTube connection cancelled. Local recording is available."
         case .noPreviousSignIn: message = "No saved Google authorization. Connect YouTube to continue."
