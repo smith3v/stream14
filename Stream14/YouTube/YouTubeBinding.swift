@@ -116,7 +116,10 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
     }
 
     var requiresStudioResolution: Bool { store.requiresStudioResolution }
-    func eraseAPIData() throws { try store.eraseAPIData() }
+    var hasSavedAPIData: Bool { store.hasSavedAPIData }
+    func eraseAPIData(requiringStudioResolution: Bool = true) throws {
+        try store.eraseAPIData(requiringStudioResolution: requiringStudioResolution)
+    }
     func confirmStudioResolution() throws { try store.confirmStudioResolution() }
 
     func prepareConfirmed(eventID: String, channelID: String, profile: SessionProfile, generation: UInt64) async throws -> PreparedYouTubeIngestion {

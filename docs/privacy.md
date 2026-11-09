@@ -130,7 +130,7 @@ continue. A failed restore can also mean a connection problem; cleanup does not 
 Google revoked access. A storage failure is reported and publishing remains blocked; retry
 local deletion after resolving storage.
 
-Before deleting identifiers, the app saves a nonidentifying **Studio resolution
+Before deleting identifiers for prior or in-flight requests, the app saves a nonidentifying **Studio resolution
 required** marker. The marker contains no account, event, stream, operation ID or
 timestamp. It survives relaunch and blocks publishing/late journal writes so an
 unknown remote mutation cannot be repeated blindly. Resolve previous event/stream

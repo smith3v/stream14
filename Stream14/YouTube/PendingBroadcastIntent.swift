@@ -72,8 +72,9 @@ nonisolated struct PendingBroadcastIntent: Codable, Equatable, Sendable {
     // cannot recreate API data or enable a new write after deletion.
     var requiresStudioResolution: Bool { (try? FileManager.default.fileExists(atPath: barrier().path)) ?? true }
 
-    func eraseAPIData() throws {
-        try write(Data("Studio resolution required".utf8), barrier())
+    var hasSavedAPIData: Bool { (try? FileManager.default.fileExists(atPath: location().path)) ?? true }
+    func eraseAPIData(requiringStudioResolution: Bool = true) throws {
+        if requiringStudioResolution { try write(Data("Studio resolution required".utf8), barrier()) }
         let url = try location()
         if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
     }

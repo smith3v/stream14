@@ -482,13 +482,16 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     /// Called on explicit deletion/revoke or detected access loss. Persist the
     /// global nonidentifying guard before erasing identifiers or cancelling work.
     @discardableResult func eraseYouTubeAPIData() -> Bool {
-        requiresStudioResolution = true
+        let needsGuard = requiresStudioResolution || store.requiresStudioResolution || binding.requiresStudioResolution ||
+            store.hasSavedAPIData || binding.hasSavedAPIData || activeIntent != nil || pendingRemote != nil ||
+            hasUnsettledMutation || binding.isPreparing
+        requiresStudioResolution = needsGuard
         var erased = true
-        do { try store.eraseAPIData() } catch { erased = false }
-        do { try binding.eraseAPIData() } catch { erased = false }
+        do { try store.eraseAPIData(requiringStudioResolution: needsGuard) } catch { erased = false }
+        do { try binding.eraseAPIData(requiringStudioResolution: needsGuard) } catch { erased = false }
         cancelSupervision(); epoch &+= 1; operation?.cancel()
         confirmation = nil; activeIntent = nil; pendingRemote = nil; admitted = nil
-        isWorking = true; state = .needsReconciliation
+        isWorking = true; state = needsGuard ? .needsReconciliation : .idle
         journalUnavailable = !erased
         media.lockConfiguration(false)
         let request = epoch
@@ -496,7 +499,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
             await media.stopUpload()
             if request == epoch { isWorking = false; operation = nil }
         }
-        message = erased ? Self.studioResolutionMessage :
+        message = erased ? (needsGuard ? Self.studioResolutionMessage : "No saved YouTube request remains. Local recording is available.") :
             "YouTube data could not be completely deleted. Publishing is blocked. Resolve local storage and retry deletion; local recordings remain."
         return erased
     }

@@ -19,12 +19,15 @@ nonisolated struct PendingRemoteBroadcast: Codable, Equatable, Sendable {
     }
     var requiresStudioResolution: Bool { FileManager.default.fileExists(atPath: barrier.path) }
     private var barrier: URL { url.deletingLastPathComponent().appendingPathComponent("youtube-studio-resolution-required") }
-    func eraseAPIData() throws {
+    var hasSavedAPIData: Bool { FileManager.default.fileExists(atPath: url.path) }
+    func eraseAPIData(requiringStudioResolution: Bool = true) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data("Studio resolution required".utf8).write(to: barrier, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-        var marker = barrier
-        var values = URLResourceValues(); values.isExcludedFromBackup = true
-        try marker.setResourceValues(values)
+        if requiringStudioResolution {
+            try Data("Studio resolution required".utf8).write(to: barrier, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            var marker = barrier
+            var values = URLResourceValues(); values.isExcludedFromBackup = true
+            try marker.setResourceValues(values)
+        }
         try save(nil)
     }
     func confirmStudioResolution() throws {

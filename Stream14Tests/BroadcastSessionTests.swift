@@ -4,6 +4,17 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct BroadcastSessionTests {
+    @Test func deletingWithoutPriorYouTubeRequestsDoesNotInventStudioWork() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.authorization.deleteYouTubeData()
+        await h.session.waitForOperation()
+        #expect(!h.session.requiresStudioResolution)
+        await h.authorization.restore()
+        #expect(h.session.canStart)
+        #expect(h.server.transitions.isEmpty)
+    }
+
     @Test func dataDeletionRemovesIdentifiersRetainsFileAndRequiresExplicitStudioResolutionAfterRelaunch() async throws {
         let h = try await Harness()
         defer { h.cleanup() }

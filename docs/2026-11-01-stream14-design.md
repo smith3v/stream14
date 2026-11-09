@@ -1426,7 +1426,8 @@ pending-session journal; binding history otherwise remains until this cleanup.
 
 Deleting an unknown mutation's IDs must not permit another write blindly. Each
 store first atomically persists a protected nonidentifying Studio-resolution
-marker, then deletes its ID file. Both stores reject late journal writes while
+marker, then deletes its ID file. When no saved/in-flight request exists, deletion
+does not invent a Studio obligation. Both stores reject late journal writes while
 marked. The marker blocks start/resume across relaunch; a restart retries incomplete
 erasure before allowing acknowledgement. Explicit confirmation that prior
 requests were resolved in Studio clears the marker, only with no in-flight binding
