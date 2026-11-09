@@ -1791,3 +1791,25 @@ and journal use. At 30 days (or for undated/future-dated legacy records) it writ
 the Studio guard before erasing IDs. Saving a phase never refreshes their age.
 No background cleanup while unused is promised; the next launch/activation checks
 expiry. Unknown/offline Restore preserves fresh journals for safe exact-event retry.
+
+
+## Full-app TestFlight 0.3 (4) — 2026-11-09
+
+The owner merged #58–#60. The account-enabled 0.3 (4) archive was validated and
+uploaded through Xcode's normal automatic distribution path. App Store Connect
+completed processing; its actual encryption question was answered on the audited
+OS-only encryption boundary. Build-specific test notes and full-app beta information
+were saved, and the existing Owner MVP internal group now shows **0.3 (4) Testing**
+with a 90-day expiry display. No tester/public-link expansion occurred.
+
+The owner confirmed **Installed 0.3 (4) through TestFlight**. This establishes
+owner-reported exact-build installation, not a phone media/receiver regression pass.
+See the [full-app delivery record](2026-11-09-full-app-testflight.md) for separate
+archive, validation, upload, compliance, availability and installation checkpoints.
+Use the [attended cards](2026-11-08-attended-iphone-session.md): S0 for installed
+policy links/consent/Google reauthorization after the earlier revoke, then S1 only
+when ready and explicitly confirmed for a dedicated Unlisted event. Routine visits
+stay within five minutes TOTAL including setup/wrap-up. Remaining physical and
+long-duration qualification is pending; retain originals and never uninstall as
+routine testing cleanup. No recording or YouTube publishing was performed for this
+delivery checkpoint.

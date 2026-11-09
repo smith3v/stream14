@@ -1,6 +1,6 @@
 # Full-app TestFlight candidate — preparation record
 
-Updated: 2026-11-09. **Not uploaded or delivered. Issue #26 remains open.**
+Updated: 2026-11-09. **0.3 (4) is Testing in Owner MVP; the owner confirmed installation through TestFlight. Current-build regression and physical qualification remain pending. Issue #26 remains open.**
 The previous [0.2 (3) local-only delivery](2026-11-07-testflight-0.2.md) and owner
 MVP evidence remain historical. This record identifies the later full-app source
 and its outstanding delivery/acceptance checkpoints.
@@ -164,3 +164,190 @@ and native two-case result summary. It independently verified the archive's
 strict signature and found no material findings at source `1ae3f87` plus these
 documentation updates. `git diff --check` and changed-document local file links
 passed. No extra native run was needed for the documentation-only handoff.
+
+
+## Merged-main distribution checkpoint — 2026-11-09
+
+The owner merged #58, #59 and #60. Distribution work starts from main
+`32996c09e30f3b00ea36a7b34d437821741e021d`; the app, project, test and configuration
+trees have an empty diff against archived source `1ae3f87`. No rebuild or media
+regression rerun is claimed for that ancestry/documentation-only difference.
+Root refreshed App Store Connect Build Uploads / All Statuses: only 0.2 (3),
+0.1 (2), 0.1 (1), all Complete; no newer/processing upload. The exact in-app main
+privacy, terms and support URLs returned HTTP 200 without authentication, and raw
+content matched reviewed source. Private safe hash/status evidence:
+`/private/tmp/stream14-03-public-policy-check.json`.
+
+Xcode Organizer imported the exact retained archive and **Generate Privacy Report**
+exported a one-page PDF at `/private/tmp/stream14-0.3-aggregate-privacy-report`
+(the saved file has no extension). Native PDFKit extracted text to the matching
+`.txt` path. All nine bundled manifests were decoded separately into private
+`/private/tmp/stream14-03-manifest-audit.json`. The aggregate attributes these
+GoogleSignIn declarations to that SDK, all linked and not tracking:
+
+| SDK-declared type | Declared purpose |
+| --- | --- |
+| Name, email address, phone number, coarse location | App functionality |
+| User ID, other data types | App functionality and analytics |
+| Device ID, other usage data | Analytics |
+
+The app's own manifest has no declared collection; that does **not** make the
+combined app "Data Not Collected." This report is a declaration inventory, not a
+packet-level observation that every listed field is sent in every authorization.
+The published policy already distinguishes provider processing and these SDK
+categories from a developer collection backend. No SDK declaration was removed or
+rewritten to make the report appear empty. Root read App Store Connect App Privacy:
+it is unconfigured (Get Started, empty policy/choices fields), not a previously
+published no-collection answer. No privacy answer was saved. Public-submission
+privacy labels still need a full assessment of actual third-party processing,
+including confirmed YouTube video/audio and chosen overlay website requests,
+rather than copying only this manifest table.
+
+Current [Apple submission requirements](https://developer.apple.com/app-store/submitting/),
+[third-party SDK requirements](https://developer.apple.com/support/third-party-SDK-requirements/),
+[App Privacy details](https://developer.apple.com/app-store/app-privacy-details/)
+and [export-compliance overview](https://developer.apple.com/help/app-store-connect/manage-app-information/overview-of-export-compliance/)
+were rechecked on 2026-11-09. Xcode 27.2 / iOS SDK 27.2 satisfies the stated SDK
+boundary; actual Apple validation remains required. Listed included SDKs retain
+their manifests. The archived load/symbol audit finds only Apple/Swift dynamic
+loads and no OpenSSL/SRT/RTC indicators. Source uses URLSession/WebKit, Keychain
+and native TLS for RTMPS; AppAuth PKCE uses Apple's CommonCrypto SHA-256 hashing.
+No app-defined encryption algorithm or additional cryptographic implementation
+was found. This supports assessing operating-system-only encryption, not a claim
+that the app uses no encryption; answer the actual compliance question separately.
+
+### Initial validation/account blocker — resolved below
+
+An initial `method=validation, destination=export` attempt exited 70 before service
+validation: the installed Xcode requires `destination=upload` for that method.
+The corrected normal validation attempt also exited 70 before validation/upload:
+**Failed to Use Accounts**; App Store Connect access is required in Xcode Accounts.
+Private log `/private/tmp/stream14-03-validation-supported.log`. Organizer also
+showed account access unavailable. Xcode Settings → Apple Accounts was opened and
+shows Sign In, with no usable configured account. The owner handles the existing
+developer account sign-in/2FA privately; Firefox sign-in does not authenticate
+Xcode. No password, code or credential was requested in Git or entered by the agent.
+No build was uploaded and no compliance, group, tester or account setting changed.
+
+Resume after the owner confirms Xcode sign-in: verify the account handoff outcome,
+recheck upload inventory if time has passed, then retry supported normal validation
+and `method=app-store-connect` upload with fixed 0.3 (4), automatic signing,
+`manageAppVersionAndBuildNumber=false`, symbols and internal-only testing. Retain
+private export options/logs outside Git. Never manually re-sign or use an unrelated
+account. Record actual validation, upload, processing, compliance and existing-group
+availability independently. Phone installation and all physical gates remain pending.
+
+A separate agent inspected this actual full documentation diff against merged main,
+the extensionless PDF/text, nine-manifest inventory, policy hash/status evidence and
+private validation error. It independently verified the runtime-tree equality and
+found no material findings. Changed-document local links and `git diff --check`
+passed. No app tests were rerun for this documentation-only checkpoint.
+
+
+## Successful validation and upload — 2026-11-09
+
+The owner completed Xcode sign-in. The Apple Accounts screen then showed the
+existing account, replacing the empty Sign In-only state; no credentials were
+entered by the agent. The corrected normal validation was retried with
+`method=validation`, `destination=upload`, automatic signing and fixed version/build.
+It exited **0** with **EXPORT SUCCEEDED** in
+`/private/tmp/stream14-03-validation-after-signin.log`. Validation mode produced no
+local IPA/export directory; no such artifact or TestFlight delivery is claimed.
+This supersedes the account blocker above, preserving both failed attempts.
+
+Root rechecked App Store Connect All Statuses immediately before upload: 0.3 (4)
+remained unused, only the three prior completed builds were listed. The actual
+`method=app-store-connect`, `destination=upload` command then exited **0** at
+**15:45 Amsterdam on 2026-11-09**, reporting **Upload succeeded** and
+**EXPORT SUCCEEDED** in `/private/tmp/stream14-03-upload.log`. Options retained
+automatic signing, `manageAppVersionAndBuildNumber=false`, symbols upload and
+`testFlightInternalTestingOnly=true`. The original development-signed archive was
+processed through Xcode's ordinary distribution pipeline; no manual re-sign was
+performed. This is actual upload evidence, separate from the earlier local archive
+signature and from later server processing/compliance/availability.
+
+Private supported validation/upload option plists and the safe progress checkpoint
+remain outside Git: `/private/tmp/stream14-03-validation-options-supported.plist`,
+`/private/tmp/stream14-03-upload-options.plist` and
+`/private/tmp/stream14-03-distribution-resume.json`. No new tester, public testing
+link, account permission or agreement was added. No phone action, capture or
+YouTube publishing occurred. Root separately saved and verified full-app Beta
+Description/review notes from the reviewed release-plan proposal; the existing
+Beta Privacy URL already pointed to the verified public main policy and was
+retained. No global App Store privacy answer was saved.
+
+Next verify actual App Store Connect processing, uploaded identity, compliance,
+build-specific What to Test and existing Owner MVP group state. Availability is
+not TestFlight installation or physical qualification. Retain recordings and use
+one selected five-minute attended card only when owner readiness is confirmed.
+
+Root then observed an actual App Store Connect Build Uploads row **0.3 (4) —
+Processing**, created November 9 at 15:45 local display. Older rows remained
+unchanged. No testable 0.3 build detail/group availability was shown yet. This
+confirms server receipt/processing, not validation completion or installation;
+do not retry the successful upload while processing is pending.
+
+Focused independent re-review inspected the actual upload-checkpoint diff, native
+validation/upload logs, private export options and archived identity. It found no
+material issues or privacy/overclaim defects. Runtime/project/test/config bytes
+still match `1ae3f87`; diff whitespace checks passed. Root's later Processing
+observation above remains distinct from those locally verified upload results.
+
+
+## Internal availability and owner installation — 2026-11-09
+
+Root followed the actual App Store Connect build from Processing to **Missing
+Compliance**. The displayed encryption question distinguished proprietary
+algorithms, standard algorithms outside Apple's operating-system encryption,
+both, and none of those algorithms. On the inspected OS-only implementation
+boundary above, **None of the algorithms mentioned above** was selected and saved.
+The build then showed **Ready to Test**. This is the actual saved compliance
+checkpoint; it does not claim the app uses no encryption.
+
+Root saved build-specific **What to Test** describing a short local clip,
+operator-confirmed dedicated Unlisted Go Live/receiver/End, the five-minute TOTAL
+routine budget, deferred long qualification, retained originals and no secrets in
+feedback. The full-app Beta Description/review notes and existing correct Beta
+Privacy URL had already been verified separately. Only the existing **Owner MVP**
+internal group, containing its existing one tester, was assigned. The final iOS
+build list showed **0.3 (4) — Testing**, **Owner MVP**, **Expires in 90 days**.
+Installs showed a dash at that read; no installation was inferred from that metric.
+No new tester, public link, external review, legal agreement or global App Store
+privacy-questionnaire change was made.
+
+After root requested an in-place TestFlight update without uninstalling or
+removing recordings and with Go Live left untouched, the owner explicitly replied:
+**“Installed 0.3 (4) through TestFlight.”** This is owner-confirmed installation of
+the exact build, distinct from independently observed phone UI or media regression.
+No current-build recording, camera/microphone, receiver playback, policy-link
+opening, Google reauthorization or publishing pass is inferred from installation.
+
+| Checkpoint | Actual result |
+| --- | --- |
+| Local archive / signature | Passed on exact app source `1ae3f87`, identical to merged main app tree |
+| Native distribution validation | Exit 0 / EXPORT SUCCEEDED after owner Xcode sign-in |
+| Actual upload | Exit 0 / Upload succeeded / EXPORT SUCCEEDED at 15:45 Amsterdam |
+| Processing / compliance | Processing completed; actual displayed encryption answer saved; Ready to Test |
+| Beta information | Full-app information and build-specific What to Test saved; correct existing Beta Privacy URL retained |
+| Existing internal access | 0.3 (4) Testing in Owner MVP, 90-day expiry display; no tester expansion |
+| Exact TestFlight installation | Owner-confirmed 0.3 (4) through TestFlight |
+| Current-build regression / physical qualification | Pending; installation is not acceptance |
+
+Next use S0 to inspect the installed policy links and deliberately agree/reauthorize
+Google if needed: the previous attended revocation left the app disconnected.
+Do not repeat completed historical #15/#16 checks without a changed requirement.
+Select S1 only after account/event/receiver readiness and fresh explicit operator
+permission to use/end a dedicated Unlisted test event. Remaining composition,
+receiver/original playback, audible mute/route, recovery, interruption, reconnect,
+accessibility and diagnostic export/overhead evidence remain scoped to the
+[phone inventory](2026-11-07-connected-iphone-test-plan.md) and
+[attended cards](2026-11-08-attended-iphone-session.md). Each routine visit includes
+setup and wrap-up within five minutes TOTAL. A2/A7 long qualification is still
+pending and separately agreed. Issue #26 and epic #13 remain open; no capture or
+YouTube publishing occurred during these distribution and installation checkpoints.
+
+Final independent review inspected the actual full six-document diff against
+merged main, including the privacy assessment, delivery/installation checkpoints
+and status-only privacy/support introductions. No material privacy, factual-claim
+or resume-gap findings remained. Current local-link and whitespace checks passed;
+no native app tests were repeated for documentation-only changes.

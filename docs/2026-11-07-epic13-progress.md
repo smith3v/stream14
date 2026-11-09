@@ -380,3 +380,64 @@ existing-group availability. The retained development-signed Release archive is
 not distribution validation. TestFlight installation and current-build physical
 qualification remain pending. No additional owner account setup was requested;
 the latest App Store sign-in allowed the read-only inventory check above.
+
+
+## Distribution resume checkpoint — 2026-11-09
+
+Owner merged #58–#60; current main is `32996c0`. New distribution branch
+`codex/testflight-0.3-delivery` in `/private/tmp/stream14-testflight-0.3-distribution`
+starts there, preserving the original iCloud checkout. App/project/test/config
+bytes match reviewed signed archive source `1ae3f87`. Root verified exact public
+main policy/terms/support URLs anonymously and fresh unused 0.3 (4) inventory.
+Xcode Organizer's actual aggregate PDF and nine manifests were inspected; Google
+SDK linked/not-tracking declarations remain explicit. App Store Connect App Privacy
+is unconfigured, not a published Data Not Collected claim. No guessed answers saved.
+
+Normal Xcode distribution validation currently cannot use an Apple account.
+Xcode Settings → Apple Accounts is open at Sign In for the owner to authenticate
+privately; Firefox sign-in is insufficient. No validation success or upload is
+claimed. Exact safe blocker, PDF paths, crypto/SDK assessment and retry options are
+in the [full-app delivery record](2026-11-09-full-app-testflight.md). After owner
+sign-in, verify the UI handoff and retry normal validation/upload, then let root
+verify processing/compliance/existing internal-group state. Keep five-minute
+routine phone cards and retained originals; no phone action occurred.
+
+
+## Upload completed; processing handoff — 2026-11-09
+
+Owner Xcode sign-in resolved the missing-account block. Native supported validation
+exited 0 / EXPORT SUCCEEDED; after a fresh unused-build inventory check, the actual
+App Store Connect upload exited 0 with Upload succeeded / EXPORT SUCCEEDED at
+15:45 Amsterdam. Fixed identity 0.3 (4), automatic signing, symbols and internal-only
+testing were used; no manual signing workaround. Private logs/options and exact
+limits are in the [delivery record](2026-11-09-full-app-testflight.md).
+
+Root now owns App Store Connect processing/compliance, exact uploaded identity,
+build-specific test notes and existing internal-group availability verification.
+Do not infer these from upload success. Phone installation/current-build playback,
+private Unlisted A3 and all remaining physical qualification are still pending.
+No phone/camera/microphone/YouTube action occurred during distribution.
+
+
+## TestFlight available and installed — 2026-11-09
+
+The actual 0.3 (4) build completed processing. Root saved the displayed encryption
+answer **None of the algorithms mentioned above** for proprietary/standard-outside-
+Apple-OS encryption, matching the inspected OS-only boundary; the build became
+Ready to Test. Full-app beta information and build-specific What to Test were
+saved. Only existing Owner MVP internal access (one existing tester) was assigned.
+The final build list showed **0.3 (4) Testing**, Owner MVP, Expires in 90 days.
+No new tester/public link/legal agreement/global App Store privacy response changed.
+
+The owner explicitly confirmed **Installed 0.3 (4) through TestFlight** after the
+in-place update instructions. Record this as owner installation confirmation,
+not independently observed phone regression or media acceptance. Go Live was to
+remain untouched; no capture/publishing result is claimed. This supersedes earlier
+upload/processing/install-pending checkpoints. Exact separate delivery states are
+in the [delivery record](2026-11-09-full-app-testflight.md).
+
+Next is a selected S0 installed-policy-links/consent/Google-reauthorization visit
+because the last revocation left the app disconnected. Then, only when prepared
+and explicitly operator-confirmed, S1 short Unlisted start/receiver/End. Keep the
+remaining physical inventory pending, five-minute TOTAL visits, retained originals
+and separately agreed A2/A7. Issue #26/epic #13 are not complete from delivery alone.
