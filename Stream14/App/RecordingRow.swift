@@ -4,6 +4,7 @@ import SwiftUI
 struct RecordingRow: View {
     let sample: ExperimentSample
     let canDelete: Bool
+    let protected: Bool
     let play: (URL) -> Void
     let delete: () -> Void
     let recovering: Bool
@@ -26,8 +27,16 @@ struct RecordingRow: View {
                 .accessibilityIdentifier("recordingStatus-" + sample.id.uuidString)
             if let duration = sample.duration {
                 Text("Duration: " + duration.formatted(.number.precision(.fractionLength(1))) + " seconds")
+                    .accessibilityIdentifier("recordingDuration-" + sample.id.uuidString)
             }
-            if let profile = sample.profile { Text(profile).font(.caption) }
+            if let profile = sample.profile {
+                Text(profile).font(.caption)
+                    .accessibilityIdentifier("recordingProfile-" + sample.id.uuidString)
+            }
+            if protected {
+                Text("Writer still owns this file. Playback, export, recovery and deletion are unavailable until finalization ends.")
+                    .font(.caption)
+            }
             Text(reviewLabel).font(.caption)
                 .accessibilityIdentifier("recordingReview-" + sample.id.uuidString)
             HStack(spacing: 12) {
@@ -35,7 +44,7 @@ struct RecordingRow: View {
                     Label("Play recording", systemImage: "play.circle")
                         .frame(minWidth: 44, minHeight: 44)
                 }
-                .disabled(size == nil)
+                .disabled(protected || size == nil)
                 .accessibilityLabel("Play recording from " + date)
                 .accessibilityIdentifier("playRecording-" + sample.id.uuidString)
                 if let url {
@@ -43,7 +52,7 @@ struct RecordingRow: View {
                         Label("Export original recording", systemImage: "square.and.arrow.up")
                             .frame(minWidth: 44, minHeight: 44)
                     }
-                    .disabled(size == nil)
+                    .disabled(protected || size == nil)
                     .accessibilityLabel("Export original recording from " + date)
                     .accessibilityIdentifier("exportRecording-" + sample.id.uuidString)
                 }
@@ -59,10 +68,11 @@ struct RecordingRow: View {
             if sample.status != .completed || sample.review != .readable {
                 Button(recovering ? "Recovering separate copy…" : "Try recovery to separate copy", action: recover)
                     .frame(minHeight: 44)
-                    .disabled(!canDelete || size == nil || recovering)
+                    .disabled(protected || !canDelete || size == nil || recovering)
                     .accessibilityIdentifier("recoverRecording-" + sample.id.uuidString)
                 Text("Recovery may omit unfinished fragments or trim the tail. The original is kept; inspect playback.")
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("recoveryExplanation-" + sample.id.uuidString)
             }
             QualificationExportView(sampleID: sample.id)
             ForEach(sample.recoveries ?? []) { recovery in
@@ -102,9 +112,11 @@ struct RecordingRow: View {
                 .accessibilityIdentifier("recoveryStatus-" + recovery.id.uuidString)
             if let duration = recovery.duration {
                 Text("Duration: " + duration.formatted(.number.precision(.fractionLength(1))) + " seconds · may be truncated")
+                    .accessibilityIdentifier("recoveryDuration-" + recovery.id.uuidString)
             }
             Text(size.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "Copy file unavailable")
-            HStack(spacing: 12) { recoveryActions(recovery, url: url, available: size != nil) }
+                .accessibilityIdentifier("recoveryMetadata-" + recovery.id.uuidString)
+            HStack(spacing: 12) { recoveryActions(recovery, url: url, available: !protected && size != nil) }
                 .labelStyle(.iconOnly)
         }
         .padding(.top, 8)
@@ -128,4 +140,3 @@ struct RecordingRow: View {
         .accessibilityIdentifier("deleteRecovery-" + recovery.id.uuidString)
     }
 }
-

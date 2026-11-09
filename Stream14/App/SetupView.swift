@@ -330,6 +330,7 @@ struct SetupView: View {
                 if experiment.savedSamples.isEmpty { Text("No recordings on this iPhone.") }
                 ForEach(experiment.savedSamples) { sample in
                     RecordingRow(sample: sample, canDelete: experiment.canDeleteSamples,
+                                 protected: experiment.protectedRecordingID == sample.id,
                                  play: { playback = PlaybackSelection(url: $0) },
                                  delete: { pendingDeletion = sample },
                                  recovering: experiment.recoveringSampleID == sample.id,

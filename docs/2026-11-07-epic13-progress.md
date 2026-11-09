@@ -21,7 +21,7 @@ Preserve the original checkout and its private signing/concurrent setup edits. A
 | F7 / #20 | Not started | — | F2–F6 prerequisites |
 | F8 / #21 | Not started | — | F7 prerequisite |
 | F9 / #22 | Implemented/reviewed runtime 75d7b92; 140 hosted passes, seven physical skips; Release pass | codex/issue-22-session-interruptions / isolated clone | Physical Home/lock/audio, same-event receiver/file resume and heat qualification pending |
-| F10 / #23 | Not started | — | F4/F7/F8/F9 prerequisites |
+| F10 / #23 | Implemented; product source independently reviewed; Release, 148-case hosted phase and final native checks pass | codex/issue-23-integrated-interface / isolated clone | Exact test-geometry/screenshot focused review, physical F10 operation/VoiceOver and receiver acceptance pending |
 | F11 / #24 | Native Mac feasibility probe reviewed at 8503510; production integration pending | codex/issue-24-recovery-feasibility / separate clone | Selected compressed writer, F6/F9 and physical A5 |
 | F12 / #25 | Not started | — | F6/F8/F9/F11 prerequisites |
 | F13 / #26 | Not started | — | Integrated reviewed candidate, service setup and signed delivery |
@@ -262,3 +262,12 @@ PR #54 is now merged. PRs #51, #52 and #53 all target main, with merge order 51 
 F10/F11/F12 agents reached a usage limit and have saved their branches, working files and logs. F10 product source `fa3140e` has a clean independent review; final test-only handling of a geometrically offscreen static-heading contrast false-positive and remaining UI results need completion/review. F11 recovered-copy UI now uses 44-point icon actions (commit `ffe64bd`), with retry-safe unique-copy test selection (`52b52dd`); final successful recovery UI rerun/affected checks and independent review remain pending. F12 core `33166f2` has a passing initial Release build and bounded model/export evidence; focused test result, final F11 integration, export/privacy review and phone overhead measurement remain pending. Revalidate exact current HEADs and live process handles/results before resuming; do not restart a still-live test merely because an observation expired.
 
 The owner’s connected phone already completed the short local shared-pipeline smoke, documented separately. No further camera use or YouTube publishing has started. A final signed diagnostic candidate and deliberate attended unlisted start/end remain next device steps; routine active phone work retains the five-minute TOTAL budget.
+
+
+## Account acceptance and required monitor transition — 2026-11-08
+
+PRs #51–#54 are merged; current main is `f454e9b`. The owner confirmed the signed-main account/event checks and local sign-out/revocation; [the scoped report](2026-11-08-attended-account-event-results.md) records the observations. Issues #15/#16 are closed and checked in epic #13. The app was left disconnected, and the scheduled unlisted test event was not started. The physical local shared-encoder smoke is separately recorded; no live broadcast or full release acceptance is claimed.
+
+Preflight found Google's required monitor/testing transition for monitor-enabled events. The focused correction is independently reviewed through `0a10b41`, with the pre-binding changed-setting race fixed. Final native validation: 151 passes, eight opt-in skips, zero failures; iPhone SDK Release passed. A corrected signed candidate still needs installation and operator-confirmed live testing.
+
+F11 independent review found two unresolved material issues: timed-out native writers need UUID protection until the actual finish callback ends before inspection/recovery/deletion, and structural track/duration validation must not claim decoded-start readability. Its author is usage-blocked; no blocked rebuild is counted as a pass. F12 diagnostics code/review, 27 focused tests, Release/privacy, native analysis and Simulator Load/Share checks passed, but its F11 ancestry still needs these fixes and final integrated validation. F10's six affected UI checks and actual native-bound visibility probe passed; final test-only helper review/handoff remains. All future PRs target main, with dependency order in their descriptions; no automatic merges.
