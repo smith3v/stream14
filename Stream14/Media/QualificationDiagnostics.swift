@@ -56,6 +56,8 @@ nonisolated struct QualificationReport: Codable, Sendable {
     var codec = Codec.h264AACMP4
     var end = End.checkpoint
     var recording = Recording.pending
+    // Snapshot only: observer stop/deadline never proves native writer completion.
+    var nativeFinalizationOutstanding: Bool?
     var elapsedSeconds = 0.0
     var observationCount = 0
     var peakChargedFootprintBytes: UInt64?

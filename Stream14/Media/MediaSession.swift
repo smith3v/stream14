@@ -853,6 +853,7 @@ final class MediaSession {
                 startupHighWaterBytes: metrics.startupHighWaterBytes ?? 0,
                 startupHighWaterPackets: metrics.startupHighWaterPackets ?? 0)
         }
+        report.nativeFinalizationOutstanding = fileFinalization.recordingID == id
         report.recording = switch sample?.status {
         case .completed: .completed
         case .interrupted: .interrupted
