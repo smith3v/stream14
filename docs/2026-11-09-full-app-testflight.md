@@ -1,6 +1,6 @@
 # Full-app TestFlight candidate — preparation record
 
-Updated: 2026-11-09. **Not uploaded or delivered. Issue #26 remains open.**
+Updated: 2026-11-09. **0.3 (4) uploaded and Processing; compliance and internal availability await verification. Issue #26 remains open.**
 The previous [0.2 (3) local-only delivery](2026-11-07-testflight-0.2.md) and owner
 MVP evidence remain historical. This record identifies the later full-app source
 and its outstanding delivery/acceptance checkpoints.
@@ -242,3 +242,53 @@ the extensionless PDF/text, nine-manifest inventory, policy hash/status evidence
 private validation error. It independently verified the runtime-tree equality and
 found no material findings. Changed-document local links and `git diff --check`
 passed. No app tests were rerun for this documentation-only checkpoint.
+
+
+## Successful validation and upload — 2026-11-09
+
+The owner completed Xcode sign-in. The Apple Accounts screen then showed the
+existing account, replacing the empty Sign In-only state; no credentials were
+entered by the agent. The corrected normal validation was retried with
+`method=validation`, `destination=upload`, automatic signing and fixed version/build.
+It exited **0** with **EXPORT SUCCEEDED** in
+`/private/tmp/stream14-03-validation-after-signin.log`. Validation mode produced no
+local IPA/export directory; no such artifact or TestFlight delivery is claimed.
+This supersedes the account blocker above, preserving both failed attempts.
+
+Root rechecked App Store Connect All Statuses immediately before upload: 0.3 (4)
+remained unused, only the three prior completed builds were listed. The actual
+`method=app-store-connect`, `destination=upload` command then exited **0** at
+**15:45 Amsterdam on 2026-11-09**, reporting **Upload succeeded** and
+**EXPORT SUCCEEDED** in `/private/tmp/stream14-03-upload.log`. Options retained
+automatic signing, `manageAppVersionAndBuildNumber=false`, symbols upload and
+`testFlightInternalTestingOnly=true`. The original development-signed archive was
+processed through Xcode's ordinary distribution pipeline; no manual re-sign was
+performed. This is actual upload evidence, separate from the earlier local archive
+signature and from later server processing/compliance/availability.
+
+Private supported validation/upload option plists and the safe progress checkpoint
+remain outside Git: `/private/tmp/stream14-03-validation-options-supported.plist`,
+`/private/tmp/stream14-03-upload-options.plist` and
+`/private/tmp/stream14-03-distribution-resume.json`. No new tester, public testing
+link, account permission or agreement was added. No phone action, capture or
+YouTube publishing occurred. Root separately saved and verified full-app Beta
+Description/review notes from the reviewed release-plan proposal; the existing
+Beta Privacy URL already pointed to the verified public main policy and was
+retained. No global App Store privacy answer was saved.
+
+Next verify actual App Store Connect processing, uploaded identity, compliance,
+build-specific What to Test and existing Owner MVP group state. Availability is
+not TestFlight installation or physical qualification. Retain recordings and use
+one selected five-minute attended card only when owner readiness is confirmed.
+
+Root then observed an actual App Store Connect Build Uploads row **0.3 (4) —
+Processing**, created November 9 at 15:45 local display. Older rows remained
+unchanged. No testable 0.3 build detail/group availability was shown yet. This
+confirms server receipt/processing, not validation completion or installation;
+do not retry the successful upload while processing is pending.
+
+Focused independent re-review inspected the actual upload-checkpoint diff, native
+validation/upload logs, private export options and archived identity. It found no
+material issues or privacy/overclaim defects. Runtime/project/test/config bytes
+still match `1ae3f87`; diff whitespace checks passed. Root's later Processing
+observation above remains distinct from those locally verified upload results.

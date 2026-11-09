@@ -401,3 +401,19 @@ in the [full-app delivery record](2026-11-09-full-app-testflight.md). After owne
 sign-in, verify the UI handoff and retry normal validation/upload, then let root
 verify processing/compliance/existing internal-group state. Keep five-minute
 routine phone cards and retained originals; no phone action occurred.
+
+
+## Upload completed; processing handoff — 2026-11-09
+
+Owner Xcode sign-in resolved the missing-account block. Native supported validation
+exited 0 / EXPORT SUCCEEDED; after a fresh unused-build inventory check, the actual
+App Store Connect upload exited 0 with Upload succeeded / EXPORT SUCCEEDED at
+15:45 Amsterdam. Fixed identity 0.3 (4), automatic signing, symbols and internal-only
+testing were used; no manual signing workaround. Private logs/options and exact
+limits are in the [delivery record](2026-11-09-full-app-testflight.md).
+
+Root now owns App Store Connect processing/compliance, exact uploaded identity,
+build-specific test notes and existing internal-group availability verification.
+Do not infer these from upload success. Phone installation/current-build playback,
+private Unlisted A3 and all remaining physical qualification are still pending.
+No phone/camera/microphone/YouTube action occurred during distribution.
