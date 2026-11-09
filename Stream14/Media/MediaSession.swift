@@ -46,6 +46,7 @@ final class MediaSession {
     private var routeTask: Task<Void, Never>?
 
     private(set) var savedSamples: [ExperimentSample] = []
+    private(set) var recordingsMessage = ""
     private(set) var urlMessage = ""
     private(set) var overlayURL = ""
     private let saveOverlayURL: @MainActor (String) throws -> Void
@@ -159,8 +160,11 @@ final class MediaSession {
     }
 
     func refreshSamples() {
-        do { savedSamples = try ExperimentSample.loadAll() }
-        catch { message = "Saved recordings could not be listed. Files are retained." }
+        do {
+            savedSamples = try ExperimentSample.loadAll()
+            recordingsMessage = ""
+        }
+        catch { recordingsMessage = "Saved recordings could not be listed. Files are retained." }
     }
 
     func deleteSample(_ sample: ExperimentSample) {
@@ -170,11 +174,11 @@ final class MediaSession {
             try sample.delete(in: directory)
             if sampleURL?.lastPathComponent == sample.fileName { sampleURL = nil }
             refreshSamples()
-            message = "Recording deleted from this iPhone. Exported copies are unchanged."
+            recordingsMessage = "Recording deleted from this iPhone. Exported copies are unchanged."
         } catch {
             if let sampleURL, !FileManager.default.fileExists(atPath: sampleURL.path) { self.sampleURL = nil }
             refreshSamples()
-            message = "Could not delete all recording files. Remaining files are kept; you can retry."
+            recordingsMessage = "Could not delete all recording files. Remaining files are kept; you can retry."
         }
     }
 
@@ -374,6 +378,9 @@ final class MediaSession {
     }
 
     func record(injection: LocalRecorder.Injection = .none) async {
+        #if DEBUG
+        guard !interfaceFixtureMode else { return }
+        #endif
         guard canRecord else { return }
         busy = true
         phase = .starting
@@ -746,6 +753,28 @@ final class MediaSession {
         if interrupted && !failure { message = "Capture stopped after an interruption. Open the camera explicitly to resume." }
         finishOperation()
     }
+
+    #if DEBUG
+    private var interfaceFixtureMode = false
+
+    /// Presentation-only fixture: no capture, encoder, writer or network is opened.
+    func installInterfaceFixture(_ state: String) {
+        interfaceFixtureMode = true
+        guard state != "idle" else { return }
+        phase = .preview
+        message = "Fixture camera ready; no capture is running."
+        audioRoute = "Fixture microphone"
+        cameraZoom = CameraZoom(value: 1, minimum: 1, maximum: 3)
+        if ["reconnecting", "backup-failed", "unknown-end", "ended"].contains(state) {
+            broadcastConfigurationLocked = state != "ended"
+            uploadMessage = state == "reconnecting" ? "Reconnecting. Local recording continues while healthy." : "Upload stopped"
+        }
+        if state == "backup-failed" {
+            recordingFailed = true
+            uploadMessage = "Upload connected; YouTube confirmed live"
+        }
+    }
+    #endif
 
     private enum ExperimentError: Error {
         case permissions, devices, emptySample

@@ -21,7 +21,7 @@ Preserve the original checkout and its private signing/concurrent setup edits. A
 | F7 / #20 | Not started | — | F2–F6 prerequisites |
 | F8 / #21 | Not started | — | F7 prerequisite |
 | F9 / #22 | Implemented/reviewed runtime 75d7b92; 140 hosted passes, seven physical skips; Release pass | codex/issue-22-session-interruptions / isolated clone | Physical Home/lock/audio, same-event receiver/file resume and heat qualification pending |
-| F10 / #23 | Not started | — | F4/F7/F8/F9 prerequisites |
+| F10 / #23 | Implemented; product source independently reviewed; Release, 148-case hosted phase and final native checks pass | codex/issue-23-integrated-interface / isolated clone | Exact test-geometry/screenshot focused review, physical F10 operation/VoiceOver and receiver acceptance pending |
 | F11 / #24 | Native Mac feasibility probe reviewed at 8503510; production integration pending | codex/issue-24-recovery-feasibility / separate clone | Selected compressed writer, F6/F9 and physical A5 |
 | F12 / #25 | Not started | — | F6/F8/F9/F11 prerequisites |
 | F13 / #26 | Not started | — | Integrated reviewed candidate, service setup and signed delivery |
