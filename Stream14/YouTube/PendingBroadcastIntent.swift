@@ -35,6 +35,7 @@ nonisolated struct PendingBroadcastIntent: Codable, Equatable, Sendable {
     }
 
     func load(channelID: String? = nil, broadcastID: String? = nil) throws -> PendingBroadcastIntent? {
+        guard !requiresStudioResolution else { throw YouTubeBindingError.studioResolutionRequired }
         let intents = try journal()
         guard let channelID, let broadcastID else { return intents.last }
         return intents.first { $0.channelID == channelID && $0.broadcastID == broadcastID }
@@ -57,6 +58,7 @@ nonisolated struct PendingBroadcastIntent: Codable, Equatable, Sendable {
     }
 
     func save(_ intent: PendingBroadcastIntent) throws {
+        guard !requiresStudioResolution else { throw YouTubeBindingError.studioResolutionRequired }
         var intents = try journal()
         if let index = intents.firstIndex(where: { $0.channelID == intent.channelID && $0.broadcastID == intent.broadcastID }) {
             intents[index] = intent
@@ -65,6 +67,23 @@ nonisolated struct PendingBroadcastIntent: Codable, Equatable, Sendable {
         guard encoded.count <= 1_048_576 else { throw YouTubeBindingError.intentUnavailable }
         try write(encoded, location())
     }
+
+    // Persist the nonidentifying guard before removing IDs. Late mutation callbacks
+    // cannot recreate API data or enable a new write after deletion.
+    var requiresStudioResolution: Bool { (try? FileManager.default.fileExists(atPath: barrier().path)) ?? true }
+
+    func eraseAPIData() throws {
+        try write(Data("Studio resolution required".utf8), barrier())
+        let url = try location()
+        if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+    }
+
+    func confirmStudioResolution() throws {
+        let url = try barrier()
+        if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+    }
+
+    private func barrier() throws -> URL { try location().deletingLastPathComponent().appendingPathComponent("studio-resolution-required") }
 
     private func location() throws -> URL {
         var directory = try directory ?? FileManager.default.url(for: .applicationSupportDirectory,

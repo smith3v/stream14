@@ -6,6 +6,49 @@ import UIKit
 @MainActor struct YouTubeAuthorizationTests {
     private let good = GoogleAuthorizationAccount(id: "fixture-account", grantedScopes: [YouTubeAuthorization.requiredScope])
 
+    @Test func consentBlocksSDKUntilExplicitAgreementAndPersistsOnlyChoice() async {
+        let driver = FakeGoogleAuthorizationDriver()
+        driver.result = good
+        var choices: [Bool] = []
+        let auth = YouTubeAuthorization(driver: driver, configured: true,
+            savePolicyAcceptance: { choices.append($0) })
+        await auth.connect(presenting: UIViewController())
+        await auth.restore()
+        #expect(driver.connectCalls == 0 && !auth.isAuthorized)
+        #expect(choices.isEmpty)
+        auth.acceptYouTubePolicy()
+        await auth.connect(presenting: UIViewController())
+        #expect(driver.connectCalls == 1 && auth.isAuthorized)
+        #expect(choices == [true])
+    }
+
+    @Test func signOutRetainsJournalsButDeletionRevokeAndDetectedAccessLossRequestErasure() async {
+        let driver = FakeGoogleAuthorizationDriver(); driver.result = good
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
+        var erasures = 0
+        auth.onDeleteAPIData = { erasures += 1; return true }
+        await auth.restore(); auth.signOut()
+        #expect(erasures == 0)
+        auth.deleteYouTubeData()
+        #expect(erasures == 1 && !auth.isAuthorized)
+        await auth.restore(); await auth.disconnect()
+        #expect(erasures == 2 && auth.message.contains("revoked"))
+        await auth.restore(); driver.failure = .authorizationRequired
+        await #expect(throws: YouTubeAuthorizationError.authorizationRequired) {
+            try await auth.freshAccessToken(expectedGeneration: auth.generation)
+        }
+        #expect(erasures == 3)
+        driver.failure = nil; await auth.restore(); auth.accessWasDenied()
+        #expect(erasures == 4 && !auth.isAuthorized)
+    }
+
+    @Test func deletionFailureIsVisibleAndNeverReportedAsSuccess() {
+        let auth = YouTubeAuthorization(driver: FakeGoogleAuthorizationDriver(), configured: true, policyAccepted: true)
+        auth.onDeleteAPIData = { false }
+        auth.deleteYouTubeData()
+        #expect(auth.message.contains("failed"))
+    }
+
     @Test func configurationRequiresMatchingCallbackAndIOSClient() {
         #expect(GoogleAuthorizationConfiguration(info: [:]) == nil)
         #expect(GoogleAuthorizationConfiguration(info: ["GIDClientID": "fixture.apps.googleusercontent.com"]) == nil)
@@ -28,7 +71,7 @@ import UIKit
 
     @Test func cancellationAndDeniedScopeStayDisconnected() async {
         let driver = FakeGoogleAuthorizationDriver()
-        let auth = YouTubeAuthorization(driver: driver, configured: true)
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
         driver.failure = .cancelled
         await auth.connect(presenting: UIViewController())
         #expect(auth.message.contains("cancelled"))
@@ -43,7 +86,7 @@ import UIKit
     @Test func switchingAndSigningOutInvalidateDependentGenerations() async {
         let driver = FakeGoogleAuthorizationDriver()
         driver.result = good
-        let auth = YouTubeAuthorization(driver: driver, configured: true)
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
         await auth.connect(presenting: UIViewController())
         let first = auth.generation
         #expect(auth.isAuthorized)
@@ -61,7 +104,7 @@ import UIKit
     @Test func refreshFailureClearsReadinessAndDoesNotExposeServerErrors() async {
         let driver = FakeGoogleAuthorizationDriver()
         driver.result = good
-        let auth = YouTubeAuthorization(driver: driver, configured: true)
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
         await auth.restore()
         let generation = auth.generation
         driver.failure = .authorizationRequired
@@ -77,7 +120,7 @@ import UIKit
         let driver = FakeGoogleAuthorizationDriver()
         driver.result = good
         driver.holdConnection = true
-        let auth = YouTubeAuthorization(driver: driver, configured: true)
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
         let operation = Task { await auth.connect(presenting: UIViewController()) }
         while driver.pending == nil { await Task.yield() }
         auth.signOut()
@@ -95,7 +138,7 @@ import UIKit
         let driver = FakeGoogleAuthorizationDriver()
         driver.result = good
         driver.holdConnection = true
-        let auth = YouTubeAuthorization(driver: driver, configured: true)
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
         let operation = Task { await auth.connect(presenting: UIViewController()) }
         while driver.pending == nil { await Task.yield() }
         operation.cancel()
@@ -108,7 +151,7 @@ import UIKit
     @Test func revokeFailureIsHonestAndBroadcastGuardPreservesAccount() async {
         let driver = FakeGoogleAuthorizationDriver()
         driver.result = good
-        let auth = YouTubeAuthorization(driver: driver, configured: true)
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
         await auth.restore()
         let generation = auth.generation
         auth.signOut(broadcastActive: true)
@@ -126,7 +169,7 @@ import UIKit
     @Test func cancelledTokenReadPreservesAuthorization() async {
         let driver = FakeGoogleAuthorizationDriver()
         driver.result = good
-        let auth = YouTubeAuthorization(driver: driver, configured: true)
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
         await auth.restore()
         let generation = auth.generation
         driver.holdToken = true
@@ -142,7 +185,7 @@ import UIKit
     @Test func tokenArrivingAfterSignOutIsDiscarded() async {
         let driver = FakeGoogleAuthorizationDriver()
         driver.result = good
-        let auth = YouTubeAuthorization(driver: driver, configured: true)
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
         await auth.restore()
         let generation = auth.generation
         driver.holdToken = true
@@ -157,7 +200,7 @@ import UIKit
     @Test func refreshSucceedsOnlyForCurrentGenerationAndDoesNotPersistToken() async throws {
         let driver = FakeGoogleAuthorizationDriver()
         driver.result = good
-        let auth = YouTubeAuthorization(driver: driver, configured: true)
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
         await auth.restore()
         let token = try await auth.freshAccessToken(expectedGeneration: auth.generation)
         #expect(token == "fixture-access-token")

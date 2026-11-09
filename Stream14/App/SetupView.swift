@@ -155,7 +155,7 @@ struct SetupView: View {
                 overlayControls
                 Button("Open session", systemImage: "video") { destination = .session }
                     .frame(minHeight: 44).accessibilityIdentifier("openSession")
-                YouTubeConnectionView(authorization: authorization, broadcastActive: broadcast.requiresEndFirst)
+                YouTubeConnectionView(authorization: authorization, broadcast: broadcast, broadcastActive: broadcast.requiresEndFirst)
                 YouTubeEventsView(selection: youtubeEvents).disabled(broadcast.locksSelection)
                 if destination == .preparation { broadcastControls }
                 Text("Opening settings or choosing an event does not publish. Go Live requires camera readiness, a healthy or explicitly disabled overlay, and confirmation of the channel, event, visibility and profile.")

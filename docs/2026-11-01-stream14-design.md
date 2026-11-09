@@ -1398,3 +1398,43 @@ Independent source review and native package regressions support these narrow fi
 receiver-file A/V alignment and physical YouTube markers remain pending. The private
 localhost fixture is compiled only into Debug Simulator products. Historical evidence
 for earlier revisions is not retroactively reclassified.
+
+
+### Full-app F13 policy consent and API-data deletion — 2026-11-09
+
+YouTube connection/restore now requires explicit acceptance of the dated privacy
+policy and service/YouTube terms. Persist only that app-local policy-version choice;
+local rehearsal/recordings remain available without agreement or Google. Keep the
+privacy, service terms, YouTube terms and Google access-settings links visible.
+The own service terms identify YouTube API Services and the applicable YouTube
+Terms of Service, separate from the BSD source license. This implements the
+[YouTube policy](https://developers.google.com/youtube/terms/developer-policies)
+III.A disclosure/consent requirements for the candidate; publication and exact-build
+acceptance are release checkpoints, not established by the source change.
+
+Ordinary sign-out retains reconciliation journals. Explicit local data deletion,
+in-app revoke (even if remote revocation fails), and detected SDK/API access loss
+remove saved API-derived channel/event/stream IDs from both journals and invalidate
+RAM readiness. Revoke uses the SDK; local deletion does not revoke remotely or end
+a YouTube event. External revocation can only be observed on later SDK/API access.
+Cleanup stops upload, preserving healthy local recording, originals/recovery
+copies, private numeric diagnostics and overlay settings. No YouTube media-delete
+request is sent. Successful End/terminal reconciliation already removes the
+pending-session journal; binding history otherwise remains until this cleanup.
+
+Deleting an unknown mutation's IDs must not permit another write blindly. Each
+store first atomically persists a protected nonidentifying Studio-resolution
+marker, then deletes its ID file. Both stores reject late journal writes while
+marked. The marker blocks start/resume across relaunch; a restart retries incomplete
+erasure before allowing acknowledgement. Explicit confirmation that prior
+requests were resolved in Studio clears the marker, only with no in-flight binding
+or unsettled transition. It sends no API mutation. Storage failure stays visible
+and blocks publishing; there is no automatic guard clearing or automatic recording
+deletion. The markers contain no identity, operation identifier or timestamp.
+
+The native auth/client/binding/broadcast fixtures cover consent, stale access-loss
+generation, local sign-out versus deletion/revoke, failure visibility, retained
+recording, deleted ID files, late save rejection, relaunch and pending-mutation
+acknowledgement blocking. The full-app release preparation record preserves actual
+results and pending App Store/TestFlight/device evidence. No long-run reliability
+or legal/provider review acceptance follows from these tests.

@@ -4,6 +4,52 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct BroadcastSessionTests {
+    @Test func dataDeletionRemovesIdentifiersRetainsFileAndRequiresExplicitStudioResolutionAfterRelaunch() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.start(); await h.session.waitForOperation()
+        // Detected external access loss may happen during Live. Stop only upload.
+        h.authorization.accessWasDenied()
+        await h.session.waitForOperation()
+        #expect(!h.uploaded && h.snapshot.isRecording && h.snapshot.writerStarted)
+        #expect(!h.timeline.contains("stopAll"))
+        #expect(h.session.activeIntent == nil && h.session.pendingRemote == nil)
+        #expect(h.session.requiresStudioResolution && !h.session.canStart)
+        #expect(!FileManager.default.fileExists(atPath: h.directory.appendingPathComponent("remote.json").path))
+        #expect(!FileManager.default.fileExists(atPath: h.directory.appendingPathComponent("bindings/binding-intent.json").path))
+        let lateStore = PendingRemoteBroadcastStore(url: h.directory.appendingPathComponent("remote.json"))
+        #expect(throws: YouTubeBindingError.studioResolutionRequired) {
+            try lateStore.save(PendingRemoteBroadcast(channelID: "secret-channel", eventID: "secret-event"))
+        }
+        let lateBinding = PendingBroadcastIntentStore(directory: h.directory.appendingPathComponent("bindings"))
+        #expect(throws: YouTubeBindingError.studioResolutionRequired) {
+            try lateBinding.save(PendingBroadcastIntent(channelID: "secret-channel", broadcastID: "secret-event", profile: .hd))
+        }
+        let relaunched = h.makeSession()
+        await h.authorization.restore()
+        #expect(relaunched.requiresStudioResolution && !relaunched.canStart && !relaunched.canResume)
+        relaunched.confirmDeletedDataResolvedInStudio()
+        #expect(!relaunched.requiresStudioResolution && relaunched.canStart)
+        #expect(h.server.transitions == ["live"])
+    }
+
+    @Test func erasedContextCannotBeAcknowledgedWhileMutationIsStillOutstanding() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.hold = "transition"
+        h.start()
+        try await h.until { h.pending != nil }
+        h.authorization.accessWasDenied()
+        await h.session.waitForOperation()
+        #expect(h.session.requiresStudioResolution && h.session.hasUnsettledMutation)
+        h.session.confirmDeletedDataResolvedInStudio()
+        #expect(h.session.requiresStudioResolution)
+        h.release()
+        try await h.until { !h.session.hasUnsettledMutation }
+        #expect(h.session.pendingRemote == nil)
+        #expect(!FileManager.default.fileExists(atPath: h.directory.appendingPathComponent("remote.json").path))
+    }
+
     @Test func interruptedLiveRequiresNewWriterAndExplicitSameEventConfirmation() async throws {
         let h = try await Harness(fastClock: true)
         defer { h.cleanup() }
@@ -622,7 +668,7 @@ import UIKit
         self.startup = startup; self.end = end
         directory = FileManager.default.temporaryDirectory.appendingPathComponent("broadcast-fixture-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        authorization = YouTubeAuthorization(driver: BroadcastAuthDriver(), configured: true)
+        authorization = YouTubeAuthorization(driver: BroadcastAuthDriver(), configured: true, policyAccepted: true)
         await authorization.restore()
         server = BroadcastFixtureServer(auto: auto)
         server.harness = self

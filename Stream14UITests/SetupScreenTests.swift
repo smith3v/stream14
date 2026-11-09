@@ -21,6 +21,31 @@ final class SetupScreenTests: XCTestCase {
         return app
     }
 
+    func testYouTubeConsentLeavesLocalRehearsalAvailable() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = fixtureApp("policy-unaccepted")
+        app.tabBars.buttons["Session"].tap()
+        XCTAssertTrue(app.buttons["openExperiment"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Preparation"].tap()
+        let agree = app.buttons["acceptYouTubePolicy"]
+        scrollTo(agree, in: app)
+        XCTAssertTrue(agree.exists)
+        XCTAssertFalse(app.buttons["Connect YouTube"].exists)
+        agree.tap()
+        XCTAssertTrue(app.buttons["Connect YouTube"].waitForExistence(timeout: 5))
+        XCTAssertFalse(agree.exists)
+        let delete = app.buttons["Delete saved YouTube data"]
+        scrollTo(delete, in: app)
+        delete.tap()
+        XCTAssertTrue(app.sheets["Delete saved YouTube data?"].waitForExistence(timeout: 5))
+        if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() }
+        else { app.otherElements["PopoverDismissRegion"].tap() }
+        XCTAssertFalse(app.buttons["Confirm Studio resolution"].exists)
+        app.tabBars.buttons["Session"].tap()
+        XCTAssertTrue(app.buttons["openExperiment"].exists)
+        XCTAssertFalse(app.buttons["endBroadcast"].exists)
+    }
+
     func testNativeDestinationsNeverStartCaptureOrPublishing() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = fixtureApp()

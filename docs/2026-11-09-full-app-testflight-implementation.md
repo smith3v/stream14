@@ -15,7 +15,9 @@ This is preparation, not a delivery claim. The working baseline is stacked F12
 Issue [#26](https://github.com/smith3v/stream14/issues/26) was read live and remains
 open. F10–F12 issues #23–#25 also remain open. Do not upload, change App Store
 settings, bump versions, install on the phone, start capture or contact YouTube as
-part of this preparation. Root coordinates final review and authorization.
+part of this preparation. Root subsequently authorized the issue's narrow policy,
+consent, support, notices and safe API-data deletion implementation. Root coordinates
+final review and authorization.
 
 Project Debug/Release metadata is still 0.2 (3), bundle
 `com.smith3v.stream14`, automatic signing, iOS deployment target 27.0. These are
@@ -35,7 +37,7 @@ behavior decisions and @writing-plans for the focused implementation. Preserve
 unrelated local signing/configuration and all original recordings. Inherit final
 writer fixes before building a candidate. Record exact main SHA and reviewed PRs.
 
-The following preparation findings need resolution before release:
+The following preparation findings are addressed by the candidate source changes; final archive/publication/installed checks remain pending:
 
 - `docs/support.md` still describes YouTube as unavailable. Update it to distinguish
   the existing local-only delivered builds from the future full-app candidate;
@@ -250,8 +252,36 @@ extend it. Stop if setup consumes the budget. Long A2/A7 recording/broadcast run
 require separate explicit agreement and belong to F14. Native fixtures, archive
 success and old MVP owner approval cannot qualify the new TestFlight binary.
 
-Current pending evidence: final parent integration; legal/consent/API-data deletion
-resolution; live version/build inventory; final archive/privacy/linkage audit;
+Current pending evidence: final parent integration; independent policy/consent/API-data deletion
+review; live version/build inventory; final archive/privacy/linkage audit;
 normal signed validation; upload/processing/compliance/group state; exact-build
 TestFlight installation; installed policy links; private short Unlisted A3 smoke;
 actual F12 report export/overhead; F14 acceptance. Issue #26 remains open.
+
+
+## Implementation checkpoint
+
+The narrow design is recorded in the canonical specification's F13 section and
+implemented in existing authorization, client, binding, pending-store and connection
+view types. Only app-local policy acceptance is persisted in UserDefaults. A local
+delete/revoke/detected authorization loss erases API IDs behind durable
+nonidentifying Studio guards; explicit user Studio acknowledgement is required to
+clear them. Local recordings/overlay remain. Native fixtures use invented identities
+and no provider calls. Debug UI policy fixtures isolate both journal stores.
+
+The initial focused native run passed 86 tests in four suites at
+`/private/tmp/stream14-f13-policy-tests.xcresult`; a generation guard was then added
+for stale access-denial callbacks and covered by the updated fixture. Final results
+must be recorded after inheriting the final F11/F12 parent. The initial Release build
+passed. No source version bump, signed distribution validation, upload or device
+check occurred. Root's read-only App Store Connect check reached an expired Apple
+sign-in session, so live version/build inventory remains unavailable; no credentials
+or settings were entered. No current latest-build claim is made.
+
+The focused Simulator UI consent/local-rehearsal/deletion-dismissal check passed
+at `/private/tmp/stream14-f13-policy-ui-popover.xcresult` on D6BEAF78 (13 mini,
+iOS 27.2). Earlier UI attempts exposed two test assumptions: the new policy fixture
+initially selected preview instead of idle, and the native confirmation was a
+popover with a dismiss region instead of a Cancel button. The fixture and test now
+match those actual states. No capture/provider request was made. Latest additional
+client401/storage-failure tests await the final combined-source run.

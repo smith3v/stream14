@@ -3,6 +3,28 @@ import Testing
 @testable import Stream14
 
 @MainActor @Suite(.timeLimit(.minutes(1))) struct YouTubeBindingTests {
+    @Test func failedDeletionMarkerWriteRetainsIdentifiersAndSuccessfulRetryBlocksLateSaves() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("privacy-fixture-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var failMarker = false
+        let store = PendingBroadcastIntentStore(directory: directory, write: { data, url in
+            if failMarker && url.lastPathComponent == "studio-resolution-required" { throw CocoaError(.fileWriteNoPermission) }
+            try data.write(to: url, options: .atomic)
+        })
+        let intent = PendingBroadcastIntent(channelID: "invented-channel", broadcastID: "invented-event", profile: .hd)
+        try store.save(intent)
+        failMarker = true
+        #expect(throws: CocoaError.self) { try store.eraseAPIData() }
+        #expect(try store.load() == intent)
+        failMarker = false
+        try store.eraseAPIData()
+        #expect(store.requiresStudioResolution)
+        #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("binding-intent.json").path))
+        #expect(throws: YouTubeBindingError.studioResolutionRequired) { try store.save(intent) }
+        try store.confirmStudioResolution()
+        #expect(try store.load() == nil)
+    }
+
     @Test func dedicatedExistingBindingIsReadOnlyAndSecretsAreNotPersistedOrReflected() async throws {
         let server = BindingFixtureServer(bound: "existing-stream")
         let (binding, store, _) = try makeBinding(server)

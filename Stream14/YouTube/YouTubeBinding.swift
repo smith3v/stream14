@@ -80,10 +80,12 @@ nonisolated struct PreparedYouTubeIngestion: Sendable, CustomReflectable {
 nonisolated enum YouTubeMutationError: Error, Equatable { case rejected(YouTubeReadError), uncertain }
 
 nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
+    case studioResolutionRequired
     case busy, deadline, ineligibleEvent, unsafeStream, incompatibleStream, sharedStream, dedicationUnknown
     case invalidDestination, intentUnavailable, pendingOtherContext, unresolvedInsert, bindingConflict, bindingUnconfirmed
     var errorDescription: String? {
         switch self {
+        case .studioResolutionRequired: "YouTube data was deleted. Check YouTube Studio for previous requests and explicitly confirm resolution before publishing again."
         case .busy: "YouTube preparation is already running. Wait for it to finish."
         case .deadline: "YouTube preparation timed out. Retry to reconcile the existing request; no duplicate stream will be created."
         case .ineligibleEvent: "The event is no longer eligible. Check its state and disable auto-stop in YouTube Studio, then refresh."
@@ -113,7 +115,12 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         self.client = client; self.store = store; self.timeout = timeout
     }
 
+    var requiresStudioResolution: Bool { store.requiresStudioResolution }
+    func eraseAPIData() throws { try store.eraseAPIData() }
+    func confirmStudioResolution() throws { try store.confirmStudioResolution() }
+
     func prepareConfirmed(eventID: String, channelID: String, profile: SessionProfile, generation: UInt64) async throws -> PreparedYouTubeIngestion {
+        guard !requiresStudioResolution else { throw YouTubeBindingError.studioResolutionRequired }
         guard !isPreparing else { throw YouTubeBindingError.busy }
         isPreparing = true
         defer { isPreparing = false }
@@ -139,6 +146,7 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
     /// a different encoder cannot silently share the original event's stream.
     func prepareResumeConfirmed(context: PendingRemoteBroadcast, profile: SessionProfile,
                                 generation: UInt64) async throws -> PreparedYouTubeIngestion {
+        guard !requiresStudioResolution else { throw YouTubeBindingError.studioResolutionRequired }
         guard context.transition == nil, let streamID = context.streamID,
               context.profileName == profile.rawValue else { throw YouTubeBindingError.bindingConflict }
         let channel = try await client.authorizedChannel(generation: generation)
