@@ -380,3 +380,24 @@ existing-group availability. The retained development-signed Release archive is
 not distribution validation. TestFlight installation and current-build physical
 qualification remain pending. No additional owner account setup was requested;
 the latest App Store sign-in allowed the read-only inventory check above.
+
+
+## Distribution resume checkpoint — 2026-11-09
+
+Owner merged #58–#60; current main is `32996c0`. New distribution branch
+`codex/testflight-0.3-delivery` in `/private/tmp/stream14-testflight-0.3-distribution`
+starts there, preserving the original iCloud checkout. App/project/test/config
+bytes match reviewed signed archive source `1ae3f87`. Root verified exact public
+main policy/terms/support URLs anonymously and fresh unused 0.3 (4) inventory.
+Xcode Organizer's actual aggregate PDF and nine manifests were inspected; Google
+SDK linked/not-tracking declarations remain explicit. App Store Connect App Privacy
+is unconfigured, not a published Data Not Collected claim. No guessed answers saved.
+
+Normal Xcode distribution validation currently cannot use an Apple account.
+Xcode Settings → Apple Accounts is open at Sign In for the owner to authenticate
+privately; Firefox sign-in is insufficient. No validation success or upload is
+claimed. Exact safe blocker, PDF paths, crypto/SDK assessment and retry options are
+in the [full-app delivery record](2026-11-09-full-app-testflight.md). After owner
+sign-in, verify the UI handoff and retry normal validation/upload, then let root
+verify processing/compliance/existing internal-group state. Keep five-minute
+routine phone cards and retained originals; no phone action occurred.

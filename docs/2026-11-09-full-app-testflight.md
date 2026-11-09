@@ -164,3 +164,81 @@ and native two-case result summary. It independently verified the archive's
 strict signature and found no material findings at source `1ae3f87` plus these
 documentation updates. `git diff --check` and changed-document local file links
 passed. No extra native run was needed for the documentation-only handoff.
+
+
+## Merged-main distribution checkpoint — 2026-11-09
+
+The owner merged #58, #59 and #60. Distribution work starts from main
+`32996c09e30f3b00ea36a7b34d437821741e021d`; the app, project, test and configuration
+trees have an empty diff against archived source `1ae3f87`. No rebuild or media
+regression rerun is claimed for that ancestry/documentation-only difference.
+Root refreshed App Store Connect Build Uploads / All Statuses: only 0.2 (3),
+0.1 (2), 0.1 (1), all Complete; no newer/processing upload. The exact in-app main
+privacy, terms and support URLs returned HTTP 200 without authentication, and raw
+content matched reviewed source. Private safe hash/status evidence:
+`/private/tmp/stream14-03-public-policy-check.json`.
+
+Xcode Organizer imported the exact retained archive and **Generate Privacy Report**
+exported a one-page PDF at `/private/tmp/stream14-0.3-aggregate-privacy-report`
+(the saved file has no extension). Native PDFKit extracted text to the matching
+`.txt` path. All nine bundled manifests were decoded separately into private
+`/private/tmp/stream14-03-manifest-audit.json`. The aggregate attributes these
+GoogleSignIn declarations to that SDK, all linked and not tracking:
+
+| SDK-declared type | Declared purpose |
+| --- | --- |
+| Name, email address, phone number, coarse location | App functionality |
+| User ID, other data types | App functionality and analytics |
+| Device ID, other usage data | Analytics |
+
+The app's own manifest has no declared collection; that does **not** make the
+combined app "Data Not Collected." This report is a declaration inventory, not a
+packet-level observation that every listed field is sent in every authorization.
+The published policy already distinguishes provider processing and these SDK
+categories from a developer collection backend. No SDK declaration was removed or
+rewritten to make the report appear empty. Root read App Store Connect App Privacy:
+it is unconfigured (Get Started, empty policy/choices fields), not a previously
+published no-collection answer. No privacy answer was saved. Public-submission
+privacy labels still need a full assessment of actual third-party processing,
+including confirmed YouTube video/audio and chosen overlay website requests,
+rather than copying only this manifest table.
+
+Current [Apple submission requirements](https://developer.apple.com/app-store/submitting/),
+[third-party SDK requirements](https://developer.apple.com/support/third-party-SDK-requirements/),
+[App Privacy details](https://developer.apple.com/app-store/app-privacy-details/)
+and [export-compliance overview](https://developer.apple.com/help/app-store-connect/manage-app-information/overview-of-export-compliance/)
+were rechecked on 2026-11-09. Xcode 27.2 / iOS SDK 27.2 satisfies the stated SDK
+boundary; actual Apple validation remains required. Listed included SDKs retain
+their manifests. The archived load/symbol audit finds only Apple/Swift dynamic
+loads and no OpenSSL/SRT/RTC indicators. Source uses URLSession/WebKit, Keychain
+and native TLS for RTMPS; AppAuth PKCE uses Apple's CommonCrypto SHA-256 hashing.
+No app-defined encryption algorithm or additional cryptographic implementation
+was found. This supports assessing operating-system-only encryption, not a claim
+that the app uses no encryption; answer the actual compliance question separately.
+
+### Current validation/account blocker
+
+An initial `method=validation, destination=export` attempt exited 70 before service
+validation: the installed Xcode requires `destination=upload` for that method.
+The corrected normal validation attempt also exited 70 before validation/upload:
+**Failed to Use Accounts**; App Store Connect access is required in Xcode Accounts.
+Private log `/private/tmp/stream14-03-validation-supported.log`. Organizer also
+showed account access unavailable. Xcode Settings → Apple Accounts was opened and
+shows Sign In, with no usable configured account. The owner handles the existing
+developer account sign-in/2FA privately; Firefox sign-in does not authenticate
+Xcode. No password, code or credential was requested in Git or entered by the agent.
+No build was uploaded and no compliance, group, tester or account setting changed.
+
+Resume after the owner confirms Xcode sign-in: verify the account handoff outcome,
+recheck upload inventory if time has passed, then retry supported normal validation
+and `method=app-store-connect` upload with fixed 0.3 (4), automatic signing,
+`manageAppVersionAndBuildNumber=false`, symbols and internal-only testing. Retain
+private export options/logs outside Git. Never manually re-sign or use an unrelated
+account. Record actual validation, upload, processing, compliance and existing-group
+availability independently. Phone installation and all physical gates remain pending.
+
+A separate agent inspected this actual full documentation diff against merged main,
+the extensionless PDF/text, nine-manifest inventory, policy hash/status evidence and
+private validation error. It independently verified the runtime-tree equality and
+found no material findings. Changed-document local links and `git diff --check`
+passed. No app tests were rerun for this documentation-only checkpoint.
