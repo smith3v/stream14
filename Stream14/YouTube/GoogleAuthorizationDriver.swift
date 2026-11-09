@@ -1,4 +1,5 @@
 import GoogleSignIn
+import AppAuth
 import UIKit
 
 /// Google's SDK alone owns persisted credentials and supported system-browser authorization.
@@ -44,7 +45,8 @@ import UIKit
         let token: String = try await withCheckedThrowingContinuation { continuation in
             user.refreshTokensIfNeeded { refreshed, error in
                 // Map SDK objects synchronously to Sendable values on its documented main queue.
-                guard error == nil, let refreshed, refreshed.userID == accountID,
+                if let error { continuation.resume(throwing: Self.safeError(error)); return }
+                guard let refreshed, refreshed.userID == accountID,
                       Set(refreshed.grantedScopes ?? []).contains(YouTubeAuthorization.requiredScope) else {
                     continuation.resume(throwing: YouTubeAuthorizationError.authorizationRequired); return
                 }
@@ -73,12 +75,16 @@ import UIKit
         GoogleAuthorizationAccount(id: user.userID ?? "", grantedScopes: Set(user.grantedScopes ?? []))
     }
 
-    nonisolated private static func safeError(_ error: any Error) -> YouTubeAuthorizationError {
+    nonisolated static func safeError(_ error: any Error) -> YouTubeAuthorizationError {
         let ns = error as NSError
+        if ns.domain == NSURLErrorDomain, ns.code == URLError.cancelled.rawValue { return .cancelled }
+        if ns.domain == OIDOAuthTokenErrorDomain,
+           ns.code == OIDErrorCodeOAuthToken.invalidGrant.rawValue { return .authorizationRequired }
         guard ns.domain == kGIDSignInErrorDomain else { return .unavailable }
         switch ns.code {
         case GIDSignInError.canceled.rawValue: return .cancelled
         case GIDSignInError.hasNoAuthInKeychain.rawValue: return .noPreviousSignIn
+        case GIDSignInError.refreshTokenExpired.rawValue: return .authorizationRequired
         default: return .unavailable
         }
     }

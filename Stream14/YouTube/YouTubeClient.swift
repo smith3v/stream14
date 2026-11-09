@@ -96,6 +96,7 @@ nonisolated struct YouTubeClient: Sendable {
             do { accessToken = try await token(generation) }
             catch {
                 if error is CancellationError || (error as? YouTubeAuthorizationError) == .cancelled { throw CancellationError() }
+                if error as? YouTubeAuthorizationError == .unavailable { throw YouTubeReadError.network }
                 throw YouTubeReadError.authorizationRequired
             }
             try await check(generation)
@@ -247,6 +248,7 @@ extension YouTubeClient {
         do { accessToken = try await token(generation) }
         catch {
             if error is CancellationError || (error as? YouTubeAuthorizationError) == .cancelled { throw CancellationError() }
+            if error as? YouTubeAuthorizationError == .unavailable { throw YouTubeReadError.network }
             throw YouTubeReadError.authorizationRequired
         }
         try await check(generation)

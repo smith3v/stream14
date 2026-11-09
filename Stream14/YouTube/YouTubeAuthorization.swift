@@ -163,6 +163,10 @@ enum YouTubeAuthorizationError: Error, Equatable {
             if Task.isCancelled || error is CancellationError || error as? YouTubeAuthorizationError == .cancelled {
                 throw YouTubeAuthorizationError.cancelled
             }
+            if error as? YouTubeAuthorizationError == .unavailable {
+                if expectedGeneration == generation { message = "YouTube token refresh is temporarily unavailable. Check the connection and retry; saved reconciliation data is retained." }
+                throw YouTubeAuthorizationError.unavailable
+            }
             if expectedGeneration == generation {
                 invalidate()
                 driver.signOut()

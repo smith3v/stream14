@@ -1,6 +1,8 @@
 import Foundation
 import Testing
 import UIKit
+import GoogleSignIn
+import AppAuth
 @testable import Stream14
 
 @MainActor struct YouTubeAuthorizationTests {
@@ -73,6 +75,29 @@ import UIKit
         auth.onDeleteAPIData = { false }
         auth.deleteYouTubeData()
         #expect(auth.message.contains("failed"))
+    }
+
+    @Test func SDKClassificationDistinguishesOfflineAndConfirmedGrantLoss() {
+        #expect(GoogleAuthorizationDriver.safeError(URLError(.notConnectedToInternet)) == .unavailable)
+        #expect(GoogleAuthorizationDriver.safeError(URLError(.cancelled)) == .cancelled)
+        #expect(GoogleAuthorizationDriver.safeError(NSError(domain: kGIDSignInErrorDomain,
+            code: GIDSignInError.refreshTokenExpired.rawValue)) == .authorizationRequired)
+        #expect(GoogleAuthorizationDriver.safeError(NSError(domain: OIDOAuthTokenErrorDomain,
+            code: OIDErrorCodeOAuthToken.invalidGrant.rawValue)) == .authorizationRequired)
+    }
+
+    @Test func offlineTokenRefreshRetainsAuthorizationGenerationAndPendingContext() async throws {
+        let driver = FakeGoogleAuthorizationDriver(); driver.result = good
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
+        var erasures = 0
+        auth.onDeleteAPIData = { erasures += 1; return true }
+        await auth.restore()
+        let generation = auth.generation
+        driver.failure = .unavailable
+        await #expect(throws: YouTubeAuthorizationError.unavailable) {
+            try await auth.freshAccessToken(expectedGeneration: generation)
+        }
+        #expect(erasures == 0 && auth.isAuthorized && auth.generation == generation)
     }
 
     @Test func configurationRequiresMatchingCallbackAndIOSClient() {
