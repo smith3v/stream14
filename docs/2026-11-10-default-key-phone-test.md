@@ -1,6 +1,6 @@
 # Default-key development phone check
 
-Preparation date: 2026-11-10. **Prepared only; not installed or executed.**
+Preparation date: 2026-11-10. **Installed and launched as a development build; attended media results pending.**
 The owner requested connected-phone testing without a new TestFlight upload.
 The in-place development installation replaces TestFlight on that phone while
 retaining the same bundle container. Never uninstall, reset, or delete recordings.
@@ -22,8 +22,9 @@ profile includes the connected iPhone 13 mini. Public OAuth client and callback,
 app identifier/entitlements, icon and unchanged tested runtime tree were checked.
 Read-only device inventory showed iPhone 13 mini, iOS 27.2, wired/paired/connected,
 Developer Mode enabled. Owner also confirmed recording stopped and phone unlocked.
-No phone installation, launch, camera, recording, provider API or publishing action
-has happened in this preparation.
+Preparation initially performed only read-only device inspection. Installation and
+ordinary launch subsequently completed as recorded below; this agent did not open
+camera, record, authenticate or publish.
 
 Private evidence: `/private/tmp/stream14-default-phone-preparation.json`,
 `stream14-default-phone-readiness.json`, `stream14-default-phone-build.log`, and
@@ -49,3 +50,24 @@ connection alone is not Live. Stop at wrap-up and preserve all originals.
 
 An installation/launch success is development evidence, not a TestFlight regression
 or a broadcasting pass. Record exact actual results separately after execution.
+
+
+## In-place installation and ordinary launch
+
+Root explicitly started the five-minute TOTAL operator clock and authorized the
+in-place installation after the owner confirmed recording stopped and the phone
+unlocked. Native `devicectl device install app` exited 0 in 6.722 seconds. No
+uninstall, data reset, recording deletion or separate termination was used.
+
+The first launch invocation stopped locally with exit 64: installed devicectl
+rejected an empty JSON environment dictionary. It did not launch the app. The
+corrected invocation omitted that option and stripped all `DEVICECTL_CHILD_`
+variables from the CLI environment; ordinary launch exited 0 in 0.462 seconds,
+with no app arguments or harness modes. The source and normal signed binary are
+unchanged. This is a development installation of 0.3 (4), not a new TestFlight
+build or a broadcasting pass.
+
+Private evidence: `/private/tmp/stream14-default-phone-install.json`,
+`stream14-default-phone-install-outcome.json`, `stream14-default-phone-launch-retry.json`,
+`stream14-default-phone-launch-outcome.json`, and the updated preparation JSON.
+Root owns any subsequent owner-confirmed media, event and receiver observations.
