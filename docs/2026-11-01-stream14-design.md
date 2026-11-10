@@ -1448,6 +1448,16 @@ submission requirements again at F13; this is not App Store approval.
 
 See the [qualification report template](qualification-report-template.md) and
 `Tools/qualification/Analyze.swift` for original-file and receiver measurements.
+The separate native Mac `Tools/qualification/Markers.swift` inspects two bounded
+physical-marker windows using decoded frame/sample PTS, private contact sheets
+and per-channel waveforms. A reviewer selects visual-contact and audio-transient
+brackets; conservative audio-minus-video intervals retain frame/sample and human
+uncertainty. No automatic clap recognition, guessed AAC/acoustic correction or
+physical qualification verdict is introduced. Originals are read-only and hashed
+before/after; generated media stays in a new private directory. This closes a
+measurement-workflow gap without changing the delivered app or claiming physical
+markers exist in previously recorded files. See the
+[offline inspector design](2026-11-10-av-marker-inspector-design.md).
 A short attended 13 mini instrumentation-overhead run, actual installed-app export,
 physical start/end clap markers, whole-run memory evidence and A1–A9 acceptance
 remain pending. Development harnesses retain the 900-second cap; ordinary user

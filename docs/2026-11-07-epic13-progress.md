@@ -559,3 +559,21 @@ authoritative native summary, Release success and integration checkpoints, with
 no material findings. All 88 changed-document local links resolve and
 `git diff --check` passes. Owned E0 is shut down with fixtures retained; the
 other task's D6 simulator was untouched.
+
+## Offline physical-marker inspection — 2026-11-10
+
+Focused branch `codex/offline-av-marker-inspector` from main `1960df2` adds a
+native Mac-only marker inspector beside the aggregate analyzer. It writes private
+decoded-frame contact sheets and sample-timed per-channel waveforms for two
+operator-selected windows of at most two seconds. Human-selected brackets yield
+conservative audio-minus-video intervals, never automatic clap recognition or
+physical qualification. App/runtime, packages and TestFlight remain unchanged.
+
+Optimized Swift 6 compilation passed. The final generated H.264/AAC fixture suite
+passed 91 checks across positive/negative shifts, nonzero start/variable cadence,
+mono/stereo 44.1/48 kHz, missing markers and preservation/privacy/failure cases.
+See the [implementation and private artifact record](2026-11-10-av-marker-inspector-implementation.md)
+and [operator workflow](qualification-report-template.md#physical-marker-inspection-after-the-phone-visit).
+No real recording or phone was accessed. This prepares later short visits without
+claiming physical sync or closing #25/#27. Independent source/evidence review and
+PR publication remain next.

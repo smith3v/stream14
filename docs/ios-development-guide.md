@@ -1734,6 +1734,18 @@ power/network/ambient controls. The development device harness still clamps to
 three-hour run is implicitly authorized. Short instrumentation overhead on the
 13 mini and actual installed-app diagnostic export remain pending.
 
+For numerical physical start/end sync, the template now documents
+`Tools/qualification/Markers.swift`: a separate offline Mac inspector for two
+operator-selected windows of at most two seconds, timestamped contact sheets and
+per-channel decoded PCM waveforms. Human-selected visual/audio brackets produce
+a conservative signed audio-minus-video interval; the tool does not recognize
+claps or declare qualification. Outputs are private media in a new owner-only
+directory; the original's SHA-256 must remain unchanged. Inspect original and
+receiver independently and leave missing/ambiguous markers pending. This adds no
+app dependency, runtime work or additional phone-session time. See the
+[design](2026-11-10-av-marker-inspector-design.md) and
+[implementation/validation record](2026-11-10-av-marker-inspector-implementation.md).
+
 ## Private synthetic RTMPS receiver checkpoint (2026-11-08)
 
 Use the [receiver procedure and actual measurements](2026-11-08-private-rtmps-receiver-validation.md)

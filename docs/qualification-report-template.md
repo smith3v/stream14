@@ -42,6 +42,75 @@ decoded buffers. Empty native boundary-marker buffers are counted separately;
 batched AAC/PCM timing is expanded using native sample timing, not buffer spacing. It never remuxes, transcodes or edits the original. Analysis is
 private; terminal errors deliberately omit file paths and SDK descriptions.
 
+### Physical marker inspection after the phone visit
+
+The operator can now inspect two short windows using a separate native Mac tool.
+The owner only needs to make the visible/audible beginning/end claps during an
+agreed recording and export the original afterward; the operator does the
+timestamp analysis on the laptop. No camera or microphone is opened by this tool.
+First locate both claps with ordinary playback. Choose nonoverlapping windows
+of **at most two seconds each** that include the last separated-hand frame, first
+contact frame and matching sound. Times are asset presentation seconds, including
+any nonzero track start. The following times are examples, not measured markers:
+
+```sh
+xcrun swiftc -O -swift-version 6 -module-cache-path /private/tmp/stream14-marker-cache \
+  -parse-as-library Tools/qualification/Markers.swift -o /private/tmp/stream14-markers
+/private/tmp/stream14-markers inspect /private/path/to/original.mp4 \
+  /private/path/to/new-inspection 3 5 123 125
+```
+
+The destination must not already exist; its parent must exist. The tool creates
+an owner-only directory, JPEG contact sheet (`index.html`), waveform SVGs and JSON,
+`manifest.json` and a selection template. These are private media, not issue/PR
+attachments. Every frame label uses its actual decoded PTS; each per-channel
+waveform bin retains first/last/peak sample PTS, min/max and sample count over
+at most about one millisecond. The SVG amplitude is normalized separately per
+channel, not dB. Inspect the original sound and the exact waveform bins rather
+than treating the loudest peak as an automatically detected clap. Sample rate,
+frame interval, occlusion/motion blur, acoustic distance and ambiguous sound all
+affect uncertainty. No priming, latency or acoustic-delay correction is guessed.
+
+Copy `selections-template.json` to a new private selection file. For each marker,
+set a zero-based audio channel, the actual PTS of the last clearly separated-hand
+and first contact frames, and conservative nonzero audio-transient bounds from
+the waveform. Use the exact manifest frame numbers, not rounded player times.
+Leave all three fields absent/null for a missing or ambiguous marker. For example
+only (replace every selected time with inspected evidence):
+
+```json
+{"schema":1,"markers":[
+  {"name":"beginning","channel":0,
+   "video":{"lower":3.466666666666667,"upper":3.5},
+   "audio":{"lower":3.5795,"upper":3.5805}},
+  {"name":"end"}
+]}
+```
+
+```sh
+umask 077
+/private/tmp/stream14-markers measure /private/path/to/new-inspection/manifest.json \
+  /private/path/to/selections.json > /private/path/to/marker-intervals.json
+```
+
+The result uses **audio minus video**, positive when audio is later. For visual
+bracket `[v0,v1]` and audio bracket `[a0,a1]`, the conservative offset interval is
+`[a0-v1,a1-v0]`; midpoint and half-range describe that interval, not a statistical
+confidence estimate. The tool validates frame choices and decoded PCM coverage,
+but cannot verify that a human selected the right physical clap. It never assigns
+a physical pass. An independently reviewed interval wholly inside ±100 ms can
+support only that marker's sync requirement; an interval crossing a threshold
+or an ambiguous/missing marker stays indeterminate/pending. Report beginning/end
+and original/receiver separately. Two markers in a short clip do not prove A7.
+
+The input is SHA-256 checked before and after extraction and never modified.
+Failure emits a safe fixed code and returns nonzero. Partial private output is
+retained, but no successful manifest is produced unless both requested windows
+decode and the input hash is unchanged. This is bounded window inspection, not
+the full-file readability check above. Native framework decoder allocations are
+outside this tool's application-owned bounds; unsupported layouts or excessive
+dimensions/rates/counts fail rather than silently downsampling timing evidence.
+
 For overhead: with an agreed short 13 mini run and fixed scene/profile/power/network,
 compare the candidate's Instruments Time Profiler/Allocations/energy trace with the
 same build's diagnostic task disabled in an explicitly identified experimental
