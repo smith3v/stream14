@@ -2100,3 +2100,12 @@ confirmation. Exact commands, private native evidence, installation cutoff and
 scope are in the [menu implementation checkpoint](2026-11-10-pr63-more-menu-implementation.md).
 No whole-interface, VoiceOver, recording/receiver or TestFlight acceptance follows
 from this narrow result. Camera preview placement remains as accepted by the owner.
+
+
+PR63's streaming-action contrast follow-up uses native bordered styling and a
+semantic primary label while preserving disabled/preflight rules. Four isolated
+native appearance/state cases and Release pass; [the focused handoff](2026-11-10-stream-button-contrast-implementation.md)
+records actual screenshots, timings scope and prior failed candidates. The Debug
+appearance override requires the existing isolated interface fixture and is absent
+from Release/normal launches. The color fix still needs a later owner phone check;
+keep the unrelated legacy native profile audit limitation explicit.

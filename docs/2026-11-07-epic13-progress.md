@@ -719,3 +719,19 @@ VoiceOver, rotation/media/receiver acceptance is inferred; the blank streaming-
 button contrast issue was not included in this phone candidate. Independent final
 review and combination of that separate fix remain root-owned. All native jobs
 for this menu stage are terminal/reaped, and no extra health fixture was added.
+
+
+### PR63 streaming-action contrast correction — 2026-11-10
+
+The blank dark-mode streaming pill is corrected with native bordered styling and
+semantic primary foreground; every unavailable/preflight/publishing predicate is
+unchanged. Four isolated native light/dark enabled/unavailable render cases passed
+with zero failures/skips, plus ordinary Release. Private actual crops show clear
+labels and native unavailable fill; the existing Cancel case separately passed
+before the label-only foreground addition. This is not a combined five-case final
+run or physical color acceptance. The [contrast handoff](2026-11-10-stream-button-contrast-implementation.md)
+records exact runs, prior failed candidates and the non-WCAG inactive visibility
+heuristic. Normal merge `e6a5c77` preserves menu head `b614a42` exactly and is suitable
+for offline signing. The owner is away; no further phone action is authorized or
+needed now. Physical color verification and the distinct legacy native profile
+unknown-node audit remain pending. PR63 remains draft; preview placement is unchanged.
