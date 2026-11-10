@@ -145,7 +145,7 @@ experiment.
 
 1. Make sure the intended YouTube channel is allowed to broadcast and has live
    streaming enabled. In YouTube Studio, create an **encoder** event for testing,
-   preferably unlisted, with a dedicated ingestion stream and auto-stop disabled.
+   preferably unlisted, using its existing/default stream key with auto-stop disabled.
 2. Create/select a Google Cloud project owned by you and enable YouTube Data API v3.
 3. Configure the Google Auth Platform/OAuth consent screen with the real app name,
    support contact, and the scope specified in the app specification. For the small
@@ -1605,7 +1605,7 @@ Serious heat reduces overlay raster work without changing the media profile.
 On return, read-only reconciliation checks the original channel/event. Open the
 camera explicitly and check permissions, microphone, original profile and overlay.
 Choose **Resume same event…**, review the channel/event/visibility confirmation,
-then confirm Resume. The app requires the original dedicated inactive stream and
+then confirm Resume. The app requires the original compatible inactive stream and
 starts a new local file before publishing. If ingestion is still active, wait or
 inspect Studio. An ended/replaced/ambiguous event cannot resume automatically.
 Unknown transition outcomes stay blocked until reconciliation resolves them.
@@ -1814,6 +1814,33 @@ long-duration qualification is pending; retain originals and never uninstall as
 routine testing cleanup. No recording or YouTube publishing was performed for this
 delivery checkpoint.
 
+
+## Default stream-key reuse correction — 2026-11-10
+
+YouTube permits multiple scheduled broadcasts to share the default stream key.
+Use the selected event's existing key; no new key, key copy/paste or manual rebinding
+is required solely because another scheduled event uses it. The corrected app
+reads only the selected event and bound stream, preserving channel/profile,
+inactive/ready health, RTMPS, generation and binding readback checks. The old
+“Another unfinished event uses this stream” refusal was app policy, not a YouTube
+restriction, and is removed. Creating a second scheduled event with the same key
+could not bypass that old policy.
+
+The owner explicitly deferred advanced concurrent-use mitigation to
+[issue #65](https://github.com/smith3v/stream14/issues/65). Do not infer exclusivity
+from these checks: another encoder or an auto-start sibling using the key can
+conflict/race, and the app does not inspect/change other broadcasts. Initial start
+and explicit resume still refuse active ingestion; existing same-event automatic
+reconnect keeps its previous admitted-context rules. No conflict incident has been
+observed. No Studio key/event settings were changed for this implementation.
+
+For the next separately attended five-minute test, keep one disposable Unlisted
+scheduled event selected, auto-stop off, and its current default stream key. Refresh
+and verify the channel/title/visibility in the corrected build. Explicitly confirm
+Go Live, check second-device reception, then confirm End and retain the local file.
+Do not claim a physical pass from fixture/native checks. A failed preparation can
+leave healthy local recording running; Stop recording and keep that file while
+investigating rather than allowing an unintended long recording.
 
 ## Preview return after an app switch — 2026-11-10
 

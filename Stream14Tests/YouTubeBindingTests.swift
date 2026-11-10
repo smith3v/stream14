@@ -25,7 +25,7 @@ import Testing
         #expect(try store.load() == nil)
     }
 
-    @Test func dedicatedExistingBindingIsReadOnlyAndSecretsAreNotPersistedOrReflected() async throws {
+    @Test func reusableExistingBindingIsReadOnlyAndSecretsAreNotPersistedOrReflected() async throws {
         let server = BindingFixtureServer(bound: "existing-stream")
         let (binding, store, _) = try makeBinding(server)
         let prepared = try await prepare(binding)
@@ -37,28 +37,47 @@ import Testing
         #expect(try store.load() == nil)
         let requests = await server.requests
         #expect(requests.allSatisfy { $0.httpMethod == "GET" })
-        #expect(requests.contains { bindingQuery($0)["broadcastStatus"] == "all" && bindingQuery($0)["broadcastType"] == "all" })
+        #expect(!requests.contains { bindingQuery($0)["broadcastStatus"] == "all" })
         #expect(requests.filter { $0.url?.path.hasSuffix("liveStreams") == true }.allSatisfy { bindingQuery($0)["id"] == "existing-stream" })
     }
 
-    @Test func sharedSecondPageUnknownAndActiveBindingsFailClosedWithoutWrites() async throws {
-        for scenario in ["shared", "unknown", "active", "health", "missingReuse", "incompatible"] {
+    @Test func activeUnhealthyAndIncompleteBindingsStillFailClosedWithoutWrites() async throws {
+        for scenario in ["active", "health", "missingReuse", "incompatible"] {
             let server = BindingFixtureServer(bound: "existing-stream", scenario: scenario)
             let (binding, _, _) = try makeBinding(server)
             do { _ = try await prepare(binding); Issue.record("Unsafe fixture unexpectedly prepared: \(scenario)") }
             catch { #expect(error is YouTubeBindingError) }
             #expect(await server.requests.allSatisfy { $0.httpMethod == "GET" })
-            if scenario == "shared" {
-                #expect(await server.requests.contains { bindingQuery($0)["pageToken"] == "fixture-next-page" })
-            }
         }
     }
 
-    @Test func terminalHistoricalBindingDoesNotBlockDedicatedReuse() async throws {
-        let server = BindingFixtureServer(bound: "existing-stream", scenario: "completed")
+    @Test func defaultKeyReuseDoesNotInspectOrMutateOtherScheduledEvents() async throws {
+        for scenario in ["shared", "unknown", "completed"] {
+            let server = BindingFixtureServer(bound: "existing-stream", scenario: scenario)
+            let (binding, store, _) = try makeBinding(server)
+            #expect(try await prepare(binding).streamID == "existing-stream")
+            let requests = await server.requests
+            #expect(requests.allSatisfy { $0.httpMethod == "GET" })
+            #expect(requests.filter { $0.url?.path.hasSuffix("liveBroadcasts") == true }
+                .allSatisfy { bindingQuery($0)["id"] == "fixture-event" })
+            #expect(try store.load() == nil)
+            #expect(await server.inserts == 0)
+            #expect(await server.binds == 0)
+        }
+    }
+
+    @Test func explicitResumeReusesInactiveDefaultBindingWithoutAllEventsScan() async throws {
+        let server = BindingFixtureServer(bound: "existing-stream", scenario: "shared")
         let (binding, _, _) = try makeBinding(server)
-        #expect(try await prepare(binding).streamID == "existing-stream")
-        #expect(await server.requests.allSatisfy { $0.httpMethod == "GET" })
+        let context = PendingRemoteBroadcast(channelID: "fixture-channel", eventID: "fixture-event",
+            interrupted: true, streamID: "existing-stream", profileName: SessionProfile.fullHD.rawValue)
+        #expect(try await binding.prepareResumeConfirmed(context: context, profile: .fullHD, generation: 1).streamID == "existing-stream")
+        let requests = await server.requests
+        #expect(requests.allSatisfy { $0.httpMethod == "GET" })
+        #expect(requests.filter { $0.url?.path.hasSuffix("liveBroadcasts") == true }
+            .allSatisfy { bindingQuery($0)["id"] == "fixture-event" })
+        #expect(await server.inserts == 0)
+        #expect(await server.binds == 0)
     }
 
     @Test func autoStopAndWrongChannelAreRejectedBeforeMutation() async throws {

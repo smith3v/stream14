@@ -443,6 +443,63 @@ remaining physical inventory pending, five-minute TOTAL visits, retained origina
 and separately agreed A2/A7. Issue #26/epic #13 are not complete from delivery alone.
 
 
+## Default stream-key setup finding — 2026-11-10
+
+The owner attempted the short TestFlight 0.3 (4) YouTube test with two scheduled
+events that both used the default stream key. The app's blanket unfinished-event
+sharing guard rejected preparation before RTMPS upload; healthy local recording
+was intentionally left running. Firefox inspection showed both test events were
+Unlisted with manual start/stop, without changing settings or exposing credentials.
+A new-key form was cancelled without creating a key. No YouTube streaming pass is
+claimed from that rejection or the diagnosis.
+
+The owner requested minimal YouTube configuration and explicitly deferred advanced
+concurrent-key mitigation. [Issue #65](https://github.com/smith3v/stream14/issues/65)
+records possible competing encoders or sibling auto-start with no observed incident.
+Focused source `625df2a` on `codex/default-stream-reuse` in
+`/private/tmp/stream14-default-stream-support` removes only the blanket dedication
+scan. Initial and explicit-resume selected-event/channel/profile/health/inactive
+and RTMPS checks, generation guards, durable mutation barriers and binding readback
+remain. Live supervision/reconnect and media ownership are unchanged. No new key,
+rebind or other-event setting change is introduced.
+
+The first focused native run passed 87 tests in three affected suites with no
+failures/skips; independent actual full-diff review is clean. Final Release and
+handoff evidence are in the
+[implementation checkpoint](2026-11-10-default-stream-implementation.md).
+No phone, provider request, publishing, version bump or TestFlight replacement
+occurred in this implementation. Root publishes a reviewed PR into main; the
+installed 0.3 (4) still requires a later replacement before the physical retest.
+
+
+### Default-key development phone result — 2026-11-10
+
+At the owner's request, the reviewed default-key candidate was normally signed and
+installed in place on the connected 13 mini, preserving its container. The current
+phone app is **Development 0.3 (4), source `625df2a`**, replacing the historical
+TestFlight installation; no TestFlight upload/version bump occurred. Setup
+readiness and broadcasting used separately authorized visits. The owner confirmed
+Live, End/local save, and local camera/overlay/speech playback; root independently
+observed normal YouTube watch playback with the composition and its subsequent
+end. The owner also confirmed speech audible on YouTube. The default key and both
+scheduled-event configurations were retained. See the
+[scoped phone report](2026-11-10-default-key-phone-test.md).
+
+The bounded phone-copy procedure stopped at its cutoff without transferring media.
+The owner then supplied an exported original locally for offline measurements.
+Do not equate the short development success with TestFlight/A1–A9 completion;
+physical preview recovery from #64, broad qualification and deferred #65 remain
+separate. No additional phone test starts without a newly coordinated visit.
+
+
+Offline read/decode of the owner-exported original completed without changing the
+file: 128.433 seconds, H.264 1920×1080, AAC stereo 44.1 kHz, 3,821 decoded video
+frames; no invalid/non-increasing PTS or ≥500 ms video intervals. The largest
+interval was 296.667 ms near the end; 39 missing-30-Hz intervals are an estimate,
+not a measured pipeline-drop count or A2 pass. No numerical A/V sync was measured.
+The private export matches the phone inventory by filename/size, not phone-side
+hash. Full scope and private artifact references are in the phone report.
+
 ## Preview-only app-switch finding and fix — 2026-11-10
 
 The owner found TestFlight 0.3 (4) **Open camera → Codex → stream14** left the
@@ -469,3 +526,36 @@ portrait/landscape regression are recorded in the
 No phone, provider API, publishing, version bump or TestFlight replacement occurred.
 PR #63's separate unmerged interface work was not folded into this fix. Root owns
 publication into main and later normally signed replacement delivery.
+
+
+## PR66 integration after PR64 merge — 2026-11-10
+
+Normal merge `1cf40ab` incorporates main `db70834` (merged PR64) into
+`codex/default-stream-reuse`, preserving both parents without rewriting history.
+Only three documentation conflicts required resolution: this progress ledger, the
+canonical design and the development guide. Both preview-only foreground recovery
+and default-key reuse requirements/evidence are retained. Runtime preview files
+match main exactly; YouTube binding/client files match the prior PR66 source.
+PR63's draft interface work is not included.
+
+The combined source passed **107 native tests in six affected suites**, zero
+failures/skips: PreviewForegroundTests, SessionInterruptionTests, SessionProfileTests,
+YouTubeBindingTests, YouTubeClientTests and BroadcastSessionTests. The authoritative
+result is `/private/tmp/stream14-preview-default-focused.xcresult`; summary
+`/private/tmp/stream14-preview-default-test-summary.json`, log
+`/private/tmp/stream14-preview-default-focused.log`. Test body took 37.438 seconds;
+whole invocation 158.050 seconds. It used the shared Stream14 scheme, owned E0
+iPhone 13 mini Simulator and verified pinned HaishinKit `497f742`.
+
+The installed phone remains the Development source `625df2a`, whose successful
+broadcast/export evidence is recorded above. The combined source has **not** been
+installed or physically tested. Preview return still needs its short portrait-first
+app-switch check on the phone. No recording, provider call, phone operation, version
+change or TestFlight update occurred during this integration. A fresh independent
+source/merge review found no material issues. The ordinary unsigned generic-iOS
+Release build exited 0 with BUILD SUCCEEDED; log
+`/private/tmp/stream14-preview-default-release.log`. Final review verified the
+authoritative native summary, Release success and integration checkpoints, with
+no material findings. All 88 changed-document local links resolve and
+`git diff --check` passes. Owned E0 is shut down with fixtures retained; the
+other task's D6 simulator was untouched.

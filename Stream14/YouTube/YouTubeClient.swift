@@ -188,15 +188,6 @@ nonisolated struct YouTubeClient: Sendable {
 extension YouTubeClient {
     func checkBindingGeneration(_ generation: UInt64) async throws { try await check(generation) }
 
-    func allBroadcasts(channelID: String, generation: UInt64) async throws -> [YouTubeBroadcast] {
-        let events: [YouTubeBroadcast] = try await pages("liveBroadcasts", query: [
-            "part": "snippet,status,contentDetails", "broadcastStatus": "all", "broadcastType": "all"
-        ], generation: generation)
-        guard events.allSatisfy({ $0.snippet?.channelId == channelID }) else { throw YouTubeReadError.wrongChannel }
-        guard events.allSatisfy({ !$0.id.isEmpty }) else { throw YouTubeReadError.malformedResponse }
-        return events
-    }
-
     func ingestionStream(id: String, channelID: String, generation: UInt64) async throws -> YouTubeIngestionStream {
         let page: YouTubePage<YouTubeIngestionStream> = try await read("liveStreams", query: [
             "part": "snippet,cdn,status,contentDetails", "id": id
