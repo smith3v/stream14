@@ -1,6 +1,6 @@
 # Connected-iPhone test session plan
 
-Updated: 2026-11-09. Routine connected-iPhone testing has a **five-minute TOTAL
+Updated: 2026-11-11. Routine connected-iPhone testing has a **five-minute TOTAL
 wall-clock budget**, including install, prompts, actions and wrap-up. This full
 inventory is a backlog, not a one-hour session or a combined command. Build,
 resolve, run fixtures/Simulator checks and prepare analysis tools on the laptop
@@ -8,23 +8,14 @@ first. Pick ONE [attended-session card](2026-11-08-attended-iphone-session.md).
 
 ## Current evidence and next visit
 
-- [Shared-pipeline local smoke](2026-11-08-shared-pipeline-device-smoke.md): one
-  physical pass, zero skips, 10.173-second body on F8 `20a0035`; current RTMPS,
-  interface, interruption, recovery and diagnostics changes are not qualified by it.
-- [Owner account/event checks](2026-11-08-attended-account-event-results.md):
-  intended channel/Unlisted event, restore, sign-out and revoke verified; #15/#16
-  closed. Do not repeat the whole historical account checklist without a changed
-  requirement. The app remains disconnected after revoke; deliberate new policy
-  agreement and Google reauthorization are readiness work.
-- Latest installed development source `f454e9b` predates the monitor/testing fix.
-  Prepare/update a corrected reviewed candidate; no uninstall/reset. Main contains
-  F7–F11. Reviewed [#58](https://github.com/smith3v/stream14/pull/58) diagnostics
-  and [#59](https://github.com/smith3v/stream14/pull/59) policy/release preparation
-  target main, in that merge order. F13 delivery and physical F12 evidence remain
-  pending; see the [candidate record](2026-11-09-full-app-testflight.md).
-- Next priority is card S1: a short operator-confirmed Unlisted start, actual
-  YouTube Live/receiver, confirmed End and retained local file. If install/account
-  setup takes the slot, use S0 and defer publishing. No new live run has passed.
+- Historical [shared-pipeline local smoke](2026-11-08-shared-pipeline-device-smoke.md) passed on 13 mini/F8 `20a0035`: one executed pass, zero failures/skips, 10.173-second body. It predates later RTMPS, UI, interruption, recovery and diagnostics changes.
+- Current phone: menu-only Development 0.3 (4) `4c097ae`; owner confirmed flicker resolved. PR63 source `0e510f9` has current targeted checks and independent full-diff review with no material findings. The combined `e6a5c77` build passed offline signing/preparation (15 checks, 12 pins; native build exit 0, 9.480 seconds) but is not installed; recheck identity/signing validity before later installation. Phone disconnected/owner away: no device work is scheduled.
+- [Account/event checks](2026-11-08-attended-account-event-results.md) verified OAuth callback, intended channel, restore, sign-out and revoke; #15/#16 closed. Do not repeat setup unless the current account/policy state actually requires it.
+- [Short Unlisted development run](2026-11-10-default-key-phone-test.md) passed on `625df2a`: confirmed Live/End, receiver composition/speech and retained local playback; #18/#20 closed. This is not current UI or final TestFlight qualification. Default/reusable keys are supported; no dedicated-key prerequisite. “Dedicated test event” below means a disposable test event, not an exclusive key. Preserve selected-event eligibility and auto-stop Off.
+- Full-app TestFlight 0.3 (4) was delivered and owner-installed; #58/#59 are merged. Its source predates the corrected Development UI. The owner deferred a new TestFlight release/regression; no upload/version change is scheduled.
+- Next visit is selected from the remaining gap, not automatically S1. Physical current-build color, portrait/both landscapes, large text/VoiceOver and actual file/receiver checks remain pending before PR63 merge/#62/#23 acceptance where required. The exact unmodified profile accessibility test passed once at `43e6706`; historical `6459c74` failures are retained, with no deterministic fix claim.
+
+Use the [latest Nov 11 guide](ios-development-guide.md#pr63-review-handoff--2026-11-11) and [current A1–A9 audit](2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11). Current UI is Session/Recordings with More → Settings. Older Preparation click scripts and backlog status snapshots below are historical coverage, not current navigation or pass claims. All backlog rows remain intact. Deferred #65 shared-key mitigation and draft #69 custom A/V tooling do not block these visits; existing Analyze/manual markers suffice.
 
 A prepared event and explicit operator confirmation are required before media
 publishing. Intentional lock and force-termination also need operator agreement.
@@ -38,7 +29,7 @@ samples and fake-clock tests do not qualify elapsed-duration performance.
 
 Connect the iPhone 13 mini by USB, unlock it, trust the Mac/enable Developer Mode if requested, and keep it available for permission and Google consent prompts. Codex builds, signs, installs, runs the commands, copies private evidence and analyzes files; the owner does not need to write code or learn Xcode.
 
-For media checks, aim the phone at a private test scene and make visible/audible clap markers when prompted. For streaming checks, have a second device ready to observe the dedicated unlisted event. Do not use a real match or valuable scheduled event as a fixture.
+For media checks, aim the phone at a private test scene and make visible/audible clap markers when prompted. For streaming checks, have a second device ready to observe the selected disposable Unlisted event. Do not use a real match or valuable scheduled event as a fixture.
 
 “All together” means one prepared five-minute visit with a selected sequential smoke path, not every backlog row, parallel capture tests or a blanket command. Some checks intentionally change permissions, foreground state, network or authorization. Run these in the order below, restoring state between them.
 
@@ -49,10 +40,10 @@ For media checks, aim the phone at a private test scene and make visible/audible
 | Phone | Confirm current USB/unlocked/owner availability; record exact 13 mini/OS privately |
 | Prepared binary | Normally signed exact reviewed source, appropriate public OAuth callback outside Git, recognizable app/branded runner; TestFlight route required for A9 |
 | Recordings | Inventory/export valuable originals before update; never uninstall/reset or automatically clean up |
-| Authorization | Completed historical checks remain evidence; new policy agreement/reauthorization is deliberate owner setup after prior revocation |
-| Event and receiver | Freshly verify dedicated Unlisted encoder event, auto-start/auto-stop/monitor/binding eligibility, second-device receiver; no private keys or links in public artifacts |
+| Authorization | Reuse historical checks; verify current state and perform deliberate policy agreement/reauthorization only if actually needed |
+| Event and receiver | Freshly verify selected disposable Unlisted encoder event (existing/default reusable key allowed), auto-start/auto-stop/monitor/binding eligibility, second-device receiver; no private keys or links in public artifacts |
 | Overlay | Known nonsecret reference and changing transparent fixture with controllable source access |
-| Recovery/diagnostics | Implemented/reviewed flows exist, but current phone evidence is pending; #58/#59 must merge before using their main build |
+| Recovery/diagnostics | Implemented/reviewed flows exist and #58/#59 are merged; physical current-build recovery, overhead and exported JSON evidence remains pending |
 | Routine time | Five minutes total including setup/wrap; one selected card, no automatic extension |
 | Longer qualification | Exact A2/A7 runs and markers require separate explicit owner agreement |
 

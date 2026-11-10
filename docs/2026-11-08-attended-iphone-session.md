@@ -1,6 +1,6 @@
 # Attended iPhone session cards
 
-Updated: 2026-11-09. Each routine visit is **five minutes TOTAL**, including
+Updated: 2026-11-11. Each routine visit is **five minutes TOTAL**, including
 installation, permission/account prompts, actions and wrap-up. Choose ONE card;
 these are separate visits, not a combined test script. Laptop builds, fixtures,
 selector enumeration and analysis-tool preparation happen first. Stop and record
@@ -8,26 +8,15 @@ INCOMPLETE/BLOCKED if setup consumes the budget; never extend automatically.
 
 ## Evidence and prerequisites
 
-- The [shared-pipeline local smoke](2026-11-08-shared-pipeline-device-smoke.md)
-  passed on the 13 mini: one executed test, zero failures/skips, 10.173-second body.
-  It predates the current RTMPS correction, interface, recovery and diagnostics.
-- The owner verified intended channel/event, restore after relaunch, local sign-out
-  and revocation in the [account report](2026-11-08-attended-account-event-results.md).
-  Issues #15/#16 are closed. Do not repeat that whole checklist just for coverage.
-  The app was left disconnected: the next account-enabled run needs deliberate
-  reauthorization and the new YouTube policy agreement.
-- Main includes the monitor/testing transition, native Session/Recordings UI and
-  separate-copy recovery. [PR #58](https://github.com/smith3v/stream14/pull/58) adds
-  diagnostics; [PR #59](https://github.com/smith3v/stream14/pull/59) adds reviewed
-  policy/retention preparation. Merge in that order before using their main build.
-  The later [full-app TestFlight candidate](2026-11-09-full-app-testflight.md) has
-  not yet been delivered; historical 0.2 (3) TestFlight is the local-only app.
-- The last installed development app was `f454e9b`, before the monitor correction.
-  Use a newly prepared, normally signed, exact-source candidate. Record Xcode vs
-  TestFlight explicitly; development evidence does not pass A9.
-- Check actual USB/unlocked readiness at the visit; an earlier connected-phone
-  report is not current availability or publishing consent. Auto-Lock Never and
-  Low Power Mode off can help foreground tests; restore owner settings afterwards.
+- Historical [shared-pipeline local smoke](2026-11-08-shared-pipeline-device-smoke.md) passed on 13 mini/F8 `20a0035`: one executed pass, zero failures/skips, 10.173-second body. It predates later RTMPS, UI, interruption, recovery and diagnostics changes.
+- Phone is disconnected and the owner is away; no device visit is scheduled. Installed app: menu-only Development 0.3 (4) `4c097ae`, with flicker resolved by owner confirmation. PR63 source `0e510f9` has passing current targeted checks and independent full-diff review; combined runtime `e6a5c77` passed offline build/signing preparation (15 checks, 12 pins; native exit 0, 9.480 seconds) but is not installed. Recheck identity/signing validity before later in-place installation; retain all originals.
+- [Account evidence](2026-11-08-attended-account-event-results.md) covers OAuth callback, intended channel, restore, sign-out and revoke; #15/#16 closed. Verify current state and reauthorize/agree policy only if needed, not because an earlier checkpoint ended disconnected.
+- [Short Unlisted development run](2026-11-10-default-key-phone-test.md) passed Live/End, receiver composition/speech and local playback on `625df2a`; #18/#20 closed. Default/reusable keys are supported, with no dedicated-key prerequisite; retain current safe selected-event gates and auto-stop Off. This does not qualify current UI or final TestFlight.
+- #58/#59 are merged. Full-app TestFlight 0.3 (4) was delivered and owner-installed; that older source is not the corrected Development UI. The owner deferred a new release/regression; no upload/version change is scheduled.
+- PR63 physical color, portrait/both landscapes, largest text/VoiceOver and actual file/receiver acceptance remain pending before merge/#62/#23 acceptance where required. One exact unmodified profile accessibility pass at `43e6706` does not explain historical `6459c74` failures or establish a deterministic fix. Select the next card by the remaining gap; S1 is not an automatic priority.
+- At a later attended visit, recheck USB/unlocked readiness and operator consent. Restore any changed Auto-Lock/Low Power settings afterwards. A prior connected report is not current readiness.
+
+Use the [latest Nov 11 guide](ios-development-guide.md#pr63-review-handoff--2026-11-11) and [current A1–A9 audit](2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11). Current UI is Session/Recordings with More → Settings; older Preparation click scripts and dated readiness wording in the preserved S0–S9 procedures below are historical. Apply the current prerequisites above. Deferred #65 shared-key mitigation and draft #69 custom A/V tooling are not dependencies; existing Analyze/manual markers suffice. Longer A2/A7 qualification remains unagreed; development recordings remain capped at 15 minutes.
 
 ## Laptop preflight for every card
 
