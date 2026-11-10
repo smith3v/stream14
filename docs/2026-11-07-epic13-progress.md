@@ -526,3 +526,36 @@ portrait/landscape regression are recorded in the
 No phone, provider API, publishing, version bump or TestFlight replacement occurred.
 PR #63's separate unmerged interface work was not folded into this fix. Root owns
 publication into main and later normally signed replacement delivery.
+
+
+## PR66 integration after PR64 merge — 2026-11-10
+
+Normal merge `1cf40ab` incorporates main `db70834` (merged PR64) into
+`codex/default-stream-reuse`, preserving both parents without rewriting history.
+Only three documentation conflicts required resolution: this progress ledger, the
+canonical design and the development guide. Both preview-only foreground recovery
+and default-key reuse requirements/evidence are retained. Runtime preview files
+match main exactly; YouTube binding/client files match the prior PR66 source.
+PR63's draft interface work is not included.
+
+The combined source passed **107 native tests in six affected suites**, zero
+failures/skips: PreviewForegroundTests, SessionInterruptionTests, SessionProfileTests,
+YouTubeBindingTests, YouTubeClientTests and BroadcastSessionTests. The authoritative
+result is `/private/tmp/stream14-preview-default-focused.xcresult`; summary
+`/private/tmp/stream14-preview-default-test-summary.json`, log
+`/private/tmp/stream14-preview-default-focused.log`. Test body took 37.438 seconds;
+whole invocation 158.050 seconds. It used the shared Stream14 scheme, owned E0
+iPhone 13 mini Simulator and verified pinned HaishinKit `497f742`.
+
+The installed phone remains the Development source `625df2a`, whose successful
+broadcast/export evidence is recorded above. The combined source has **not** been
+installed or physically tested. Preview return still needs its short portrait-first
+app-switch check on the phone. No recording, provider call, phone operation, version
+change or TestFlight update occurred during this integration. A fresh independent
+source/merge review found no material issues. The ordinary unsigned generic-iOS
+Release build exited 0 with BUILD SUCCEEDED; log
+`/private/tmp/stream14-preview-default-release.log`. Final review verified the
+authoritative native summary, Release success and integration checkpoints, with
+no material findings. All 88 changed-document local links resolve and
+`git diff --check` passes. Owned E0 is shut down with fixtures retained; the
+other task's D6 simulator was untouched.

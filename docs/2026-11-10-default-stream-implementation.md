@@ -71,3 +71,22 @@ Release success and documentation-only handoff: no material findings. All 86
 changed-document local links resolved, `git diff --check` passed, and current main
 was re-fetched at `ea90bd3` before handoff. Root owns publication; no automatic
 merge, phone operation or replacement distribution is claimed.
+
+
+## Combined integration checkpoint — 2026-11-10
+
+The earlier validation checkpoint is historical. After the owner merged PR64,
+normal merge `1cf40ab` integrates main `db70834`, retaining preview-only automatic
+foreground recovery and the default-key correction. Three documentation append/
+wording conflicts were resolved without runtime edits. A fresh independent actual-
+source/merge review found no material findings. The combined six affected native
+suites passed 107 tests, zero failures/skips; result
+`/private/tmp/stream14-preview-default-focused.xcresult`, authoritative summary
+`/private/tmp/stream14-preview-default-test-summary.json`. Unsigned generic-iOS Release validation also exited 0 with BUILD SUCCEEDED;
+log `/private/tmp/stream14-preview-default-release.log`. Final independent review
+verified actual tests, Release and checkpoints without material findings. All 88 changed-document local links resolve and diff whitespace passes.
+
+The phone's current installation is Development source `625df2a`, not this combined
+source or a new TestFlight upload. Its successful broadcast evidence does not qualify
+preview recovery. The combined preview fix still needs physical app-switch testing;
+no phone operation/capture/provider request occurred in this stage.
