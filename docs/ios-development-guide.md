@@ -2108,4 +2108,27 @@ native appearance/state cases and Release pass; [the focused handoff](2026-11-10
 records actual screenshots, timings scope and prior failed candidates. The Debug
 appearance override requires the existing isolated interface fixture and is absent
 from Release/normal launches. The color fix still needs a later owner phone check;
-keep the unrelated legacy native profile audit limitation explicit.
+see the latest unchanged-source profile audit result below.
+
+
+### PR63 review handoff — 2026-11-11
+
+At source `43e6706`, the exact unmodified
+`SetupScreenTests/testProfileSelectionPersistsAndRemainsAccessibleInLandscape`
+passed once: one test, zero failures/skips, native exit 0, body 123.869 seconds.
+All 83 tracked app/test files matched that source. The existing narrow clipped
+static-text exemption applied twice using before/callback viewport geometry;
+blank identifiers and unprinted labels prevent identifying the exact nodes.
+Earlier `6459c74` unmodified failures and diagnostic-only success remain history:
+this pass establishes neither a cause nor a deterministic flakiness fix. No test,
+waiver or threshold changed. Native evidence is retained privately.
+
+The code work, current targeted checks and independent full-diff review against
+main `2001d76` are complete with no material findings: PR63 is ready for review.
+This supersedes earlier draft checkpoints, without authorizing a merge or closing
+#62/#23. The phone remains on owner-confirmed menu runtime `4c097ae`; the signed
+combined `e6a5c77` build is not installed. Recheck its identity/signing before use.
+Physical color, portrait/both-landscape and largest-text/VoiceOver acceptance,
+and actual file/receiver checks remain pending before merge/issue acceptance
+where required. No phone operation or new media run occurred. Epic #13 remains
+active and full A1–A9 qualification unverified; deferred #69/#65 are outside PR63.

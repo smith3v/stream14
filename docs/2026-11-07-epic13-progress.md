@@ -1,6 +1,11 @@
 # Epic #13 progress and resume ledger
 
-Updated: 2026-11-08. Implementation, review and external acceptance are tracked separately.
+Latest resume checkpoint: 2026-11-11. Main is `2001d76`; PR63 code is `43e6706`.
+Code work/current targeted checks and full-diff review pass; PR63 is ready for review,
+with physical acceptance pending. Read the [latest handoff](ios-development-guide.md#pr63-review-handoff--2026-11-11)
+before resuming. Phone: menu-only `4c097ae`; combined signed build is not installed.
+Epic #13 remains active; full A1–A9 qualification is unverified. Rows/checkpoints
+below are dated history, not instructions to reimplement completed stages.
 
 ## Owner workflow
 
@@ -744,3 +749,11 @@ installation. No phone operation occurred; installed source remains menu-only
 `4c097ae`, with owner-confirmed flicker resolution. The new color correction is
 not physically verified. Final full-PR review at `a4c4f71` found no material issues;
 the pending native audit and broader physical acceptance are unchanged.
+
+
+### PR63 review handoff — 2026-11-11
+
+The exact unchanged-source profile audit at `43e6706` now passes once (1/1,
+zero failures/skips, native exit 0). This supersedes the preceding draft/audit-pending
+checkpoint. PR63 is ready for review; retained failure history and pending physical
+merge/issue acceptance are detailed in the [current guide](ios-development-guide.md#pr63-review-handoff--2026-11-11).

@@ -18,7 +18,7 @@
 
 ### Task 3: Verify and review
 
-**Prompt:** Add a separate focused UI test file using safe preview/no-event fixtures. Assert enabled/disabled state and label, capture all four actual appearances and inspect rendered label/fill contrast; retain screenshots privately. Run the shared Stream14 scheme and ordinary unsigned Release. Record actual native results and limitations, check links and `git diff --check`, commit, and obtain independent actual-file review against current main before root incorporates the fix into PR #63. This is separate from the existing unresolved profile audit and is not physical phone qualification.
+**Prompt:** Add a separate focused UI test file using safe preview/no-event fixtures. Assert enabled/disabled state and label, capture all four actual appearances and inspect rendered label/fill contrast; retain screenshots privately. Run the shared Stream14 scheme and ordinary unsigned Release. Record actual native results and limitations, check links and `git diff --check`, commit, and obtain independent actual-file review against current main before root incorporates the fix into PR #63. This is separate from the legacy profile audit history and is not physical phone qualification.
 
 ## Validation checkpoint
 
@@ -70,8 +70,8 @@ Final ordinary unsigned generic-iOS Release passed with native exit 0; log
 checkouts match the committed lockfile; private check record
 `/private/tmp/stream14-pr63-button-package-check.json`. No phone operation, recording,
 broadcast, TestFlight upload or version change occurred. The separate native
-profile audit's unknown-node failure is not waived or claimed fixed. Physical
-color verification remains a later owner visit.
+profile audit's earlier unknown-node failure is retained; its final-source result
+is recorded below. Physical color verification remains a later owner visit.
 
 Reproduce the four isolated native appearance checks with an owned Simulator:
 
@@ -112,3 +112,13 @@ no device command, recording, publishing or TestFlight action was performed for
 this preparation. Recheck the binary identity and development-profile validity
 from the private handoff before any later in-place installation; do not assume
 an earlier signing check remains current.
+
+
+## Final-source audit and review handoff
+
+The unchanged legacy profile audit at `43e6706` passed once (1/1, no failures/skips,
+native exit 0, 123.869 seconds), with the existing narrow exemption unchanged.
+Code work, targeted checks and independent full-diff review are complete: PR63 is
+ready for review. The [current handoff](ios-development-guide.md#pr63-review-handoff--2026-11-11)
+retains failure history and physical merge/issue acceptance limits; no cause or
+deterministic flakiness fix is established.
