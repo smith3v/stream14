@@ -1853,7 +1853,15 @@ teardown; recording/upload interruption still requires deliberate restart. Nativ
 startup now checks pending stop after its awaited work, and old capture callbacks
 cannot stop a new generation. Preparing/closing shows a progress state.
 
-Physical regression remains pending on a replacement build. Select one visit,
+A subsequent Development 0.3 (4), main `1960df2`, portrait-only visit failed: the
+owner saw a frozen/dim image while the app reported Preview ready, estimating
+more than 15 seconds before eventual initialization. This is an owner estimate,
+not a timed measurement. The screenshot and originals remain private. No physical
+preview pass is claimed. The next correction retires the fully stopped mixer/screen,
+overlay layer and Metal view and waits for actual advancing camera/composed frames
+before allowing Record. See the [focused implementation/evidence](2026-11-10-preview-restore-delay-implementation.md).
+
+Physical regression remains pending on that corrected source. Select one visit,
 **five minutes TOTAL**, no Google or publishing:
 
 1. Open camera in portrait, verify moving camera picture, switch to Codex for

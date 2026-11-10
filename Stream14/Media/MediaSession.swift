@@ -28,8 +28,8 @@ final class MediaSession {
     private(set) var startedAt: Date?
     private(set) var availableLenses: [RearCameraLens] = []
     private(set) var selectedLens: RearCameraLens = .wide
-    let mixer = MediaMixer(captureSessionMode: .single)
-    let preview = MTHKView(frame: .zero)
+    private(set) var mixer = MediaMixer(captureSessionMode: .single)
+    private(set) var preview = MTHKView(frame: .zero)
 
     let renderer: WebOverlayRenderer
     private(set) var profile: SessionProfile
@@ -98,9 +98,12 @@ final class MediaSession {
     private var previewResumePending = false
     private var previewResumeScheduled = false
     private var captureGeneration: UInt64 = 0
+    private var previewFrameReadiness = PreviewFrameReadiness()
     #if DEBUG
     private var previewStartFixture: (@MainActor () async throws -> Void)?
     private var previewCloseFixture: (@MainActor () async -> Void)?
+    private var previewReadyFixture: (@MainActor () -> Bool)?
+    private var previewFrameTimeout: Duration = .seconds(5)
     #endif
     var backupWarning: String { recordingFailed ? "Backup failed. Saved footage is retained as incomplete; healthy upload continues independently." : "" }
     private var previousIdleTimerDisabled: Bool?
@@ -322,6 +325,7 @@ final class MediaSession {
         previewResumePending = false
         captureGeneration &+= 1
         let generation = captureGeneration
+        previewFrameReadiness = PreviewFrameReadiness()
         busy = true
         phase = .preparing
         stopRequested = false
@@ -335,6 +339,7 @@ final class MediaSession {
             }
             guard !stopRequested else { phase = .idle; return }
             try await startPreviewCapture(generation: generation)
+            try await waitForPreviewFrames(generation: generation)
             // Native startup is not cancellation-aware. A background/Close request
             // received during it must never publish a usable preview or recorder.
             guard !stopRequested, captureForeground, captureGeneration == generation else { return }
@@ -381,6 +386,8 @@ final class MediaSession {
         preview.videoGravity = .resizeAspect
         await mixer.addOutput(preview)
         await mixer.addOutput(microphoneMeter)
+        await mixer.addOutput(PreviewFrameObserver(readiness: previewFrameReadiness, camera: true))
+        await mixer.addOutput(PreviewFrameObserver(readiness: previewFrameReadiness, camera: false))
         updateAudioRoute()
         routeTask = Task { [weak self] in
             for await _ in NotificationCenter.default.notifications(named: AVAudioSession.routeChangeNotification) {
@@ -432,6 +439,27 @@ final class MediaSession {
                 await overlay.update(image: self.renderer.image, visible: self.renderer.visible)
                 do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
             }
+        }
+    }
+
+    private func waitForPreviewFrames(generation: UInt64) async throws {
+        let clock = ContinuousClock()
+        #if DEBUG
+        let timeout = previewFrameTimeout
+        #else
+        let timeout: Duration = .seconds(5)
+        #endif
+        let deadline = clock.now.advanced(by: timeout)
+        while !stopRequested, captureForeground, captureGeneration == generation {
+            let ready: Bool
+            #if DEBUG
+            ready = previewReadyFixture?() ?? previewFrameReadiness.isReady
+            #else
+            ready = previewFrameReadiness.isReady
+            #endif
+            if ready { return }
+            guard clock.now < deadline else { throw ExperimentError.previewFrames }
+            try await Task.sleep(for: .milliseconds(10))
         }
     }
 
@@ -990,6 +1018,12 @@ final class MediaSession {
         audioRoute = "Microphone not active"
         try? await mixer.attachVideo(nil)
         try? await mixer.attachAudio(nil)
+        // SDK Screen.reset() retains its timing/latency and the view retains its
+        // last CIImage. A fully closed capture must not reuse either on return.
+        // Old capture has stopped and detached before the new single owner exists.
+        mixer = MediaMixer(captureSessionMode: .single)
+        preview = MTHKView(frame: .zero)
+        overlay = nil
         _ = try? await AVAudioSession.sharedInstance().deactivate(options: [.notifyOthersOnDeactivation])
         if backgroundTask != .invalid {
             UIApplication.shared.endBackgroundTask(backgroundTask)
@@ -1013,9 +1047,13 @@ final class MediaSession {
     /// Replaces only native camera acquisition for deterministic lifecycle tests.
     /// Production phases, permission/stop checks and teardown ownership still run.
     func installPreviewLifecycleFixture(start: @escaping @MainActor () async throws -> Void,
-                                        close: (@MainActor () async -> Void)? = nil) {
+                                        close: (@MainActor () async -> Void)? = nil,
+                                        ready: @escaping @MainActor () -> Bool = { true },
+                                        frameTimeout: Duration = .seconds(5)) {
         previewStartFixture = start
         previewCloseFixture = close
+        previewReadyFixture = ready
+        previewFrameTimeout = frameTimeout
     }
 
     /// Presentation-only fixture: no capture, encoder, writer or network is opened.
@@ -1038,12 +1076,13 @@ final class MediaSession {
     #endif
 
     private enum ExperimentError: Error {
-        case permissions, devices, emptySample
+        case permissions, devices, emptySample, previewFrames
         var description: String {
             switch self {
             case .permissions: "Camera and microphone permission are required. Enable them in Settings to retry."
             case .devices: "The rear camera or microphone is unavailable. Try again on the testing iPhone."
             case .emptySample: "The sample has no usable audio/video."
+            case .previewFrames: "Camera preview did not receive fresh frames. Close and reopen the camera to retry."
             }
         }
     }
