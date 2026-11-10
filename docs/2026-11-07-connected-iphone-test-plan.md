@@ -114,7 +114,7 @@ The integrated F7 operator flow now exists. Use a dedicated eligible event and c
 | B01 | Reuse an eligible inactive compatible existing binding | Identity/profile/security checks pass; no new stream or unwanted event mutation | Integrated; Service-gated physical check pending |
 | B02 | Explicitly prepare an unbound dedicated event; create/bind and read back | One non-reusable app-owned stream, durable ID/phase before ambiguous outcomes, verified RTMPS endpoint; no insecure fallback or key persistence/logs | Integrated; Service-gated physical check pending |
 | B03 | Prepare a second event after successful first preparation, then relaunch | Completed intent cannot permanently block later events; unresolved creation remains guarded; retry cannot create duplicates | Integrated; fixture regression plus safe physical check pending |
-| B04 | Ambiguous create/bind, cancellation, stale account/profile, incompatible/shared binding, auto-stop enabled | Read/reconcile before retry; unknown creation blocks duplicate insert; unsupported event stays blocked with explanation; operator state preserved | Fault harness/fixtures first; safe real reconciliation only |
+| B04 | Ambiguous create/bind, cancellation, stale account/profile, incompatible binding, auto-stop enabled | Read/reconcile before retry; unknown creation blocks duplicate insert; unsupported event stays blocked with explanation; operator state preserved | Fault harness/fixtures first; safe real reconciliation only |
 | B05 | Confirm Go Live for correct channel/title/visibility; auto-start on/off variants | Recorder initialization succeeds before any upload; selection/preview alone never publishes; “Live” requires confirmed YouTube state | Integrated; A3/A6 physical check pending |
 | B06 | Receiver and local file show changing alpha composition, audible mute/route and physical markers, both profiles | Same composed media, no app buttons/alerts; documented single encoder ownership; inspect actual receiver and original file | Shared native path implemented; A1/A3/A4 physical evidence pending |
 | B07 | Startup/API reject/timeout or transport connect rejection | Healthy local recording continues; no false Live state; writer initialization failure sends zero camera media | Integrated; A4/A6 physical check pending |
@@ -124,6 +124,13 @@ The integrated F7 operator flow now exists. Use a dedicated eligible event and c
 | B11 | Confirm End; duplicate taps/cancel; delayed, failed or hung remote end request | Bounded local shutdown, file finalization, truthful confirmed/unknown remote result; reconcile before retry. Never label socket close as remote completion | Integrated; A3/A6 physical check pending |
 | B12 | Account/event/profile/URL changes during active broadcast | Frozen session settings; end-first account flow, no cross-account late results or secret exposure | Integrated; physical state/locked-control check pending |
 | B13 | Wi-Fi → cellular → Wi-Fi path switch, where available and the owner permits mobile-data use | Local file remains continuous; any reconnect stays on the same eligible event, transport/remote labels remain truthful; record path-change times and receiver continuity separately from total internet loss | Integrated; A4/A8 physical check pending |
+
+Default/reusable stream keys are supported without a per-event dedicated key in
+the corrected build. Reuse of a key by another scheduled event is not itself a
+blocker. The existing initial inactive-ingestion check remains. Concurrent key use
+and sibling auto-start mitigation are deferred in
+[issue #65](https://github.com/smith3v/stream14/issues/65); this plan does not claim
+exclusive ownership or coordinated protection against those races.
 
 B08 requires loss of the PHONE'S internet connectivity. Disconnecting USB, changing only the laptop's network, or the WebKit-only request block does not establish upload outage behavior. Keep capture foreground; do not combine background interruption with this test.
 

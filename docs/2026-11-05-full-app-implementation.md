@@ -184,7 +184,7 @@ Perform the common delivery steps above, including focused tests, documentation,
 
 **Prompt:**
 
-Add a concrete binding workflow in Stream14/YouTube/YouTubeBinding.swift using the REST client. Re-fetch the selected event and any bound liveStream. Reuse only a compatible dedicated inactive binding; refuse active streams or streams shared with another unfinished event. Paginate the relevant broadcasts to detect shared bindings, inspect lifecycle/health and explain how to fix configuration in Studio. Fail closed when dedication/compatibility cannot be established.
+Add a concrete binding workflow in Stream14/YouTube/YouTubeBinding.swift using the REST client. Re-fetch the selected event and any bound liveStream. Reuse a compatible inactive/ready binding, including the default reusable stream key. Refuse active, unhealthy, incomplete or incompatible ingestion; retain selected-event/channel/account-generation and final binding-readback checks. The owner's 2026-11-10 minimal-configuration decision supersedes the former all-unfinished-events dedication scan. Do not require a different key merely because another scheduled event shares it. Concurrent encoder/sibling auto-start mitigation is explicitly deferred to [issue #65](https://github.com/smith3v/stream14/issues/65); no cross-event settings changes or coordination scans are added now.
 
 For an unbound eligible event, create one app-owned non-reusable RTMP stream (variable resolution/frame rate when supported), persist the returned resource ID immediately with minimal session intent, then bind it. Validate the returned rtmpsIngestionAddress and stream name; never fabricate an insecure RTMP fallback. Keep stream keys in memory or appropriate device-only Keychain only if verified persistence is necessary; never in a JSON manifest/log.
 
@@ -194,7 +194,7 @@ Use by-ID reads to reconcile timed-out binds. Ambiguous inserts must enter an un
 
 **Validation and acceptance:**
 
-Fixture tests cover reused/unbound/shared/active/incompatible streams, absent RTMPS fields, auto-stop, pagination, repeated taps, cancellation, create success followed by bind failure, timeout before/after response and app relaunch with pending intent. Prove retry does not create duplicates. With owner setup, use only an explicitly selected unlisted event and verify readback binding; do not publish media in this issue. Record missing external evidence.
+Fixture tests cover reused/default-key/unbound/active/incompatible streams, absent RTMPS fields, auto-stop, pagination, repeated taps, cancellation, create success followed by bind failure, timeout before/after response and app relaunch with pending intent. Prove retry does not create duplicates. With owner setup, use only an explicitly selected unlisted event and verify readback binding; do not publish media in this issue. Record missing external evidence.
 
 Perform the common delivery steps above, including focused tests, documentation, independent review/fixes and commits. Leave unmet evidence pending.
 

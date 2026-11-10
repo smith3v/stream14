@@ -81,7 +81,7 @@ nonisolated enum YouTubeMutationError: Error, Equatable { case rejected(YouTubeR
 
 nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
     case studioResolutionRequired
-    case busy, deadline, ineligibleEvent, unsafeStream, incompatibleStream, sharedStream, dedicationUnknown
+    case busy, deadline, ineligibleEvent, unsafeStream, incompatibleStream
     case invalidDestination, intentUnavailable, pendingOtherContext, unresolvedInsert, bindingConflict, bindingUnconfirmed
     var errorDescription: String? {
         switch self {
@@ -89,10 +89,8 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         case .busy: "YouTube preparation is already running. Wait for it to finish."
         case .deadline: "YouTube preparation timed out. Retry to reconcile the existing request; no duplicate stream will be created."
         case .ineligibleEvent: "The event is no longer eligible. Check its state and disable auto-stop in YouTube Studio, then refresh."
-        case .unsafeStream: "The ingestion stream is active, unhealthy or incomplete. Configure a dedicated inactive stream in YouTube Studio."
+        case .unsafeStream: "The ingestion stream is active, unhealthy or incomplete. Wait for it to become inactive or inspect it in YouTube Studio."
         case .incompatibleStream: "The event's stream does not match this session profile. Correct its resolution/frame rate in YouTube Studio."
-        case .sharedStream: "Another unfinished event uses this stream. Choose a dedicated stream in YouTube Studio."
-        case .dedicationUnknown: "The app could not establish that this stream is dedicated. Check the event and stream in YouTube Studio."
         case .invalidDestination: "YouTube did not return a supported secure ingestion destination. Check the stream in YouTube Studio."
         case .intentUnavailable: "The pending YouTube request could not be saved or read. No new stream will be created; resolve local storage before retrying."
         case .pendingOtherContext: "This event has a pending request with another media profile. Resolve its binding in YouTube Studio before changing that profile."
@@ -165,7 +163,6 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
               event.scheduledStart != nil, ["public", "unlisted", "private"].contains(event.status?.privacyStatus ?? "") else {
             throw YouTubeBindingError.ineligibleEvent
         }
-        try await dedicated(streamID: streamID, eventID: event.id, channelID: channel.id, generation: generation)
         let stream = try await checkedStream(streamID, channel.id, profile, generation, appCreated: false)
         let latest = try await client.broadcast(id: event.id, channelID: channel.id, generation: generation)
         guard latest == event else { throw YouTubeBindingError.bindingConflict }
@@ -233,7 +230,6 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         }
         guard let streamID = intent.createdStreamID, !streamID.isEmpty else { throw YouTubeBindingError.unresolvedInsert }
         _ = try await checkedStream(streamID, channelID, profile, generation, appCreated: true)
-        try await dedicated(streamID: streamID, eventID: eventID, channelID: channelID, generation: generation)
         event = try await eligible(eventID, channelID, generation, expectedMonitorEnabled: expectedMonitorEnabled)
         if let bound = event.contentDetails?.boundStreamId, !bound.isEmpty {
             guard bound == streamID else { throw YouTubeBindingError.bindingConflict }
@@ -272,7 +268,6 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
 
     private func prepared(event: YouTubeBroadcast, streamID: String, channelID: String, profile: SessionProfile,
                           generation: UInt64, appCreated: Bool) async throws -> PreparedYouTubeIngestion {
-        try await dedicated(streamID: streamID, eventID: event.id, channelID: channelID, generation: generation)
         let stream = try await checkedStream(streamID, channelID, profile, generation, appCreated: appCreated)
         let latest = try await eligible(event.id, channelID, generation)
         guard latest.contentDetails?.boundStreamId == streamID else { throw YouTubeBindingError.bindingConflict }
@@ -285,17 +280,6 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         let stream = try await client.ingestionStream(id: id, channelID: channelID, generation: generation)
         _ = try stream.destination(channelID: channelID, profile: profile, appCreated: appCreated)
         return stream
-    }
-
-    private func dedicated(streamID: String, eventID: String, channelID: String, generation: UInt64) async throws {
-        let events = try await client.allBroadcasts(channelID: channelID, generation: generation)
-        guard events.contains(where: { $0.id == eventID }) else { throw YouTubeBindingError.dedicationUnknown }
-        for other in events where other.id != eventID {
-            if ["complete", "revoked"].contains(other.status?.lifeCycleStatus ?? "") { continue }
-            guard ["created", "ready", "testStarting", "testing", "liveStarting", "live"].contains(other.status?.lifeCycleStatus ?? ""),
-                  let details = other.contentDetails else { throw YouTubeBindingError.dedicationUnknown }
-            if details.boundStreamId == streamID { throw YouTubeBindingError.sharedStream }
-        }
     }
 
     private func loadIntent(channelID: String, eventID: String) throws -> PendingBroadcastIntent? {

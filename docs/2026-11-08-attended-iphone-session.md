@@ -38,8 +38,9 @@ INCOMPLETE/BLOCKED if setup consumes the budget; never extend automatically.
    Aim camera at a non-private test scene. The owner handles credentials/consent;
    never request passwords, passcodes, codes, tokens or stream keys in chat.
 3. For streaming, privately recheck intended channel/title, Unlisted visibility,
-   encoder eligibility, monitor setting, auto-start/auto-stop and dedicated safe
-   binding. The previous `test app 1` was Unlisted, auto-start Off, auto-stop Off;
+   encoder eligibility, monitor setting, auto-start/auto-stop and compatible inactive
+   binding. The corrected build supports the existing/default key; no separate key
+   is required merely because another scheduled event shares it. The previous `test app 1` was Unlisted, auto-start Off, auto-stop Off;
    that old observation does not establish today's state. Prepare a second-device
    receiver/player before the clock. Use no real match or valuable event.
 4. Prepare private evidence paths and a wrap-up route. If remote state is unknown,

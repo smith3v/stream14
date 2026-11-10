@@ -575,10 +575,10 @@ do not combine them. Use the endpoint reference rather than copying an example
 that combines filters. See [broadcast listing][broadcast-list], [stream creation][stream-insert],
 [binding][bind], and [transition rules][transition].
 
-Reuse an existing compatible binding without changing it. Refuse an ingestion stream
-already active or shared with another unfinished event; explain that the user should
-configure a dedicated stream in Studio. Do not take over another encoder or silently
-replace an incompatible binding. If there is no binding, create one non-reusable,
+Reuse an existing compatible binding, including YouTube's default reusable stream,
+without changing it or requiring a new stream key per event. Initial preparation
+still refuses active/unhealthy/incomplete ingestion and an incompatible profile.
+Do not silently replace a binding or change another event's settings. If there is no binding, create one non-reusable,
 app-owned RTMP ingestion resource, request variable resolution/frame rate where
 supported, and use its returned RTMPS endpoint. Track the created ID immediately so
 retrying a later bind does not repeatedly create resources. An ambiguous create
@@ -586,11 +586,12 @@ response requires reconciliation or operator action, not blind repeated insertio
 
 F5 implementation (2026-11-07): `YouTubeBinding.prepareConfirmed` is an explicit
 component for the later Go Live coordinator; listing, selection and preview do not
-invoke it. It checks the actual channel and selected event again, then checks all
-pages of `broadcastStatus=all,broadcastType=all` for other unfinished bindings.
-Existing reusable streams are not presumed shared: known ready/inactive, healthy,
-profile-compatible streams can be reused only after current dedication is established.
-Unknown lifecycle/health/reuse/compatibility information fails closed. Newly created
+invoke it. It checks the actual channel, selected event and existing stream again.
+As updated by the owner's 2026-11-10 minimal-configuration decision, it no longer
+scans all other broadcasts or rejects a reusable stream merely because another
+unfinished event shares its key. Known ready/inactive, healthy, profile-compatible
+streams can be reused. Unknown selected-event lifecycle/health/reuse/compatibility
+information still fails closed. Newly created
 streams request RTMP with paired variable resolution/frame rate and `isReusable=false`.
 
 An atomic, backup-excluded local journal stores only operation/channel/event/profile
@@ -604,6 +605,17 @@ preflight failure permits a later explicit retry. Known created IDs survive bind
 failure and are read before retrying; binds are sent once and reconciled by event ID.
 The workflow has one in-flight operation and a 45-second deadline with cancellation.
 No automatic remote deletion/unbinding or editorial/auto-start/auto-stop updates occur.
+
+Owner decision (2026-11-10): advanced concurrent-use mitigation is deferred to
+[issue #65](https://github.com/smith3v/stream14/issues/65). The app does not inspect
+sibling broadcasts' auto-start settings or claim exclusive ownership of a reusable
+key. Another encoder can race the inactive read, and a sibling configured to
+auto-start may receive/publish the same incoming media. This is a potential risk,
+not an observed incident. Existing same-event supervision/reconnect remains
+unchanged and can accept active ingestion for its already-admitted RAM context;
+explicit resume still requires inactive/ready ingestion. No new scans, settings
+changes or cross-event coordination are added for this deferred risk.
+
 When Studio resolves an ambiguous request by binding the event, verified readback
 marks that journal entry prepared without inventing a known app-created ID. If that
 event later becomes unbound, the prior unknown-create guard still prevents blind insertion.
@@ -1261,7 +1273,7 @@ a timeout preserves the file and requires inspection, with no repair/transcode.
 Foreground/relaunch reconciliation reads only. Transient foreground inactivity
 never cancels a healthy session. Explicit camera reopen rechecks permissions and
 capture; the separate **Resume same event…** action reads the original channel,
-event and dedicated inactive ingestion binding, then presents title/visibility
+event and original compatible inactive ingestion binding, then presents title/visibility
 confirmation. Confirmation starts a new writer/UUID/timeline before upload.
 A live event is observed rather than transitioned live again. Resume requires
 no unsettled/ambiguous transition; unknown Complete remains a barrier. Unknown
