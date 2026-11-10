@@ -30,7 +30,8 @@ struct BroadcastControlsView: View {
                     broadcast.requestConfirmation(channel: selection.channel, event: selection.selected)
                 }
                 .frame(minHeight: 44)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
+                .foregroundStyle(.primary)
                 .disabled(selection.selected == nil || !media.broadcastCaptureReady || !media.broadcastOverlayReady ||
                           !(media.canRecord || media.hasStartedWriting))
                 .accessibilityIdentifier("goLive")

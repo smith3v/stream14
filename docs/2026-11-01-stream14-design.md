@@ -517,6 +517,12 @@ truncating essential actions. Test landscape operation on the 13 mini, including
 areas, permission-denied screens, keyboard entry, and failure warnings. Preserve the
 complete 16:9 output in preview; safe areas affect controls, not the video canvas.
 
+The monochrome streaming action uses native bordered styling and semantic primary
+foreground so its label remains readable in light/dark and unavailable states.
+Unavailable actions remain disabled under the existing readiness rules; readable
+text must not be implemented by enabling a blocked publish action. Native fill
+and accessibility state continue to distinguish unavailability.
+
 ## 4. Browser overlay contract
 
 Reference: [the supplied scoreboard][overlay], inspected on 2026-11-01 through a
