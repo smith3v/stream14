@@ -470,3 +470,32 @@ handoff evidence are in the
 No phone, provider request, publishing, version bump or TestFlight replacement
 occurred in this implementation. Root publishes a reviewed PR into main; the
 installed 0.3 (4) still requires a later replacement before the physical retest.
+
+
+### Default-key development phone result — 2026-11-10
+
+At the owner's request, the reviewed default-key candidate was normally signed and
+installed in place on the connected 13 mini, preserving its container. The current
+phone app is **Development 0.3 (4), source `625df2a`**, replacing the historical
+TestFlight installation; no TestFlight upload/version bump occurred. Setup
+readiness and broadcasting used separately authorized visits. The owner confirmed
+Live, End/local save, and local camera/overlay/speech playback; root independently
+observed normal YouTube watch playback with the composition and its subsequent
+end. The owner also confirmed speech audible on YouTube. The default key and both
+scheduled-event configurations were retained. See the
+[scoped phone report](2026-11-10-default-key-phone-test.md).
+
+The bounded phone-copy procedure stopped at its cutoff without transferring media.
+The owner then supplied an exported original locally for offline measurements.
+Do not equate the short development success with TestFlight/A1–A9 completion;
+physical preview recovery from #64, broad qualification and deferred #65 remain
+separate. No additional phone test starts without a newly coordinated visit.
+
+
+Offline read/decode of the owner-exported original completed without changing the
+file: 128.433 seconds, H.264 1920×1080, AAC stereo 44.1 kHz, 3,821 decoded video
+frames; no invalid/non-increasing PTS or ≥500 ms video intervals. The largest
+interval was 296.667 ms near the end; 39 missing-30-Hz intervals are an estimate,
+not a measured pipeline-drop count or A2 pass. No numerical A/V sync was measured.
+The private export matches the phone inventory by filename/size, not phone-side
+hash. Full scope and private artifact references are in the phone report.
