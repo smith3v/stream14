@@ -572,3 +572,19 @@ The previous installed source remains `625df2a`; merged preview recovery is stil
 physically unverified. The [candidate handoff and five-minute portrait-first
 preview-only card](2026-11-10-merged-main-phone-candidate.md) provide private
 artifact locations, exact build command and the next separately coordinated visit.
+
+
+### Authorized merged-main installation — 2026-11-10
+
+The owner confirmed readiness for the preview-only five-minute visit. Main
+`1960df2` Development 0.3 (4) was installed in place and ordinarily launched with
+native exit 0 (5.993/1.045 seconds), preserving the app container without uninstall
+or reset. This replaces the previously recorded phone source `625df2a`; no
+TestFlight upload/version change occurred. Visit start/cutoff and private native
+proof are in the [candidate handoff](2026-11-10-merged-main-phone-candidate.md).
+Physical preview outcomes remain pending owner feedback; install is not a pass.
+
+Issues #18 and #20 were independently audited against current acceptance and
+closed with fixture/coordinator plus the earlier successful Unlisted phone test
+evidence; epic #13's two checklist entries were fetched back and verified checked.
+Other physical, diagnostic, final TestFlight and A1–A9 gates remain open.

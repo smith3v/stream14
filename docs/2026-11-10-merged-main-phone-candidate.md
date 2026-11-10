@@ -32,8 +32,9 @@ Private local artifacts, not Git attachments:
 - Isolated pinned cache: `/private/tmp/stream14-merged-main-phone-packages`.
 
 No install, launch, camera/microphone access, provider request, recording,
-broadcasting or TestFlight upload occurred. The last recorded installed phone app
-remains Development source `625df2a`, whose
+broadcasting or TestFlight upload occurred during the laptop preparation stage.
+Before the separately authorized visit below, the installed phone app was
+Development source `625df2a`, whose
 [short broadcast result](2026-11-10-default-key-phone-test.md) does not test the
 newly combined preview fix. Preserve the existing container and originals during
 any later in-place install; never uninstall/reset as routine preparation.
@@ -86,3 +87,34 @@ and independent source review as documented in the
 Those results are inherited evidence, not rerun or physical passes in this
 preparation. This documentation-only handoff requires link/content checks,
 `git diff --check` and independent review before PR publication.
+
+## Separately authorized in-place installation
+
+The owner subsequently confirmed the phone was connected/unlocked with recording
+stopped and agreed to the five-minute preview-only visit. Device operations began
+at **21:25:21.272815 UTC**, with a strict **21:30:21.272815 UTC** cutoff. Normal
+in-place installation succeeded (native exit 0, 5.993 seconds), followed by an
+ordinary launch (native exit 0, 1.045 seconds). No uninstall, reset or container
+read was performed. The recorded installed source is now **Development 0.3 (4),
+main `1960df2`**, including the preview/default-key fixes; it is not TestFlight.
+
+Private install/launch evidence is retained under
+`/private/tmp/stream14-preview-phone-{visit,install,launch,install-outcome,launch-outcome}.json`.
+The owner was asked to use ordinary Open camera controls in portrait, switch to
+Codex for about five seconds and return twice, without Record or Go Live. Physical
+preview-return, manual Close and optional landscape results remain pending until
+explicitly reported; installation/launch success alone is not a camera pass.
+
+Independent actual-diff preparation review found no material issues. The reviewer
+also verified the native successful build and normal strict/deep signature; all
+54 local links and diff checks passed. The attended-result update is reviewed
+separately before PR handoff.
+
+At 21:29 UTC root instructed the owner to close the camera and leave recording
+and upload stopped before the cutoff. At this checkpoint no physical preview
+result or final camera-closed confirmation has been received; both remain
+unknown, rather than inferred from a successful launch. The install agent has
+finished its native commands; no additional phone command is scheduled. Late
+owner observations may update this report without restarting device tests.
+The focused independent review of the actual install artifacts and documentation
+found no material issues.

@@ -1876,3 +1876,10 @@ built, but not installed. Use the [prepared candidate handoff and timed preview-
 card](2026-11-10-merged-main-phone-candidate.md) for the next separately coordinated
 visit; it includes installation/wrap-up in the five-minute total. No recording,
 broadcast or TestFlight replacement is part of that card.
+
+
+The separately authorized preview-only visit installed and launched main `1960df2`
+Development 0.3 (4) in place on 2026-11-10. This supersedes the prior recorded
+installed source `625df2a`; physical preview results and exact visit cutoff remain
+in the [merged-main candidate handoff](2026-11-10-merged-main-phone-candidate.md).
+Installation alone does not qualify preview recovery or final TestFlight.
