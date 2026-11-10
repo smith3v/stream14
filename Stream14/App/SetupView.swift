@@ -98,6 +98,7 @@ struct SetupView: View {
             .task {
                 guard !runsIsolatedMediaHarness else { return }
                 experiment.setOverlayForeground(scenePhase != .background)
+                experiment.setCaptureForeground(scenePhase != .background)
                 if scenePhase == .active { broadcast.foregroundReturned() }
                 while !Task.isCancelled {
                     experiment.reconcileOverlay()
@@ -110,11 +111,12 @@ struct SetupView: View {
                 guard !runsIsolatedMediaHarness else { return }
                 if phase == .active {
                     experiment.setOverlayForeground(true)
+                    experiment.setCaptureForeground(true)
                     broadcast.foregroundReturned()
                 }
                 if phase == .background {
                     experiment.setOverlayForeground(false)
-                    experiment.interrupt(.background)
+                    experiment.setCaptureForeground(false)
                 }
             }
     }
@@ -192,7 +194,7 @@ struct SetupView: View {
     private func previewPanel(width: CGFloat, maximumHeight: CGFloat? = nil) -> some View {
         let fittedWidth = min(width, (maximumHeight ?? .greatestFiniteMagnitude) * 16.0 / 9.0)
         return VStack(alignment: .leading, spacing: 8) {
-            if experiment.phase != .idle {
+            if [.preview, .starting, .recording].contains(experiment.phase) {
                 ExperimentPreview(view: experiment.preview)
                     .frame(width: fittedWidth, height: fittedWidth * 9.0 / 16.0)
                     .background(.black)
@@ -200,6 +202,11 @@ struct SetupView: View {
                     .accessibilityIdentifier("cameraPreview")
                     .clipped()
 
+            }
+            if experiment.phase == .preparing || experiment.phase == .stopping {
+                ProgressView(experiment.phase == .preparing ? "Opening camera…" : "Closing camera…")
+                    .frame(width: fittedWidth, height: fittedWidth * 9.0 / 16.0)
+                    .accessibilityIdentifier("cameraTransition")
             }
             if experiment.phase == .idle {
                 ContentUnavailableView("Camera closed", systemImage: "video.slash", description: Text("Open the camera to rehearse or record. This does not publish to YouTube."))

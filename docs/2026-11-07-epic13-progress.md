@@ -499,3 +499,30 @@ interval was 296.667 ms near the end; 39 missing-30-Hz intervals are an estimate
 not a measured pipeline-drop count or A2 pass. No numerical A/V sync was measured.
 The private export matches the phone inventory by filename/size, not phone-side
 hash. Full scope and private artifact references are in the phone report.
+
+## Preview-only app-switch finding and fix — 2026-11-10
+
+The owner found TestFlight 0.3 (4) **Open camera → Codex → stream14** left the
+overlay over black camera video. This was preview only, with the phone vertical
+throughout and no rotation. Main `ea90bd3` restores overlay/read-only YouTube on
+foreground but never restores explicitly opened camera preview. Native startup
+also lacked a stop check after its awaited start.
+
+Focused branch `codex/fix-preview-foreground` in
+`/private/tmp/stream14-preview-foreground-fix`, app source `b85c8e3`, retains only
+preview intent and reopens fresh capture after completed teardown and foreground
+return. Close, recording start, confirmed broadcast preparation and terminal
+failure cancel that intent. Normal foreground Stop recording returns to preview
+eligibility; interrupted recording/upload never restarts automatically. Stale
+capture callbacks are generation-fenced; opening/closing shows progress rather
+than an inactive viewport. Portrait/landscape UI does not change the media canvas.
+
+Authoritative native result: **70 passes, zero failures/skips**, four affected
+suites; ordinary unsigned Release passed. Independent actual full-diff and final
+source/evidence review found no material issues. First-run fixture failures and
+corrections, exact commands/private artifacts and the pending five-minute physical
+portrait/landscape regression are recorded in the
+[implementation checkpoint](2026-11-10-preview-foreground-implementation.md).
+No phone, provider API, publishing, version bump or TestFlight replacement occurred.
+PR #63's separate unmerged interface work was not folded into this fix. Root owns
+publication into main and later normally signed replacement delivery.
