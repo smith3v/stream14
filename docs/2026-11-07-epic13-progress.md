@@ -441,3 +441,32 @@ because the last revocation left the app disconnected. Then, only when prepared
 and explicitly operator-confirmed, S1 short Unlisted start/receiver/End. Keep the
 remaining physical inventory pending, five-minute TOTAL visits, retained originals
 and separately agreed A2/A7. Issue #26/epic #13 are not complete from delivery alone.
+
+
+## Default stream-key setup finding — 2026-11-10
+
+The owner attempted the short TestFlight 0.3 (4) YouTube test with two scheduled
+events that both used the default stream key. The app's blanket unfinished-event
+sharing guard rejected preparation before RTMPS upload; healthy local recording
+was intentionally left running. Firefox inspection showed both test events were
+Unlisted with manual start/stop, without changing settings or exposing credentials.
+A new-key form was cancelled without creating a key. No YouTube streaming pass is
+claimed from that rejection or the diagnosis.
+
+The owner requested minimal YouTube configuration and explicitly deferred advanced
+concurrent-key mitigation. [Issue #65](https://github.com/smith3v/stream14/issues/65)
+records possible competing encoders or sibling auto-start with no observed incident.
+Focused source `625df2a` on `codex/default-stream-reuse` in
+`/private/tmp/stream14-default-stream-support` removes only the blanket dedication
+scan. Initial and explicit-resume selected-event/channel/profile/health/inactive
+and RTMPS checks, generation guards, durable mutation barriers and binding readback
+remain. Live supervision/reconnect and media ownership are unchanged. No new key,
+rebind or other-event setting change is introduced.
+
+The first focused native run passed 87 tests in three affected suites with no
+failures/skips; independent actual full-diff review is clean. Final Release and
+handoff evidence are in the
+[implementation checkpoint](2026-11-10-default-stream-implementation.md).
+No phone, provider request, publishing, version bump or TestFlight replacement
+occurred in this implementation. Root publishes a reviewed PR into main; the
+installed 0.3 (4) still requires a later replacement before the physical retest.

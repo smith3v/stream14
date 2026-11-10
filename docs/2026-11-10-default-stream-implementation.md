@@ -22,3 +22,52 @@ In Stream14/YouTube/YouTubeBinding.swift remove calls to the dedication scan for
 
 **Prompt:**
 Run affected native binding/coordinator/client suites and an unsigned Release build, with pinned warmed packages, new result paths and an owned Simulator. No phone, camera, provider call or publishing. Update canonical F5/F8 wording, full plan and owner setup/test instructions to match the default-key workflow and deferred limitation. Have a new independent agent inspect actual full diff against main, requirements and validation. Resolve material findings, record exact results/limits and commit; root publishes the PR into main. No version bump or automatic merge.
+
+
+## Validation checkpoint
+
+Source `625df2a` runs against main `ea90bd3`, without the unmerged interface or
+preview-recovery changes. The retained pinned HaishinKit checkout was verified at
+`497f742c5f2c04cf3ca085378e660a273e351788`. Xcode 27.2 (27B52), iPhone 13 mini
+Simulator iOS 27.2, shared Stream14 scheme, separate owned E0 device.
+
+The authoritative native result reports **87 executed passes, zero failures/skips,
+three suites**: YouTubeBindingTests, YouTubeClientTests and BroadcastSessionTests.
+Swift Testing body: 4.583 seconds; entire result invocation: 156.494 seconds.
+Result `/private/tmp/stream14-default-stream-focused.xcresult`, log
+`/private/tmp/stream14-default-stream-focused.log`, actual summary
+`/private/tmp/stream14-default-stream-test-summary.json`. No earlier failed run
+is replaced or hidden; this first focused run passed. Owned E0 was shut down with
+fixtures retained after the test process finished; D6 and the phone were untouched.
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Debug \
+  -destination 'platform=iOS Simulator,id=E0ABEB8B-B5A5-4FC9-AD6A-FA6A5908A78C' \
+  -derivedDataPath /private/tmp/stream14-default-stream-build \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
+  -disableAutomaticPackageResolution -parallel-testing-enabled NO \
+  -only-testing:Stream14Tests/YouTubeBindingTests \
+  -only-testing:Stream14Tests/YouTubeClientTests \
+  -only-testing:Stream14Tests/BroadcastSessionTests \
+  -resultBundlePath /private/tmp/a-new-default-stream-result.xcresult test
+```
+
+A separate agent inspected the actual full diff against main, selected-event/
+ingestion guards, mutation journals, unchanged coordinator/media and the latest
+owner-approved deferral. It found no material issues at `625df2a`. The ordinary unsigned Release build
+then exited 0 with **BUILD SUCCEEDED**; log
+`/private/tmp/stream14-default-stream-release.log`. It uses generic iOS destination,
+Release configuration, the same warmed pinned packages, a separate derived-data
+path and `CODE_SIGNING_ALLOWED=NO`. This is build evidence, not distribution
+validation or a new TestFlight binary. Final changes after the tested source are
+documentation only; no further native run is needed for that handoff.
+No physical camera, provider request or publication was used; real default-key
+YouTube reception and remaining A1–A9 qualification stay pending. The already
+installed TestFlight 0.3 (4) is not replaced by this source branch.
+
+
+Final focused independent review also inspected the actual native summary/logs,
+Release success and documentation-only handoff: no material findings. All 86
+changed-document local links resolved, `git diff --check` passed, and current main
+was re-fetched at `ea90bd3` before handoff. Root owns publication; no automatic
+merge, phone operation or replacement distribution is claimed.
