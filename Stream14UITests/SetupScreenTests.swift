@@ -101,6 +101,37 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["No scheduled event selected"].exists)
     }
 
+    func testMoreMenuRemainsUsableDuringSessionUpdates() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft, .landscapeRight] {
+            XCUIDevice.shared.orientation = orientation
+            let app = fixtureApp("menu-updates")
+            let status = app.staticTexts["mediaStatus"]
+            XCTAssertTrue(status.waitForExistence(timeout: 5))
+            app.buttons["sessionMore"].tap()
+            let settings = app.buttons["openSettings"]
+            XCTAssertTrue(settings.waitForExistence(timeout: 3))
+            let before = status.label
+            let deadline = Date().addingTimeInterval(3)
+            repeat {
+                XCTAssertTrue(settings.exists && settings.isHittable,
+                    "More must remain available while session status changes")
+                RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            } while Date() < deadline
+            XCTAssertNotEqual(status.label, before, "The fixture must update under the open menu")
+            settings.tap()
+            XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 3))
+            app.buttons["Done"].tap()
+            if orientation != .portrait {
+                navigate("Recordings", in: app)
+                navigate("Session", in: app)
+            }
+            XCTAssertFalse(app.buttons["endBroadcast"].exists)
+            XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Not started")
+            app.terminate()
+        }
+    }
+
     func testNativeDestinationsNeverStartCaptureOrPublishing() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = fixtureApp()

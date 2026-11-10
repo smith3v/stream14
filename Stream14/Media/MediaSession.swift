@@ -1132,6 +1132,13 @@ final class MediaSession {
         previewFrameTimeout = frameTimeout
     }
 
+    /// Bounded UI-regression input; never opens media or changes output ownership.
+    func updateMenuInterfaceFixture(_ tick: Int) {
+        guard interfaceFixtureMode, interfaceFixtureName == "menu-updates" else { return }
+        microphoneLevel = Double(tick % 10) / 10
+        message = "Fixture status update \(tick)"
+    }
+
     /// Presentation-only fixture: no capture, encoder, writer or network is opened.
     func installInterfaceFixture(_ state: String) {
         interfaceFixtureMode = true

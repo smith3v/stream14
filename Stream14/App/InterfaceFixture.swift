@@ -11,6 +11,16 @@ import Foundation
         let media = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in },
             profile: .fullHD, persistProfile: { _ in }, authorizeCapture: { false })
         media.installInterfaceFixture(name == "policy-unaccepted" ? "idle" : name)
+        if name == "menu-updates" {
+            // One finite fixture task, not camera/meter work or a production timer.
+            Task { @MainActor in
+                for tick in 1...200 {
+                    guard !Task.isCancelled else { return }
+                    media.updateMenuInterfaceFixture(tick)
+                    do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+                }
+            }
+        }
         let client = YouTubeClient(token: { _ in "invented-fixture-token" }, current: { _ in true },
             send: { _ in throw YouTubeReadError.unavailable })
         let events = YouTubeEventSelection(authorization: authorization, client: client)

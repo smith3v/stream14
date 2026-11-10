@@ -2081,3 +2081,22 @@ landscape, VoiceOver/larger-text or file/receiver pass is inferred. See the
 [attended source-specific report](2026-11-10-pr63-preview-integration-implementation.md#attended-development-phone-installation-and-interface-findings--2026-11-10)
 for native timings, private artifact references and remaining scope. Further
 guided device checks need a newly coordinated bounded visit.
+
+
+### More dropdown verification — 2026-11-10
+
+The direct-development menu candidate `4c097ae` is now the recorded installed
+Development 0.3 (4), superseding `6459c74`; no TestFlight upload/version change was
+made. Normal in-place install/ordinary launch succeeded and the owner explicitly
+confirmed the flickering resolved. The separate blank prominent streaming-button
+contrast finding was not part of this installed menu build.
+
+The unchanged original menu passed a safe functional baseline, so no visual
+reproduction is claimed. The stable-toolbar candidate passed two native UI cases
+covering a three-second open menu under 10 Hz fixture updates, Settings, portrait,
+both landscapes and ordinary navigation, with zero failures/skips; native Release
+also passed. No extra health fixture or broader sweep was added after owner
+confirmation. Exact commands, private native evidence, installation cutoff and
+scope are in the [menu implementation checkpoint](2026-11-10-pr63-more-menu-implementation.md).
+No whole-interface, VoiceOver, recording/receiver or TestFlight acceptance follows
+from this narrow result. Camera preview placement remains as accepted by the owner.

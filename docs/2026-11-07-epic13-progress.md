@@ -699,3 +699,23 @@ legacy native AX audit. It was supplied after the guided cutoff, not within-visi
 measurement evidence. PR63 stays draft; the separate native contrast
 investigation is not waived or claimed resolved. The [source-specific phone report](2026-11-10-pr63-preview-integration-implementation.md#attended-development-phone-installation-and-interface-findings--2026-11-10)
 retains private proof locations and the earlier candidate's evidence limits.
+
+
+### PR63 More-dropdown fix and direct owner verification — 2026-11-10
+
+Menu runtime `4c097ae` in `/private/tmp/stream14-pr63-menu-fix` gives More an explicit
+stable toolbar item and a separate menu-specific observation boundary. It retains
+Settings, landscape Navigate and manual overlay controls; preview placement is
+unchanged as accepted by the owner. Original-menu functional baseline passed one
+case; no automated visual flicker reproduction is claimed. The candidate's two
+native UI cases and ordinary unsigned Release exited 0. Root then normally signed,
+installed and launched the same Development 0.3 (4) source in place at the owner's
+request. The owner explicitly confirmed the flickering resolved. Current installed
+source is `4c097ae`, superseding `6459c74`, without TestFlight/version changes.
+
+See the [focused menu checkpoint](2026-11-10-pr63-more-menu-implementation.md) for
+private artifacts, original cutoff, timings and exact limitations. No broader UI,
+VoiceOver, rotation/media/receiver acceptance is inferred; the blank streaming-
+button contrast issue was not included in this phone candidate. Independent final
+review and combination of that separate fix remain root-owned. All native jobs
+for this menu stage are terminal/reaped, and no extra health fixture was added.
