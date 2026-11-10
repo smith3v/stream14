@@ -132,31 +132,51 @@ struct SetupView: View {
                 .navigationTitle("stream14")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    Menu {
-                        if landscape {
-                            Menu("Navigate", systemImage: "arrow.left.arrow.right") {
-                                Button("Session", systemImage: "video") { destination = .session }
-                                Button("Recordings", systemImage: "film.stack") { destination = .recordings }
-                            }
-                        }
-                        Button("Settings", systemImage: "gearshape") { showingSettings = true }
-                            .accessibilityIdentifier("openSettings")
-                        if destination == .session {
-                            Button(experiment.renderer.health.manuallyHidden ? "Show overlay" : "Hide overlay manually",
-                                   systemImage: "eye") {
-                                experiment.renderer.setManuallyHidden(!experiment.renderer.health.manuallyHidden)
-                            }
-                            .accessibilityValue(experiment.renderer.health.manuallyHidden ? "Hidden" : "Shown")
-                            .accessibilityIdentifier("manualOverlayVisibility")
-                            Button("Reload overlay", systemImage: "arrow.clockwise") { experiment.renderer.reload() }
-                                .disabled(experiment.overlayURL.isEmpty)
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle").frame(width: 44, height: 44)
+                    ToolbarItem(id: "workspace-more", placement: .topBarTrailing) {
+                        WorkspaceMoreMenu(landscape: landscape, destination: $destination,
+                            showingSettings: $showingSettings, renderer: experiment.renderer,
+                            overlayManuallyHidden: experiment.renderer.health.manuallyHidden,
+                            overlayConfigured: !experiment.overlayURL.isEmpty)
                     }
-                    .accessibilityLabel("More")
-                    .accessibilityIdentifier("sessionMore")
                 }
+        }
+    }
+
+    /// Keep the native dropdown's identity and observations separate from the
+    /// frequently changing meter/status content in the workspace.
+    private struct WorkspaceMoreMenu: View {
+        let landscape: Bool
+        @Binding var destination: Destination
+        @Binding var showingSettings: Bool
+        let renderer: WebOverlayRenderer
+        let overlayManuallyHidden: Bool
+        let overlayConfigured: Bool
+
+        var body: some View {
+            Menu {
+                if landscape {
+                    Menu("Navigate", systemImage: "arrow.left.arrow.right") {
+                        Button("Session", systemImage: "video") { destination = .session }
+                        Button("Recordings", systemImage: "film.stack") { destination = .recordings }
+                    }
+                }
+                Button("Settings", systemImage: "gearshape") { showingSettings = true }
+                    .accessibilityIdentifier("openSettings")
+                if destination == .session {
+                    Button(overlayManuallyHidden ? "Show overlay" : "Hide overlay manually",
+                           systemImage: "eye") {
+                        renderer.setManuallyHidden(!renderer.health.manuallyHidden)
+                    }
+                    .accessibilityValue(overlayManuallyHidden ? "Hidden" : "Shown")
+                    .accessibilityIdentifier("manualOverlayVisibility")
+                    Button("Reload overlay", systemImage: "arrow.clockwise") { renderer.reload() }
+                        .disabled(!overlayConfigured)
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle").frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("More")
+            .accessibilityIdentifier("sessionMore")
         }
     }
 
