@@ -559,3 +559,24 @@ authoritative native summary, Release success and integration checkpoints, with
 no material findings. All 88 changed-document local links resolve and
 `git diff --check` passes. Owned E0 is shut down with fixtures retained; the
 other task's D6 simulator was untouched.
+
+
+## Preview return delayed on merged source — 2026-11-10
+
+The owner’s portrait preview-only visit on Development 0.3 (4), main `1960df2`,
+failed: preview re-initialized with a frozen/dim picture while status said Preview
+ready, then eventually initialized. The owner estimated more than 15 seconds;
+this is not a measured duration or a physical pass. No recording/live restart was
+requested. Screenshots remain private.
+
+Focused source `70eca51` in `codex/fix-preview-restore-delay`, isolated clone
+`/private/tmp/stream14-preview-restore-delay`, retires fully stopped mixer/screen,
+Metal preview and overlay state, and waits for actual fresh raw/composed frame
+evidence before marking preview ready. A pinned SDK regression demonstrates retained
+Screen timing can suppress post-gap output; no guessed timestamp adjustment or
+package change is used. Four affected native suites pass **76/76**, zero
+failures/skips; ordinary unsigned Release passes. Exact source, reproduction,
+initial nonpassing attempts, private artifacts and physical limitations are in the
+[implementation checkpoint](2026-11-10-preview-restore-delay-implementation.md).
+Independent final source/evidence review precedes publication; corrected phone
+recovery remains pending, as do the separate interruption/reconnect/release gates.

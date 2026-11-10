@@ -22,3 +22,75 @@ Prefer recreating the fully stopped mixer/screen and preview to a guessed wall-c
 
 **Prompt:**
 Extend `PreviewForegroundTests` with mixer/view identity retirement only after completed teardown, readiness blocking without raw/composed frames, early Close/background cancellation, and stalled readiness failure. Exercise actual metadata observers with generated samples. Run affected native suites and ordinary unsigned Release using the shared Stream14 scheme, a dedicated owned Simulator, unique results and verified pinned package cache. Do not touch the phone or another task’s Simulator. Update the canonical spec and development guide with exact implementation/evidence and a later five-minute physical return check. Independent review must inspect the actual full diff against current main and private native results; resolve material findings and rerun affected checks before committing/publishing the focused PR. Physical recovery remains failed/pending until retested on the corrected source.
+
+
+## Validation checkpoint
+
+Runtime source `70eca51` passes **76 native tests, zero failures/skips**, in
+PreviewForegroundTests, SessionInterruptionTests, SessionProfileTests and
+BroadcastSessionTests. The authoritative summary reports Passed, total/passed 76,
+failed/skipped 0; body time 35.796 seconds, recorded result span 140.429 seconds.
+It ran on the owned E0 iPhone 13 mini Simulator, iOS 27.2, with Xcode 27.2 and
+verified HaishinKit checkout `497f742`. The separate ordinary unsigned generic-iOS
+Release build also succeeded. Both native invocations ended with exit 0; no job
+remains running. These are development/native results, not phone recovery or
+TestFlight acceptance.
+
+The SDK-level regression uses the actual pinned `Screen` implementation. It
+establishes a pre-gap display tick at time 100, resets, then supplies camera input
+at time 120 before the first new display tick. The reused screen produces PTS
+above 139 and suppresses the next ordinary tick; a fresh screen produces advancing
+PTS near 120. This proves the retained-timing defect for that ordering, not the
+exact ordering or full cause of the owner's uninstrumented phone event. The
+lifecycle tests prove retirement happens only after completed teardown, frame
+readiness gates Record, background/Close cancels waiting, absent frames fail without
+a retry loop, and recording/broadcast do not automatically restart. Raw metadata
+observers are exercised with generated real CMSampleBuffers; they retain only
+scalar state, never samples, images, queues or per-frame Tasks. They remain attached
+until capture closes; after readiness their callback exits without changing state.
+
+The first compile attempt failed because new helper methods inherited default
+MainActor isolation; explicitly nonisolated Sendable classes with Mutex-owned
+state corrected that without unchecked annotations. No tests executed in that
+attempt. The next 75-test run proved the new cases but failed an existing normal
+Stop fixture that incorrectly required every burst input to pass bounded encoder
+admission. That fixture now admits generated A/V at 40 ms spacing, permits bounded
+rejection, and still requires actual A/V admission, writer start, clean Stop with
+no recording failure and successful later preview return. The final 76-pass run
+supersedes both attempts. MainActor-only readiness fixture closures produce
+Swift captured-variable warnings; both producer/consumer accesses remain explicitly
+MainActor isolated, with no concurrent mutation or warning suppression.
+
+Private local evidence, not Git attachments:
+
+- `/private/tmp/stream14-preview-delay-focused3.xcresult`
+- `/private/tmp/stream14-preview-delay-test-summary.json`
+- `/private/tmp/stream14-preview-delay-focused3.log`
+- `/private/tmp/stream14-preview-delay-release.log`
+
+Reproduce with unique result/derived-data paths:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Debug \
+  -destination 'platform=iOS Simulator,id=E0ABEB8B-B5A5-4FC9-AD6A-FA6A5908A78C' \
+  -derivedDataPath /private/tmp/stream14-preview-delay-build \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
+  -disableAutomaticPackageResolution -parallel-testing-enabled NO \
+  -only-testing:Stream14Tests/PreviewForegroundTests \
+  -only-testing:Stream14Tests/SessionInterruptionTests \
+  -only-testing:Stream14Tests/SessionProfileTests \
+  -only-testing:Stream14Tests/BroadcastSessionTests \
+  -resultBundlePath /private/tmp/a-new-preview-delay-result.xcresult test
+
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /private/tmp/stream14-preview-delay-release-build \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+```
+
+A later normally signed corrected candidate still needs an explicitly coordinated
+five-minute portrait-first preview visit. No phone operation, private camera/audio
+recording, provider request, broadcasting, version bump or TestFlight replacement
+was performed in this implementation. Preserve original media. Optional landscape
+and manual Close checks must fit the same visit or remain pending.
