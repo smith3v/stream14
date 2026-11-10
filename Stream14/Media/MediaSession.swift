@@ -33,7 +33,9 @@ final class MediaSession {
 
     let renderer: WebOverlayRenderer
     private(set) var profile: SessionProfile
-    var broadcastConfigurationLocked = false
+    var broadcastConfigurationLocked = false {
+        didSet { if broadcastConfigurationLocked { clearPreviewIntent() } }
+    }
     var canSelectProfile: Bool { !broadcastConfigurationLocked && phase == .idle && !busy && !stopRequested }
     private let authorizeCapture: @MainActor () async -> Bool
     private let persistProfile: @MainActor (SessionProfile) -> Void
@@ -91,6 +93,15 @@ final class MediaSession {
     private var interrupted = false
     var onInterruption: (@MainActor (SessionInterruption) -> Void)?
     private var interruptionReported = false
+    private var captureForeground = true
+    private var previewRequested = false
+    private var previewResumePending = false
+    private var previewResumeScheduled = false
+    private var captureGeneration: UInt64 = 0
+    #if DEBUG
+    private var previewStartFixture: (@MainActor () async throws -> Void)?
+    private var previewCloseFixture: (@MainActor () async -> Void)?
+    #endif
     var backupWarning: String { recordingFailed ? "Backup failed. Saved footage is retained as incomplete; healthy upload continues independently." : "" }
     private var previousIdleTimerDisabled: Bool?
     private var interruptedUploadClosing: Task<Void, Never>?
@@ -306,7 +317,11 @@ final class MediaSession {
     }
 
     func openPreview() async {
-        guard phase == .idle, !busy else { return }
+        guard phase == .idle, !busy, captureForeground else { return }
+        previewRequested = true
+        previewResumePending = false
+        captureGeneration &+= 1
+        let generation = captureGeneration
         busy = true
         phase = .preparing
         stopRequested = false
@@ -319,87 +334,137 @@ final class MediaSession {
                 throw ExperimentError.permissions
             }
             guard !stopRequested else { phase = .idle; return }
-            let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker])
-            guard try await audioSession.activate(options: []) else { throw ExperimentError.devices }
-            let profile = self.profile
-            availableLenses = await Task.detached { RearCameraLens.available(profile: profile) }.value
-            guard availableLenses.contains(selectedLens) else {
-                selectedLens = availableLenses.contains(.wide) ? .wide : (availableLenses.first ?? .wide)
-                throw RearCameraLens.ConfigurationError.unavailable
-            }
-            await mixer.setSessionPreset(.inputPriority)
-            await mixer.setVideoOrientation(.landscapeRight)
-            await mixer.setVideoMixerSettings(VideoMixerSettings(mode: .offscreen))
-            try await mixer.setDynamicRangeMode(.sdr)
-            await mixer.setAudioMixerSettings(profile.audioSettings(muted: microphoneMuted))
-            guard let microphone = AVCaptureDevice.default(for: .audio) else { throw ExperimentError.devices }
-            try await attachLens(selectedLens)
-            try await mixer.attachAudio(microphone)
-            try await mixer.setFrameRate(profile.frameRate)
-            let overlay: WebOverlayLayer
-            if let existing = self.overlay { overlay = existing }
-            else { overlay = await WebOverlayLayer(); self.overlay = overlay }
-            try await overlay.install(on: mixer, profile: profile)
-            preview.videoGravity = .resizeAspect
-            await mixer.addOutput(preview)
-            await mixer.addOutput(microphoneMeter)
-            updateAudioRoute()
-            routeTask = Task { [weak self] in
-                for await _ in NotificationCenter.default.notifications(named: AVAudioSession.routeChangeNotification) {
-                    guard !Task.isCancelled else { return }
-                    guard let self else { return }
-                    self.updateAudioRoute()
-                    if AVAudioSession.sharedInstance().currentRoute.inputs.isEmpty { self.interrupt(.audioUnavailable) }
-                }
-            }
-            // Register interruption streams before capture begins.
-            let interruptions = await mixer.isInterputted
-            interruptionTask = Task { [weak self] in
-                for await value in interruptions {
-                    guard !Task.isCancelled else { return }
-                    if value { self?.interrupt(.camera) }
-                }
-            }
-            audioInterruptionTask = Task { [weak self] in
-                for await _ in NotificationCenter.default.notifications(named: AVAudioSession.didBecomeInactiveNotification) {
-                    guard !Task.isCancelled else { return }
-                    self?.interrupt(.audio)
-                }
-            }
-            runtimeErrorTask = Task { [weak self] in
-                for await _ in NotificationCenter.default.notifications(named: AVCaptureSession.runtimeErrorNotification) {
-                    guard !Task.isCancelled else { return }
-                    self?.failure = true
-                    self?.message = "Camera capture failed. The recording is retained; reopen the camera to retry."
-                    self?.interrupt(.captureFailure)
-                }
-            }
-            updateThermalState()
-            thermalTask = Task { [weak self] in
-                for await _ in NotificationCenter.default.notifications(named: ProcessInfo.thermalStateDidChangeNotification) {
-                    guard !Task.isCancelled else { return }
-                    self?.updateThermalState()
-                }
-            }
-            guard !stopRequested else { return }
-            await mixer.startRunning()
-            overlayTask = Task { [weak self] in
-                while !Task.isCancelled {
-                    guard let self else { return }
-                    self.microphoneLevel = self.microphoneMuted ? 0 : self.microphoneMeter.level
-                    await overlay.update(image: self.renderer.image, visible: self.renderer.visible)
-                    do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
-                }
-            }
+            try await startPreviewCapture(generation: generation)
+            // Native startup is not cancellation-aware. A background/Close request
+            // received during it must never publish a usable preview or recorder.
+            guard !stopRequested, captureForeground, captureGeneration == generation else { return }
             phase = .preview
             message = "Preview ready · landscape \(profile.rawValue). Check the picture and overlay before recording."
         } catch {
+            clearPreviewIntent()
             failure = true
             message = error is RearCameraLens.ConfigurationError ?
                 "The selected lens is unavailable for \(profile.rawValue). Open the camera again to retry with an available lens." :
                 ((error as? ExperimentError)?.description ?? "Camera/audio setup failed. Open the camera again to retry.")
             stopRequested = true
+        }
+    }
+
+    /// A fresh native setup follows completed teardown, never startRunning on
+    /// the interrupted session while its previous stop is still suspended.
+    private func startPreviewCapture(generation: UInt64) async throws {
+        #if DEBUG
+        if let previewStartFixture { try await previewStartFixture(); return }
+        #endif
+        let audioSession = AVAudioSession.sharedInstance()
+        try audioSession.setCategory(.playAndRecord, mode: .videoRecording, options: [.defaultToSpeaker])
+        guard try await audioSession.activate(options: []) else { throw ExperimentError.devices }
+        let profile = self.profile
+        availableLenses = await Task.detached { RearCameraLens.available(profile: profile) }.value
+        guard availableLenses.contains(selectedLens) else {
+            selectedLens = availableLenses.contains(.wide) ? .wide : (availableLenses.first ?? .wide)
+            throw RearCameraLens.ConfigurationError.unavailable
+        }
+        await mixer.setSessionPreset(.inputPriority)
+        await mixer.setVideoOrientation(.landscapeRight)
+        await mixer.setVideoMixerSettings(VideoMixerSettings(mode: .offscreen))
+        try await mixer.setDynamicRangeMode(.sdr)
+        await mixer.setAudioMixerSettings(profile.audioSettings(muted: microphoneMuted))
+        guard let microphone = AVCaptureDevice.default(for: .audio) else { throw ExperimentError.devices }
+        try await attachLens(selectedLens)
+        try await mixer.attachAudio(microphone)
+        try await mixer.setFrameRate(profile.frameRate)
+        let overlay: WebOverlayLayer
+        if let existing = self.overlay { overlay = existing }
+        else { overlay = await WebOverlayLayer(); self.overlay = overlay }
+        try await overlay.install(on: mixer, profile: profile)
+        preview.videoGravity = .resizeAspect
+        await mixer.addOutput(preview)
+        await mixer.addOutput(microphoneMeter)
+        updateAudioRoute()
+        routeTask = Task { [weak self] in
+            for await _ in NotificationCenter.default.notifications(named: AVAudioSession.routeChangeNotification) {
+                guard !Task.isCancelled else { return }
+                guard let self, self.captureGeneration == generation else { return }
+                self.updateAudioRoute()
+                if AVAudioSession.sharedInstance().currentRoute.inputs.isEmpty { self.interrupt(.audioUnavailable) }
+            }
+        }
+        // Register interruption streams before capture begins.
+        let interruptions = await mixer.isInterputted
+        interruptionTask = Task { [weak self] in
+            for await value in interruptions {
+                guard !Task.isCancelled else { return }
+                guard let self, self.captureGeneration == generation else { return }
+                if value { self.interrupt(.camera) }
+            }
+        }
+        audioInterruptionTask = Task { [weak self] in
+            for await _ in NotificationCenter.default.notifications(named: AVAudioSession.didBecomeInactiveNotification) {
+                guard !Task.isCancelled else { return }
+                guard let self, self.captureGeneration == generation else { return }
+                self.interrupt(.audio)
+            }
+        }
+        runtimeErrorTask = Task { [weak self] in
+            for await _ in NotificationCenter.default.notifications(named: AVCaptureSession.runtimeErrorNotification) {
+                guard !Task.isCancelled else { return }
+                guard let self, self.captureGeneration == generation else { return }
+                self.failure = true
+                self.message = "Camera capture failed. The recording is retained; reopen the camera to retry."
+                self.interrupt(.captureFailure)
+            }
+        }
+        updateThermalState()
+        thermalTask = Task { [weak self] in
+            for await _ in NotificationCenter.default.notifications(named: ProcessInfo.thermalStateDidChangeNotification) {
+                guard !Task.isCancelled else { return }
+                guard let self, self.captureGeneration == generation else { return }
+                self.updateThermalState()
+            }
+        }
+        guard !stopRequested else { return }
+        await mixer.startRunning()
+        overlayTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.captureGeneration == generation else { return }
+                self.microphoneLevel = self.microphoneMuted ? 0 : self.microphoneMeter.level
+                await overlay.update(image: self.renderer.image, visible: self.renderer.visible)
+                do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+            }
+        }
+    }
+
+    /// Scene availability, independent of overlay health and YouTube reconciliation.
+    func setCaptureForeground(_ foreground: Bool) {
+        captureForeground = foreground
+        if foreground {
+            schedulePreviewResume()
+        } else {
+            previewResumePending = previewRequested && !broadcastConfigurationLocked &&
+                recorder == nil && sharedEncoder == nil && publisher == nil && !failure
+            interrupt(.background)
+        }
+    }
+
+    private func clearPreviewIntent() {
+        previewRequested = false
+        previewResumePending = false
+    }
+
+    private func schedulePreviewResume() {
+        guard captureForeground, previewRequested, previewResumePending,
+              !previewResumeScheduled, !busy, phase == .idle, !stopRequested,
+              !failure, !broadcastConfigurationLocked else { return }
+        previewResumeScheduled = true
+        Task { [weak self] in
+            guard let self else { return }
+            self.previewResumeScheduled = false
+            guard self.captureForeground, self.previewRequested, self.previewResumePending,
+                  !self.busy, self.phase == .idle, !self.stopRequested,
+                  !self.failure, !self.broadcastConfigurationLocked else { return }
+            self.previewResumePending = false
+            await self.openPreview()
         }
     }
 
@@ -462,6 +527,7 @@ final class MediaSession {
         guard !interfaceFixtureMode else { return }
         #endif
         guard canRecord else { return }
+        clearPreviewIntent()
         busy = true
         phase = .starting
         failure = false
@@ -518,6 +584,12 @@ final class MediaSession {
     }
 
     func interrupt(_ reason: SessionInterruption) {
+        // Native camera/audio notifications can precede the scene background
+        // notification. Retain only preview intent until that scene cycle arrives.
+        if ![SessionInterruption.background, .camera, .audio, .audioUnavailable].contains(reason) ||
+            recorder != nil || sharedEncoder != nil || publisher != nil || broadcastConfigurationLocked {
+            clearPreviewIntent()
+        }
         if !interruptionReported {
             interruptionReported = true
             onInterruption?(reason)
@@ -543,6 +615,7 @@ final class MediaSession {
 
     /// Background/interruption wins over in-flight setup/start without racing writer state.
     func requestStop(interruption: Bool = false) {
+        if !interruption { clearPreviewIntent() }
         if interruption {
             renderer.stop()
             if !interruptionReported {
@@ -581,6 +654,11 @@ final class MediaSession {
         } else {
             await finishRecording()
             phase = .preview
+            // A normal foreground Stop returns to an explicitly requested preview.
+            // An interruption arriving during finish must not gain this intent.
+            if captureForeground && !stopRequested && !interrupted && !failure && !broadcastConfigurationLocked {
+                previewRequested = true
+            }
         }
         finishOperation()
     }
@@ -708,6 +786,8 @@ final class MediaSession {
         UIApplication.shared.isIdleTimerDisabled = true
     }
     func failWriterFixture() async { await handleRecorderFailure() }
+    /// Synthetic camera/audio input uses the same shared encoder admission as capture.
+    func offerRecordingInputFixture(_ sample: CMSampleBuffer) -> Bool { sharedEncoder?.offer(sample) ?? false }
     /// Exercise the production deadline/ownership boundary without native IO.
     func holdNativeFinalizationFixture(id: UUID, deadline: Double = 0,
         operation: @escaping @MainActor @Sendable () async throws -> LocalRecorder.Metrics) async throws {
@@ -733,7 +813,7 @@ final class MediaSession {
         else if pendingWriterFailure {
             pendingWriterFailure = false
             Task { await handleRecorderFailure() }
-        }
+        } else { schedulePreviewResume() }
     }
 
     private func finishRecording(keepEncoding: Bool = false, closingSession: Bool = false) async {
@@ -878,6 +958,10 @@ final class MediaSession {
         busy = true
         stopRequested = false
         phase = .stopping
+        captureGeneration &+= 1
+        #if DEBUG
+        if let previewCloseFixture { await previewCloseFixture() }
+        #endif
         let publisher = self.publisher
         self.publisher = nil
         mediaDestinations?.detachPublisher()
@@ -925,6 +1009,14 @@ final class MediaSession {
 
     #if DEBUG
     private var interfaceFixtureMode = false
+
+    /// Replaces only native camera acquisition for deterministic lifecycle tests.
+    /// Production phases, permission/stop checks and teardown ownership still run.
+    func installPreviewLifecycleFixture(start: @escaping @MainActor () async throws -> Void,
+                                        close: (@MainActor () async -> Void)? = nil) {
+        previewStartFixture = start
+        previewCloseFixture = close
+    }
 
     /// Presentation-only fixture: no capture, encoder, writer or network is opened.
     func installInterfaceFixture(_ state: String) {

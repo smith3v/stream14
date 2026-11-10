@@ -918,7 +918,7 @@ YouTube metadata rather than retaining an indefinite API-response archive.
 | Overlay reload/error | Keep last-good image for brief errors, hide after 10 seconds without source access or usable rendering, automatically restore a fresh image after recovery unless manually hidden; keep camera/audio smooth |
 | Local writer/storage failure | Preserve written data; continue upload; persistent backup-failure indication |
 | Camera/audio interruption or app background/lock | Stop upload and finish local writing with the background execution time available; no guaranteed continuous capture; show interrupted state on return |
-| Foreground return after interruption | Recheck permissions, capture, writer, and remote state; require an explicit resume; create a new local file and resume only if the same event still permits it |
+| Foreground return after interruption | An explicitly opened preview-only camera automatically reopens after completed background teardown; permissions/capture are rechecked, without creating a recording or upload. Interrupted recording/broadcast still requires explicit resume with a new local file and the same eligible event |
 | Sustained heat/system pressure | Warn, prioritize camera delivery by reducing/skipping overlay work; if capture is no longer safe/available, interrupt cleanly; no silent resolution changes |
 | Access-token expiry/revocation | Refresh supported tokens; if reauthorization is needed, keep an already healthy media connection where possible and explain the control-plane limitation; do not put login UI into recorded video |
 | App crash/termination | On next launch inspect unfinished files and reconcile remote state; offer recovery; never auto-start publishing on launch |
@@ -1258,9 +1258,22 @@ Expiry writes conservative failed metadata immediately; late writer completion
 cannot promote that file to complete. Writer finish waits at most five seconds;
 a timeout preserves the file and requires inspection, with no repair/transcode.
 
-Foreground/relaunch reconciliation reads only. Transient foreground inactivity
-never cancels a healthy session. Explicit camera reopen rechecks permissions and
-capture; the separate **Resume same event…** action reads the original channel,
+YouTube foreground/relaunch reconciliation reads only. Transient foreground inactivity
+never cancels a healthy session. After an app switch, an explicitly opened
+preview-only camera is restored automatically once teardown finishes and the app
+is foreground again. This applies in portrait and landscape; the media canvas stays
+fixed. Preview intent survives camera/audio notifications that precede the scene
+background event, but Close, confirmed broadcast preparation, recording start and
+terminal capture/setup failure cancel it. A successful foreground Stop recording
+returns to preview eligibility; an interrupted writer/finalization does not. Old
+capture callbacks are generation-fenced. Opening/closing presents a progress state
+instead of an inactive camera viewport. There is no background capture, automatic
+recording, automatic upload or automatic camera start on app launch. The owner's
+portrait TestFlight 0.3 (4) report motivated this change; physical verification of
+the replacement remains pending.
+
+Interrupted recording/broadcast still requires explicit camera reopen, rechecking
+permissions and capture; the separate **Resume same event…** action reads the original channel,
 event and dedicated inactive ingestion binding, then presents title/visibility
 confirmation. Confirmation starts a new writer/UUID/timeline before upload.
 A live event is observed rather than transitioned live again. Resume requires

@@ -433,6 +433,9 @@ import UIKit
         try await h.until { h.session.reconnectStatus == .stopped }
         #expect(h.actualMedia?.phase == .stopping)
         #expect(h.actualMedia?.hasUpload == false)
+        // Detachment is synchronous; socket close completes asynchronously while
+        // the unrelated file finalization is still held.
+        try await h.until { h.fixturePublisherCloses == 1 }
         #expect(h.fixturePublisherCloses == 1)
         #expect(h.snapshot.isRecording && !h.timeline.contains("stopAll"))
         h.release(); await finalization.value
