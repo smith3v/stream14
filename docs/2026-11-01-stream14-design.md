@@ -1390,6 +1390,15 @@ tests verify output independence. See the development guide for current results.
 Phone orientation/VoiceOver, permission/audio-route operation and actual media
 quality remain separate evidence; Simulator results do not qualify those gates.
 
+The workspace integration of 2026-11-10 normally inherits PR68's fresh stopped
+mixer/view/overlay retirement and advancing-frame startup readiness, including an
+explicit Metal view identity. It preserves the workspace's sole state owners and
+Debug capture/network fixture boundary. The earlier `70eca51` phone preview pass
+is not proof of the newly integrated workspace's physical UI. Its direct
+development-phone interface visit, legacy contrast audit and remaining
+accessibility/media checks are recorded separately in the
+[integration checkpoint](2026-11-10-pr63-preview-integration-implementation.md).
+
 ### Private receiver evidence checkpoint — 2026-11-08
 
 A laptop-only synthetic fixture now exercises the actual shared encoder, compressed

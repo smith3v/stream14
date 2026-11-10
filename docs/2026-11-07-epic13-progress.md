@@ -650,3 +650,26 @@ for the preview fix. Numerical physical A/V qualification remains pending; a
 simpler manual measurement workflow can be selected later. No automatic GitHub
 merge, TestFlight upload/version change, new recording or broadcasting is
 authorized by these evidence updates. Broader epic acceptance remains open.
+
+
+### Session workspace inherits tested preview recovery — 2026-11-10
+
+PR63 head `100ed21` normally merges reviewed PR68 at `3154200`, then landed main
+`2001d76` at `6459c74`; the second merge has no file delta. Its workspace now
+retains fresh stopped-mixer/view/overlay replacement, frame readiness and explicit
+Metal view identity. No deferred PR69 tooling is included. The owner requests a
+direct development-phone interface check, without TestFlight. Source validation
+and a five-minute interface-only card are in the
+[integration checkpoint](2026-11-10-pr63-preview-integration-implementation.md).
+The legacy profile contrast audit and physical workspace/accessibility/media
+acceptance remain pending; prior preview passes are not reclassified as new UI
+passes. This integration stage performs no phone/capture/publishing operation.
+
+
+The integrated PR63 runtime passed **107 native/UI checks, zero failures/skips**
+(106 native plus one noncapturing navigation case), and ordinary unsigned Release
+passed; both commands exited 0. Main's ancestry merge changed no files relative
+to the checked runtime. Exact source/results and the five-minute UI-only card are
+in the integration checkpoint. Final independent checkpoint review and signed
+candidate preparation precede a new owner-ready visit. Legacy contrast and broad
+physical acceptance remain pending. No phone/TestFlight operation occurred here.

@@ -67,3 +67,18 @@ plus the deterministic navigation smoke test in
 `/private/tmp/stream14-issue62-rebase-release-final.log`. The navigation test opens
 no capture or upload. Independent review found no material conflict-resolution
 issues. Existing profile audit and physical qualification limits are unchanged.
+
+
+## Tested preview fix integration — 2026-11-10
+
+Normal merge `3154200` incorporates reviewed PR68 into this workspace; a subsequent
+normal merge of landed main `2001d76` at `6459c74` has no file delta. No history was
+rewritten and deferred PR69 is excluded. The [focused integration checkpoint and
+five-minute interface card](2026-11-10-pr63-preview-integration-implementation.md)
+record exact source, fresh-frame/view-identity behavior and remaining acceptance.
+
+Integrated validation passed 106 checks in seven native suites and one navigation
+UI test (authoritative total 107, no failures/skips); ordinary unsigned Release
+passed. No physical UI, legacy contrast audit, VoiceOver/larger text, file/receiver
+or TestFlight pass follows from those results. Root coordinates final independent
+review, normally signed development preparation and the separately agreed visit.

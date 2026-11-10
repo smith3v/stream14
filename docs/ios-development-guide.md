@@ -2032,3 +2032,27 @@ The corrected-source visit subsequently installed Development `70eca51` in place
 and passed portrait return twice plus manual Close persistence, as reported above.
 The phone was left closed with no recording/upload. TestFlight remains unchanged;
 use source-specific evidence rather than the unchanged 0.3 (4) version label.
+
+
+### PR63 development-phone preparation after the preview fix — 2026-11-10
+
+The Session workspace normally incorporates tested PR68 and current main
+`2001d76` at `6459c74`; no shared history was rewritten. It keeps fresh-mixer/frame
+readiness and the replacement Metal view identity while preserving the workspace
+and Debug fixture boundaries. The owner requested direct development-phone testing
+without TestFlight. The [integration checkpoint and five-minute interface-only
+card](2026-11-10-pr63-preview-integration-implementation.md) record the exact source,
+validation and pending physical scope. No recording, broadcasting, account change
+or deletion is part of that card. The prior unresolved profile contrast audit is
+not waived, and the PR remains draft pending its acceptance.
+
+
+The integrated workspace's authoritative
+`/private/tmp/stream14-pr63-preview-integration.xcresult` passed 107 tests: 106 in
+seven native suites plus one noncapturing navigation UI check, with zero
+failures/skips. The full native command exited 0 in 240.729 seconds; ordinary
+unsigned Release exited 0 in 99.476 seconds. Exact reproduction, source ancestry,
+private summaries and scope are in the linked integration checkpoint. This does
+not clear the separate unresolved native profile contrast audit or qualify the
+new UI on the phone. E0 is released to the separate contrast-probe stage; D6 and
+the physical phone remain untouched by this integration.
