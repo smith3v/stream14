@@ -1813,3 +1813,32 @@ stay within five minutes TOTAL including setup/wrap-up. Remaining physical and
 long-duration qualification is pending; retain originals and never uninstall as
 routine testing cleanup. No recording or YouTube publishing was performed for this
 delivery checkpoint.
+
+
+## Preview return after an app switch — 2026-11-10
+
+TestFlight 0.3 (4) owner finding: after **Open camera**, switching to Codex and
+returning showed the overlay over a black camera picture. This was preview only,
+with the phone upright/portrait throughout and no rotation. The prior foreground
+handler restored the overlay and read-only YouTube state, but not camera capture.
+The reviewed fix will restore only explicitly requested preview after old capture
+teardown; recording/upload interruption still requires deliberate restart. Native
+startup now checks pending stop after its awaited work, and old capture callbacks
+cannot stop a new generation. Preparing/closing shows a progress state.
+
+Physical regression remains pending on a replacement build. Select one visit,
+**five minutes TOTAL**, no Google or publishing:
+
+1. Open camera in portrait, verify moving camera picture, switch to Codex for
+   five seconds, return and verify moving camera picture plus overlay without
+   tapping Open camera again. Repeat twice; repeat in landscape only if time permits.
+2. Close camera, switch away/back: it must stay closed. A setup/permission failure
+   must remain actionable without an automatic retry loop.
+3. In a separate selected visit with a new expendable local clip, background while
+   recording: file interruption remains honest and no new recording starts on
+   return. Keep originals. After a normal foreground Stop recording, an app switch
+   should again restore preview only.
+
+No phone recording, publishing or TestFlight replacement delivery is established
+by the deterministic native-boundary tests; they verify ownership and ordering,
+not real camera pixels or physical audio.

@@ -290,7 +290,7 @@ Perform the common delivery steps above, including focused tests, documentation,
 
 Extend current MediaSession interruption/thermal behavior across both outputs without combining their state. Camera/audio interruption, background/lock or capture runtime error stops upload and finalizes writing within available background time; no fake audio/background entitlement. Bound tasks and restore the previous idle-timer state. Do not rely on a successful remote complete request during background suspension.
 
-On foreground return/relaunch, show interruption and remote uncertainty, recheck permissions/capture/auth/event state and require explicit resume. Resume only the same eligible event with a new local UUID/timeline; never append to a finalized movie or auto-publish. Reconcile remote state on return without forcing background camera work.
+For an interrupted recording/broadcast, on foreground return/relaunch show interruption and remote uncertainty, recheck permissions/capture/auth/event state and require explicit resume. Preview-only app-switch return is different: restore the user's explicitly opened camera after completed teardown, without starting a file or upload, as specified in the canonical foreground lifecycle contract. Resume only the same eligible event with a new local UUID/timeline; never append to a finalized movie or auto-publish. Reconcile remote state on return without forcing background camera work.
 
 Preserve R6/R7 in every phase: transport/API/remote-ended failures never stop healthy writing; writer append/finalization/storage failures retain original files and keep healthy live upload with a persistent backup-failed warning. Test writer-init failure separately: initial Go Live stays blocked.
 
