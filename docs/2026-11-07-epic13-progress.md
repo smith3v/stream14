@@ -637,14 +637,16 @@ The current recorded installed source is `70eca51`, not the earlier failed
 `1960df2` or TestFlight. Full scope/private proof is in the
 [corrected-source report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10).
 
-The review chain keeps all PRs targeting main: [#67 historical device evidence](https://github.com/smith3v/stream14/pull/67)
-→ [#68 preview fix and successful retest](https://github.com/smith3v/stream14/pull/68)
-→ [#69 offline A/V measurement aid](https://github.com/smith3v/stream14/pull/69).
-Normal merges preserve their histories; merge in that order. PR #68 retains the
-76 native passes, Release pass and independent source review; its runtime is
-unchanged by evidence integration. PR #69's native tool/fixture payload retains
-its independent review and 91 validation checks across three generated H.264/AAC
-fixtures; it does not establish a physical A/V sync pass. Final integration review
-is required before pushing the updated chain. No automatic GitHub merge,
-TestFlight upload/version change, new recording or broadcasting is authorized by
-these preparation/evidence updates. Broader epic acceptance remains open.
+The review chain keeps both PRs targeting main: [#67 historical device evidence](https://github.com/smith3v/stream14/pull/67)
+→ [#68 preview fix and successful retest](https://github.com/smith3v/stream14/pull/68).
+Normal merge `cc02315` preserves both histories; merge #67 before #68. PR #68
+retains the 76 native passes, Release pass and independent source review; its
+runtime is unchanged by evidence integration. The PR body records the final
+independent integration-review outcome before handoff.
+
+The owner questioned the need for the separate A/V marker tool in PR #69. That
+work is draft/deferred, is not part of this ready chain and is not a prerequisite
+for the preview fix. Numerical physical A/V qualification remains pending; a
+simpler manual measurement workflow can be selected later. No automatic GitHub
+merge, TestFlight upload/version change, new recording or broadcasting is
+authorized by these evidence updates. Broader epic acceptance remains open.
