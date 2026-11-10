@@ -208,7 +208,7 @@ struct SetupView: View {
                 }
                 NavigationLink("Help") {
                     Form {
-                        Text("Check camera and sound before starting. Setup sends no camera media. Upload and local saving operate independently. Backgrounding stops capture; reopen and review Resume for the same event. Resolve unknown YouTube state before preparing another session.")
+                        Text("Check camera and sound before starting. Setup sends no camera media. Upload and local saving operate independently. Backgrounding stops capture. A preview-only camera returns on foreground; interrupted recording or upload requires an explicit restart and review of Resume for the same event. Resolve unknown YouTube state before preparing another session.")
                         Link("Documentation", destination: URL(string: "https://github.com/smith3v/stream14/blob/main/docs/ios-development-guide.md")!)
                     }.navigationTitle("Help")
                         .toolbar { Button("Done") { showingSettings = false } }

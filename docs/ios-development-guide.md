@@ -1705,7 +1705,8 @@ F10 handoff for exact retained failed/passing runs and independent review status
 
 ### Session workspace validation — issue #62 (2026-11-09–10)
 
-The change uses main `ea90bd3` as its base. Independent review inspected the full
+The original change used main `ea90bd3` as its base; PR #63 was rebased onto
+main `1960df2` on 2026-11-10. Independent review inspected the full
 diff and files; fixes addressed stale next-session output status, active recovery
 routes and writer-admission readiness. Focused re-review found no remaining
 material issues. The original iCloud checkout's unrelated project/setup edits are
@@ -1789,6 +1790,30 @@ fixture-only interface checks need no private camera capture/upload. Actual
 camera/audio route/permission operation, output profile/lens media quality and
 file/receiver exclusion remain separate physical regression evidence. No real
 YouTube publish, TestFlight delivery or long-run qualification is claimed here.
+
+### PR #63 rebase validation — 2026-11-10
+
+Rebased onto current main `1960df2`, retaining #64 preview-only foreground recovery
+and #66 compatible default-stream reuse. The two source conflicts were resolved in
+SetupView and MediaSession. Root scene reporting uses `setCaptureForeground`,
+including initial state; transition UI shows Opening/Closing rather than a stale
+preview. Production open keeps the foreground guard, explicit preview intent and
+capture generation; Debug interface fixtures still exit before native acquisition.
+Recording/upload is never automatically restarted. Help distinguishes preview-only
+restoration from interrupted recording/broadcast resume. Main's YouTube binding
+and client changes are unchanged.
+
+`/private/tmp/stream14-issue62-rebase.xcresult` passed 100 tests across seven native
+suites in 32.542 seconds, plus the deterministic navigation smoke test in 23.013
+seconds. Suites: PreviewForegroundTests, SessionInterruptionTests,
+BroadcastSessionTests, SessionProfileTests, SessionWorkspaceTests,
+YouTubeBindingTests and RecordingFinalizationTests. The final unsigned Release
+build passed in `/private/tmp/stream14-issue62-rebase-release-final.log`.
+Independent full-diff/range-diff and actual-file review found no material issues.
+`git diff --check` and changed-document local-link checks passed. No real camera
+capture, phone install or provider publishing was performed for this rebase.
+The prior native profile contrast-audit failure and physical inspection remain
+open; this rebase does not turn either into a pass or change the PR's draft status.
 
 ## Private synthetic RTMPS receiver checkpoint (2026-11-08)
 

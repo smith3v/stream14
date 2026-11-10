@@ -22,7 +22,8 @@
 
 ## Implementation and review checkpoint
 
-Implemented in `codex/issue-62-session-workspace`, based on main `ea90bd3`.
+Originally implemented in `codex/issue-62-session-workspace` on main `ea90bd3`.
+Rebased onto main `1960df2` on 2026-11-10; see the rebase checkpoint below.
 The original iCloud checkout has unrelated project/setup changes; work uses a fresh
 checkout at `/private/tmp/stream14-issue62-fresh` after worktree checkout encountered
 iCloud object-read timeouts. Original changes and recordings are retained.
@@ -43,3 +44,26 @@ show primary-color content but no audit pass is claimed. The audit handler remai
 unchanged. Physical five-minute 13 mini inspection remains pending. This is an
 implementation handoff with explicit validation limits, not completed issue/device
 acceptance or permission to merge.
+
+## Rebase checkpoint — 2026-11-10
+
+The owner requested rebasing PR #63 on current main `1960df2`, incorporating
+preview foreground recovery (#64) and compatible default-stream reuse (#66).
+Conflicts in SetupView and MediaSession were resolved by retaining the redesigned
+workspace plus main's root foreground reporting, transition preview placeholder,
+foreground/permission guard and preview-intent/generation ownership. Debug UI
+fixtures still return before native capture. Production recording still clears
+preview-only restoration intent; no recording or upload resumes automatically.
+Default-stream binding/client changes are retained unchanged from main.
+
+Focused actual-file/range-diff review found no material integration issues. Rebase
+validation is recorded in the development guide; prior native-audit and physical
+inspection limits remain open.
+
+Rebase checks passed: 100 tests in seven native suites (preview foreground,
+interruptions, coordinator, profile, workspace, binding and writer finalization)
+plus the deterministic navigation smoke test in
+`/private/tmp/stream14-issue62-rebase.xcresult`; final unsigned Release build in
+`/private/tmp/stream14-issue62-rebase-release-final.log`. The navigation test opens
+no capture or upload. Independent review found no material conflict-resolution
+issues. Existing profile audit and physical qualification limits are unchanged.
