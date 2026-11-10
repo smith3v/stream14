@@ -135,3 +135,15 @@ manual-Close persistence and landscape remain unverified. A fresh focused agent
 is investigating native frame delivery/readiness on a new branch from main.
 The installation/source evidence above remains valid; do not treat eventual
 recovery or the “Preview ready” label as passing this regression.
+
+## Superseding corrected-source visit
+
+The failed main `1960df2` installation above remains historical evidence. A later,
+separately agreed preview-only visit installed Development runtime `70eca51`
+(reviewed head `7407273`) in place. The owner confirmed moving portrait preview
+returned promptly on both app-switch cycles and manual Close persisted after
+another app switch, with no recording/upload. The visit ended within five minutes;
+landscape and broader qualification were not tested. See the
+[corrected-source report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10)
+for exact source, private native proof, timing and limits. The recorded installed
+phone source is now `70eca51`, not main `1960df2` or TestFlight.

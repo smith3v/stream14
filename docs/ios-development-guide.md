@@ -1848,13 +1848,29 @@ TestFlight 0.3 (4) owner finding: after **Open camera**, switching to Codex and
 returning showed the overlay over a black camera picture. This was preview only,
 with the phone upright/portrait throughout and no rotation. The prior foreground
 handler restored the overlay and read-only YouTube state, but not camera capture.
-The reviewed fix will restore only explicitly requested preview after old capture
+The first reviewed fix restored only explicitly requested preview after old capture
 teardown; recording/upload interruption still requires deliberate restart. Native
 startup now checks pending stop after its awaited work, and old capture callbacks
 cannot stop a new generation. Preparing/closing shows a progress state.
 
-Physical regression remains pending on a replacement build. Select one visit,
-**five minutes TOTAL**, no Google or publishing:
+A subsequent Development 0.3 (4), main `1960df2`, portrait-only visit failed: the
+owner saw a frozen/dim image while the app reported Preview ready, estimating
+more than 15 seconds before eventual initialization. This is an owner estimate,
+not a timed measurement. The screenshot and originals remain private. No physical
+preview pass is claimed for that source. The correction retires the fully stopped mixer/screen,
+overlay layer and Metal view and waits for actual advancing camera/composed frames
+before allowing Record. See the [focused implementation/evidence](2026-11-10-preview-restore-delay-implementation.md).
+
+The later Development runtime `70eca51` (reviewed head `7407273`) passed the
+portrait preview-return and manual Close retest: the owner confirmed prompt moving
+preview twice, then a persistent closed camera with no recording/upload. It was
+installed in place and the visit ended in about 186 seconds. Recovery latency was
+not timed. The [corrected-source report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10)
+records exact source, timing and private proof. This is the current recorded
+installed development source, not TestFlight.
+
+For remaining physical regressions, select a new visit, **five minutes TOTAL**,
+with no Google or publishing unless separately agreed:
 
 1. Open camera in portrait, verify moving camera picture, switch to Codex for
    five seconds, return and verify moving camera picture plus overlay without
@@ -1871,15 +1887,21 @@ by the deterministic native-boundary tests; they verify ownership and ordering,
 not real camera pixels or physical audio.
 
 
-The merged-main Development candidate at source `1960df2` is normally signed and
-built, but not installed. Use the [prepared candidate handoff and timed preview-only
-card](2026-11-10-merged-main-phone-candidate.md) for the next separately coordinated
-visit; it includes installation/wrap-up in the five-minute total. No recording,
+The historical merged-main Development candidate at source `1960df2` was normally
+signed, installed and found to fail preview return. The [prepared candidate handoff
+and timed preview-only card](2026-11-10-merged-main-phone-candidate.md) records that earlier visit; its card includes installation/wrap-up in the
+five-minute total. No recording,
 broadcast or TestFlight replacement is part of that card.
 
 
 The separately authorized preview-only visit installed and launched main `1960df2`
-Development 0.3 (4) in place on 2026-11-10. This supersedes the prior recorded
-installed source `625df2a`; physical preview results and exact visit cutoff remain
+Development 0.3 (4) in place on 2026-11-10. At that checkpoint this superseded
+installed source `625df2a`; the earlier physical failure and exact visit cutoff remain
 in the [merged-main candidate handoff](2026-11-10-merged-main-phone-candidate.md).
 Installation alone does not qualify preview recovery or final TestFlight.
+
+
+The corrected-source visit subsequently installed Development `70eca51` in place
+and passed portrait return twice plus manual Close persistence, as reported above.
+The phone was left closed with no recording/upload. TestFlight remains unchanged;
+use source-specific evidence rather than the unchanged 0.3 (4) version label.

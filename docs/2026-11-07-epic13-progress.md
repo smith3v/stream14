@@ -598,3 +598,55 @@ cutoff; no further phone operation or recording/broadcast was started. Manual
 Close persistence/landscape remain unverified. A fresh focused implementation
 stage is investigating actual native frame readiness and stalled return; this
 supersedes the earlier pending portrait result, not the recorded installation.
+
+
+## Preview return delayed on merged source — 2026-11-10
+
+The owner’s portrait preview-only visit on Development 0.3 (4), main `1960df2`,
+failed: preview re-initialized with a frozen/dim picture while status said Preview
+ready, then eventually initialized. The owner estimated more than 15 seconds;
+this is not a measured duration or a physical pass. No recording/live restart was
+requested. Screenshots remain private.
+
+Focused source `70eca51` in `codex/fix-preview-restore-delay`, isolated clone
+`/private/tmp/stream14-preview-restore-delay`, retires fully stopped mixer/screen,
+Metal preview and overlay state, and waits for actual fresh raw/composed frame
+evidence before marking preview ready. A pinned SDK regression demonstrates retained
+Screen timing can suppress post-gap output; no guessed timestamp adjustment or
+package change is used. Four affected native suites pass **76/76**, zero
+failures/skips; ordinary unsigned Release passes. Exact source, reproduction,
+initial nonpassing attempts, private artifacts and physical limitations are in the
+[implementation checkpoint](2026-11-10-preview-restore-delay-implementation.md).
+Independent final source/evidence review at `7407273` found no material issues.
+The separately coordinated corrected-source result below supersedes the pending
+portrait/manual Close checks, not the separate interruption/reconnect/release gates.
+
+
+## Corrected preview phone result and review chain — 2026-11-10
+
+A separately authorized preview-only visit installed normally signed Development
+runtime `70eca51` (matching reviewed `7407273`) in place, preserving the container
+and original recordings. Install/ordinary launch succeeded with native exit 0,
+7.460/2.325 seconds. Device work began 21:45:22.294340 UTC, cutoff
+21:50:22.294340 UTC; root recorded completion at 21:48:28 UTC, about 186 seconds.
+The owner confirmed moving portrait preview returned promptly on both app-switch
+cycles and manual Close remained closed after another switch, with no recording
+or upload. **These checks passed**; no recovery latency, landscape, overlay
+freshness, recording/broadcast interruption, A/V sync or performance was measured.
+The current recorded installed source is `70eca51`, not the earlier failed
+`1960df2` or TestFlight. Full scope/private proof is in the
+[corrected-source report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10).
+
+The review chain keeps both PRs targeting main: [#67 historical device evidence](https://github.com/smith3v/stream14/pull/67)
+→ [#68 preview fix and successful retest](https://github.com/smith3v/stream14/pull/68).
+Normal merge `cc02315` preserves both histories; merge #67 before #68. PR #68
+retains the 76 native passes, Release pass and independent source review; its
+runtime is unchanged by evidence integration. The PR body records the final
+independent integration-review outcome before handoff.
+
+The owner questioned the need for the separate A/V marker tool in PR #69. That
+work is draft/deferred, is not part of this ready chain and is not a prerequisite
+for the preview fix. Numerical physical A/V qualification remains pending; a
+simpler manual measurement workflow can be selected later. No automatic GitHub
+merge, TestFlight upload/version change, new recording or broadcasting is
+authorized by these evidence updates. Broader epic acceptance remains open.

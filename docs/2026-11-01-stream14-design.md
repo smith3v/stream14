@@ -1281,8 +1281,32 @@ returns to preview eligibility; an interrupted writer/finalization does not. Old
 capture callbacks are generation-fenced. Opening/closing presents a progress state
 instead of an inactive camera viewport. There is no background capture, automatic
 recording, automatic upload or automatic camera start on app launch. The owner's
-portrait TestFlight 0.3 (4) report motivated this change; physical verification of
-the replacement remains pending.
+portrait TestFlight 0.3 (4) report motivated this change. A later development
+check on merged main `1960df2` failed: the owner saw a frozen/dim preview despite
+“Preview ready”, estimating more than 15 seconds before eventual initialization.
+That estimate is not a timed measurement and is not a recovery pass.
+
+Pinned HaishinKit `Screen.reset()` clears its queued images but preserves output
+PTS, display target time and capture latency. A first post-gap camera input can
+therefore use the old target time, advance composed PTS into the future and suppress
+later output until time catches up. Full capture close now retires the stopped,
+detached mixer/screen, Metal view and overlay layer before a fresh camera open.
+Only one capture owner runs; no timestamp clamp, second encoder or dependency
+change is introduced. The preview's SwiftUI identity follows its Metal view so a
+replacement is mounted even if phase transitions batch. Startup stays preparing
+until two advancing raw camera timestamps and subsequent composed output arrive;
+mutex-owned scalar observers retain no images or per-frame Tasks. Five seconds
+without this frame evidence fails visibly rather than claiming a ready preview.
+Close/background/generation changes cancel the readiness wait. This bound applies
+to frame readiness after native start, not arbitrary OS hardware/API completion.
+A separately authorized development retest on runtime `70eca51` (reviewed head
+`7407273`) passed the narrow portrait preview return and manual Close checks: the
+owner confirmed prompt moving preview on both app-switch cycles, then that Close
+persisted with no recording/upload. The recorded visit span was about 186 seconds,
+within its five-minute cutoff; recovery latency itself was not measured. This is
+not landscape, recording/broadcast interruption, overlay freshness/performance or
+TestFlight qualification. Exact source and private native evidence are in the
+[corrected-source phone report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10).
 
 Interrupted recording/broadcast still requires explicit camera reopen, rechecking
 permissions and capture; the separate **Resume same event…** action reads the original channel,
