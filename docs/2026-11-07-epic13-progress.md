@@ -588,3 +588,13 @@ Issues #18 and #20 were independently audited against current acceptance and
 closed with fixture/coordinator plus the earlier successful Unlisted phone test
 evidence; epic #13's two checklist entries were fetched back and verified checked.
 Other physical, diagnostic, final TestFlight and A1–A9 gates remain open.
+
+
+The owner then reported **failed preview return** on main `1960df2`: camera
+reinitialization froze/dimmed and recovered only after a long delay. The retained
+portrait screenshot shows “Preview ready” despite the reported frozen picture.
+The owner estimated more than 15 seconds; no latency was measured. Root instructed Close camera/stop before the five-minute
+cutoff; no further phone operation or recording/broadcast was started. Manual
+Close persistence/landscape remain unverified. A fresh focused implementation
+stage is investigating actual native frame readiness and stalled return; this
+supersedes the earlier pending portrait result, not the recorded installation.

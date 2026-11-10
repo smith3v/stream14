@@ -118,3 +118,20 @@ finished its native commands; no additional phone command is scheduled. Late
 owner observations may update this report without restarting device tests.
 The focused independent review of the actual install artifacts and documentation
 found no material issues.
+
+## Owner-reported preview-return failure
+
+Before the cutoff the owner reported that the camera tried to reinitialize,
+remained frozen/dimmed and recovered only after a long delay. The retained private
+portrait screenshot shows a dark camera image while the app labels it
+“Preview ready” and exposes Record/Close camera controls. The screenshot alone
+cannot measure frame motion or latency; the frozen/delayed behavior is the
+owner's direct observation. No numerical recovery duration was measured; the owner later estimated the freeze lasted **more than 15 seconds**, without repeating the test.
+
+**Result: failed**, not a successful preview restoration. Root instructed Close
+camera and stop the visit at 21:29 UTC; no additional phone commands, recording,
+broadcast or TestFlight update were initiated. Final camera-closed confirmation,
+manual-Close persistence and landscape remain unverified. A fresh focused agent
+is investigating native frame delivery/readiness on a new branch from main.
+The installation/source evidence above remains valid; do not treat eventual
+recovery or the “Preview ready” label as passing this regression.
