@@ -559,3 +559,16 @@ authoritative native summary, Release success and integration checkpoints, with
 no material findings. All 88 changed-document local links resolve and
 `git diff --check` passes. Owned E0 is shut down with fixtures retained; the
 other task's D6 simulator was untouched.
+
+
+## Merged-main signed phone preparation — 2026-11-10
+
+PR #66 is merged as main `1960df2`. A fresh isolated preparation of that exact
+source produced a normally signed Development 0.3 (4) app, native build exit 0,
+30.280 seconds. Strict/deep signature, unexpired development profile/device-set
+match, configured OAuth callback, locked dependencies and app branding checks
+passed. No phone operation, capture, provider call or TestFlight upload occurred.
+The previous installed source remains `625df2a`; merged preview recovery is still
+physically unverified. The [candidate handoff and five-minute portrait-first
+preview-only card](2026-11-10-merged-main-phone-candidate.md) provide private
+artifact locations, exact build command and the next separately coordinated visit.
