@@ -633,8 +633,8 @@ The owner confirmed moving portrait preview returned promptly on both app-switch
 cycles and manual Close remained closed after another switch, with no recording
 or upload. **These checks passed**; no recovery latency, landscape, overlay
 freshness, recording/broadcast interruption, A/V sync or performance was measured.
-The current recorded installed source is `70eca51`, not the earlier failed
-`1960df2` or TestFlight. Full scope/private proof is in the
+At that checkpoint the recorded installed source was `70eca51`, not the earlier
+failed `1960df2` or TestFlight. Full scope/private proof is in the
 [corrected-source report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10).
 
 The review chain keeps both PRs targeting main: [#67 historical device evidence](https://github.com/smith3v/stream14/pull/67)
@@ -673,3 +673,25 @@ to the checked runtime. Exact source/results and the five-minute UI-only card ar
 in the integration checkpoint. Final independent checkpoint review and signed
 candidate preparation precede a new owner-ready visit. Legacy contrast and broad
 physical acceptance remain pending. No phone/TestFlight operation occurred here.
+
+
+### PR63 installed for direct interface review — 2026-11-10
+
+The owner subsequently authorized the five-minute development-phone visit. Signed
+Debug Development 0.3 (4), runtime `6459c74` matching reviewed `e1d239a`, was
+installed in place and ordinarily launched (native exit 0, 7.427/0.816 seconds).
+This supersedes the recorded installed `70eca51`; TestFlight remains unchanged.
+The budget was 22:06:52–22:11:52 UTC, including setup. Root requested wrap-up before
+the cutoff and recorded the visit ended at 22:11:55 UTC; no further guided test or
+phone command was initiated. Action times and full card completion were not
+measured.
+
+The owner's later report confirms navigation worked and identifies the
+**More/ellipsis dropdown** as blinking/unstable; the Settings sheet is not the
+reported component. The owner accepted the initially questioned preview/button
+scroll distance because the horizontal page behaves consistently, so no relayout
+is planned for that observation. This is not a complete interface pass. Final camera-closed/output
+confirmation, landscape, VoiceOver/larger text and file/receiver remain unknown.
+PR63 stays draft; the separate native contrast investigation is not waived or
+claimed resolved. The [source-specific phone report](2026-11-10-pr63-preview-integration-implementation.md#attended-development-phone-installation-and-interface-findings--2026-11-10)
+retains private proof locations and the earlier candidate's evidence limits.

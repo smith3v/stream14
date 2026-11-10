@@ -95,9 +95,9 @@ E0 was handed off booted to the separate one-case contrast-probe stage after the
 native command finished; this stage performs no further Simulator operation.
 D6 was observed booted and left untouched. The contrast probe is separate from
 these 107 passes. Neither that legacy audit nor the physical UI is claimed passed.
-Initial independent actual-full-diff and both-parent integration review found no
-material source issues; final source/evidence review is required before root's
-normal PR update and candidate handoff.
+Independent actual-full-diff, both-parent integration and final source/evidence
+reviews found no material issues before root's normal PR update and signed
+candidate handoff at `e1d239a`.
 
 Reproduce with a **new** result path and an owned Simulator:
 
@@ -123,3 +123,63 @@ xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
   -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
   -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
 ```
+
+
+## Attended development-phone installation and interface findings — 2026-11-10
+
+The owner requested direct testing of PR63 without TestFlight and confirmed the
+phone connected/unlocked with recording stopped. A normal shared-scheme signed
+**Debug Development 0.3 (4)** candidate at runtime `6459c74` was installed in place
+and ordinarily launched. Its tracked app/project/Config/Tools trees match reviewed
+head `e1d239a`; twelve locked packages and fourteen signature/profile/configuration/
+branding checks passed. Candidate build exited 0 in 33.543 seconds. Installation
+exited 0 in 7.427 seconds and ordinary launch exited 0 in 0.816 seconds. No
+uninstall, reset or container read was performed.
+
+The visit budget began at **22:06:52 UTC**, with cutoff **22:11:52 UTC**, including
+setup. Root asked for portrait Session → Recordings → Session and More → Settings
+→ Done, leaving Record only and Start recording and streaming untouched. Root
+issued wrap-up instructions during the final minute, then recorded the visit
+ended at 22:11:55 UTC. No additional guided test or phone command was initiated
+after the cutoff. This records the scheduled budget and stop instruction, not a
+measured five-minute completion of every planned check.
+
+The owner's report arrived after the cutoff. Navigation worked, but the owner
+initially reported two observations on this installed source:
+
+- The blinking/unstable presentation is the **More/ellipsis dropdown**, not the
+  Settings sheet. This remains an actionable UI finding.
+- Check camera and sound opens the preview at the top, far from the button. The
+  owner subsequently accepted that placement because the page behaves
+  consistently in horizontal mode. It is nonblocking; no auto-scroll or relayout
+  change is planned from this observation.
+
+These are owner observations, not measured latency or captured frame evidence.
+The horizontal-flow comment does not establish both-landscape geometry acceptance.
+The owner reported opening the preview while checking the interface; no recording
+or broadcasting was requested. Final camera-closed and no-output confirmations
+were not received. Both-landscape, app-switch, VoiceOver/larger-text and actual
+file/receiver checks remain unverified. **This is not a complete interface pass**;
+PR63 stays draft while the More dropdown finding and remaining acceptance are
+addressed. The legacy profile contrast audit is being investigated separately; no waiver or
+resolution is claimed by this phone report.
+
+The current recorded phone installation is now **PR63 Development runtime
+`6459c74`**, not TestFlight and not the earlier `70eca51` preview-only candidate.
+That earlier candidate's two prompt portrait returns/manual Close pass remains
+valid only for its recorded source and scope.
+
+Private local evidence, never Git attachments:
+
+- `/private/tmp/stream14-pr63-phone-preparation.json` and
+  `/private/tmp/stream14-pr63-phone-handoff.md`.
+- `/private/tmp/stream14-pr63-attended-phone-visit.json`.
+- `/private/tmp/stream14-pr63-attended-phone-install-outcome.json` and
+  `/private/tmp/stream14-pr63-attended-phone-launch-outcome.json`.
+- Native command evidence under `/private/tmp/stream14-pr63-attended-phone-install.json`
+  and `/private/tmp/stream14-pr63-attended-phone-launch.json`.
+
+These evidence updates change documentation only. No new phone operation,
+recording, broadcast, deletion, version change or TestFlight upload is part of
+this documentation stage. Retain originals and coordinate a new bounded visit
+before further device tests.

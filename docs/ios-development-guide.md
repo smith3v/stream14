@@ -1993,8 +1993,8 @@ portrait preview-return and manual Close retest: the owner confirmed prompt movi
 preview twice, then a persistent closed camera with no recording/upload. It was
 installed in place and the visit ended in about 186 seconds. Recovery latency was
 not timed. The [corrected-source report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10)
-records exact source, timing and private proof. This is the current recorded
-installed development source, not TestFlight.
+records exact source, timing and private proof. At that checkpoint this was the
+recorded installed development source, not TestFlight.
 
 For remaining physical regressions, select a new visit, **five minutes TOTAL**,
 with no Google or publishing unless separately agreed:
@@ -2056,3 +2056,25 @@ private summaries and scope are in the linked integration checkpoint. This does
 not clear the separate unresolved native profile contrast audit or qualify the
 new UI on the phone. E0 is released to the separate contrast-probe stage; D6 and
 the physical phone remain untouched by this integration.
+
+
+### PR63 direct development installation and initial findings — 2026-11-10
+
+The owner-ready visit subsequently installed PR63 runtime `6459c74`, matching
+reviewed `e1d239a`, as normally signed Debug Development 0.3 (4) in place. Install
+and ordinary launch exited 0; no uninstall/reset or container read occurred.
+This is the current recorded phone source, superseding the prior `70eca51`
+preview-only candidate. There was no TestFlight upload or version change.
+
+The 22:06:52–22:11:52 UTC budget included setup; root requested wrap-up before the
+cutoff and ended the guided visit, without initiating further phone commands.
+The owner's report arrived later: navigation worked, but the **More/ellipsis
+dropdown** blinked; the Settings sheet is not the reported component. The owner
+accepted the initially questioned preview/button scroll distance because the
+horizontal page behaves consistently. No auto-scroll/relayout change is planned
+for that observation. PR63 remains draft;
+no complete physical UI pass, final camera-closed/no-output confirmation,
+landscape, VoiceOver/larger-text or file/receiver pass is inferred. See the
+[attended source-specific report](2026-11-10-pr63-preview-integration-implementation.md#attended-development-phone-installation-and-interface-findings--2026-11-10)
+for native timings, private artifact references and remaining scope. Further
+guided device checks need a newly coordinated bounded visit.

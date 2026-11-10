@@ -1398,6 +1398,11 @@ is not proof of the newly integrated workspace's physical UI. Its direct
 development-phone interface visit, legacy contrast audit and remaining
 accessibility/media checks are recorded separately in the
 [integration checkpoint](2026-11-10-pr63-preview-integration-implementation.md).
+The direct visit installed runtime `6459c74`; owner feedback confirms navigation
+but identifies the More/ellipsis dropdown as unstable. The owner accepted the
+preview/button scroll distance because the horizontal page behaves consistently;
+no relayout is planned for that observation. Full physical interface acceptance
+remains pending; see the source-specific attended report in that checkpoint.
 
 ### Private receiver evidence checkpoint — 2026-11-08
 
