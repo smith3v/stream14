@@ -96,3 +96,19 @@ from the validated color commit; menu/runtime fixture sources are unchanged from
 the independently reviewed and phone-tested menu head. There were no conflicts.
 Independent actual-file, native-image and merged-delta review found no material
 issues. Final documentation-only checks do not imply another media/device run.
+
+## Prepared combined development build
+
+The normal shared-scheme Debug Development 0.3 (4) build at runtime `e6a5c77`
+passed with native exit 0 in 9.480 seconds. All 15 offline preparation checks and
+12 locked-package comparisons passed; app/project/configuration/tool sources
+match reviewed documentation head `a4c4f71`. Private proof and reproducible
+handoff use `/private/tmp/stream14-pr63-combined-phone-`, including
+`/private/tmp/stream14-pr63-combined-phone-handoff.md`.
+
+This combined build has not been installed. The phone remains on menu-only
+`4c097ae`, whose flicker fix the owner confirmed. The owner disconnected the phone;
+no device command, recording, publishing or TestFlight action was performed for
+this preparation. Recheck the binary identity and development-profile validity
+from the private handoff before any later in-place installation; do not assume
+an earlier signing check remains current.

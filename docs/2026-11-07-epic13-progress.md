@@ -735,3 +735,12 @@ heuristic. Normal merge `e6a5c77` preserves menu head `b614a42` exactly and is s
 for offline signing. The owner is away; no further phone action is authorized or
 needed now. Physical color verification and the distinct legacy native profile
 unknown-node audit remain pending. PR63 remains draft; preview placement is unchanged.
+
+The combined runtime `e6a5c77` is now normally signed for a later development-phone
+visit: native Debug build exit 0, 9.480 seconds, 15 offline checks and 12 locked
+package comparisons passed. The private combined-phone handoff referenced in the
+contrast report records binary identity and signing validity for rechecking before
+installation. No phone operation occurred; installed source remains menu-only
+`4c097ae`, with owner-confirmed flicker resolution. The new color correction is
+not physically verified. Final full-PR review at `a4c4f71` found no material issues;
+the pending native audit and broader physical acceptance are unchanged.
