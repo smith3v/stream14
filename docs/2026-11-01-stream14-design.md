@@ -1379,6 +1379,14 @@ the complete 16:9 preview left and a scrolling control column right; larger
 accessibility text stacks the content. Native tab-bar visibility follows available
 layout independently of text size; More → Navigate preserves both destinations.
 
+The More dropdown uses an explicitly identified toolbar item and a separate menu
+view with menu-specific scalar inputs and stable owner bindings. Periodic meter,
+status, image and unchanged manual-visibility health updates are not menu-body
+observations. Actions still read the current renderer when selected. The owner
+confirmed the reported More flicker resolved on development source `4c097ae`;
+[focused evidence](2026-11-10-pr63-more-menu-implementation.md#final-validation-and-owner-confirmation)
+does not establish whole-interface or media qualification.
+
 Settings retains secure overlay draft/apply, policy/terms consent, account-change
 restrictions, destructive confirmations and the Studio-resolution guard. Recordings
 retains original playback/export, actual file size, failed/pending files, recovery
