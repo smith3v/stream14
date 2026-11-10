@@ -250,6 +250,7 @@ struct SetupView: View {
         return VStack(alignment: .leading, spacing: 8) {
             if [.preview, .starting, .recording].contains(experiment.phase) {
                 ExperimentPreview(view: experiment.preview)
+                    .id(ObjectIdentifier(experiment.preview))
                     .frame(width: fittedWidth, height: fittedWidth * 9.0 / 16.0)
                     .background(.black)
                     .accessibilityLabel("Composed camera preview with web overlay")

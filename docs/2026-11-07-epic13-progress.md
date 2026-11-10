@@ -559,3 +559,94 @@ authoritative native summary, Release success and integration checkpoints, with
 no material findings. All 88 changed-document local links resolve and
 `git diff --check` passes. Owned E0 is shut down with fixtures retained; the
 other task's D6 simulator was untouched.
+
+
+## Merged-main signed phone preparation — 2026-11-10
+
+PR #66 is merged as main `1960df2`. A fresh isolated preparation of that exact
+source produced a normally signed Development 0.3 (4) app, native build exit 0,
+30.280 seconds. Strict/deep signature, unexpired development profile/device-set
+match, configured OAuth callback, locked dependencies and app branding checks
+passed. No phone operation, capture, provider call or TestFlight upload occurred.
+The previous installed source remains `625df2a`; merged preview recovery is still
+physically unverified. The [candidate handoff and five-minute portrait-first
+preview-only card](2026-11-10-merged-main-phone-candidate.md) provide private
+artifact locations, exact build command and the next separately coordinated visit.
+
+
+### Authorized merged-main installation — 2026-11-10
+
+The owner confirmed readiness for the preview-only five-minute visit. Main
+`1960df2` Development 0.3 (4) was installed in place and ordinarily launched with
+native exit 0 (5.993/1.045 seconds), preserving the app container without uninstall
+or reset. This replaces the previously recorded phone source `625df2a`; no
+TestFlight upload/version change occurred. Visit start/cutoff and private native
+proof are in the [candidate handoff](2026-11-10-merged-main-phone-candidate.md).
+Physical preview outcomes remain pending owner feedback; install is not a pass.
+
+Issues #18 and #20 were independently audited against current acceptance and
+closed with fixture/coordinator plus the earlier successful Unlisted phone test
+evidence; epic #13's two checklist entries were fetched back and verified checked.
+Other physical, diagnostic, final TestFlight and A1–A9 gates remain open.
+
+
+The owner then reported **failed preview return** on main `1960df2`: camera
+reinitialization froze/dimmed and recovered only after a long delay. The retained
+portrait screenshot shows “Preview ready” despite the reported frozen picture.
+The owner estimated more than 15 seconds; no latency was measured. Root instructed Close camera/stop before the five-minute
+cutoff; no further phone operation or recording/broadcast was started. Manual
+Close persistence/landscape remain unverified. A fresh focused implementation
+stage is investigating actual native frame readiness and stalled return; this
+supersedes the earlier pending portrait result, not the recorded installation.
+
+
+## Preview return delayed on merged source — 2026-11-10
+
+The owner’s portrait preview-only visit on Development 0.3 (4), main `1960df2`,
+failed: preview re-initialized with a frozen/dim picture while status said Preview
+ready, then eventually initialized. The owner estimated more than 15 seconds;
+this is not a measured duration or a physical pass. No recording/live restart was
+requested. Screenshots remain private.
+
+Focused source `70eca51` in `codex/fix-preview-restore-delay`, isolated clone
+`/private/tmp/stream14-preview-restore-delay`, retires fully stopped mixer/screen,
+Metal preview and overlay state, and waits for actual fresh raw/composed frame
+evidence before marking preview ready. A pinned SDK regression demonstrates retained
+Screen timing can suppress post-gap output; no guessed timestamp adjustment or
+package change is used. Four affected native suites pass **76/76**, zero
+failures/skips; ordinary unsigned Release passes. Exact source, reproduction,
+initial nonpassing attempts, private artifacts and physical limitations are in the
+[implementation checkpoint](2026-11-10-preview-restore-delay-implementation.md).
+Independent final source/evidence review at `7407273` found no material issues.
+The separately coordinated corrected-source result below supersedes the pending
+portrait/manual Close checks, not the separate interruption/reconnect/release gates.
+
+
+## Corrected preview phone result and review chain — 2026-11-10
+
+A separately authorized preview-only visit installed normally signed Development
+runtime `70eca51` (matching reviewed `7407273`) in place, preserving the container
+and original recordings. Install/ordinary launch succeeded with native exit 0,
+7.460/2.325 seconds. Device work began 21:45:22.294340 UTC, cutoff
+21:50:22.294340 UTC; root recorded completion at 21:48:28 UTC, about 186 seconds.
+The owner confirmed moving portrait preview returned promptly on both app-switch
+cycles and manual Close remained closed after another switch, with no recording
+or upload. **These checks passed**; no recovery latency, landscape, overlay
+freshness, recording/broadcast interruption, A/V sync or performance was measured.
+The current recorded installed source is `70eca51`, not the earlier failed
+`1960df2` or TestFlight. Full scope/private proof is in the
+[corrected-source report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10).
+
+The review chain keeps both PRs targeting main: [#67 historical device evidence](https://github.com/smith3v/stream14/pull/67)
+→ [#68 preview fix and successful retest](https://github.com/smith3v/stream14/pull/68).
+Normal merge `cc02315` preserves both histories; merge #67 before #68. PR #68
+retains the 76 native passes, Release pass and independent source review; its
+runtime is unchanged by evidence integration. The PR body records the final
+independent integration-review outcome before handoff.
+
+The owner questioned the need for the separate A/V marker tool in PR #69. That
+work is draft/deferred, is not part of this ready chain and is not a prerequisite
+for the preview fix. Numerical physical A/V qualification remains pending; a
+simpler manual measurement workflow can be selected later. No automatic GitHub
+merge, TestFlight upload/version change, new recording or broadcasting is
+authorized by these evidence updates. Broader epic acceptance remains open.
