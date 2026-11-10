@@ -617,5 +617,34 @@ package change is used. Four affected native suites pass **76/76**, zero
 failures/skips; ordinary unsigned Release passes. Exact source, reproduction,
 initial nonpassing attempts, private artifacts and physical limitations are in the
 [implementation checkpoint](2026-11-10-preview-restore-delay-implementation.md).
-Independent final source/evidence review precedes publication; corrected phone
-recovery remains pending, as do the separate interruption/reconnect/release gates.
+Independent final source/evidence review at `7407273` found no material issues.
+The separately coordinated corrected-source result below supersedes the pending
+portrait/manual Close checks, not the separate interruption/reconnect/release gates.
+
+
+## Corrected preview phone result and review chain — 2026-11-10
+
+A separately authorized preview-only visit installed normally signed Development
+runtime `70eca51` (matching reviewed `7407273`) in place, preserving the container
+and original recordings. Install/ordinary launch succeeded with native exit 0,
+7.460/2.325 seconds. Device work began 21:45:22.294340 UTC, cutoff
+21:50:22.294340 UTC; root recorded completion at 21:48:28 UTC, about 186 seconds.
+The owner confirmed moving portrait preview returned promptly on both app-switch
+cycles and manual Close remained closed after another switch, with no recording
+or upload. **These checks passed**; no recovery latency, landscape, overlay
+freshness, recording/broadcast interruption, A/V sync or performance was measured.
+The current recorded installed source is `70eca51`, not the earlier failed
+`1960df2` or TestFlight. Full scope/private proof is in the
+[corrected-source report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10).
+
+The review chain keeps all PRs targeting main: [#67 historical device evidence](https://github.com/smith3v/stream14/pull/67)
+→ [#68 preview fix and successful retest](https://github.com/smith3v/stream14/pull/68)
+→ [#69 offline A/V measurement aid](https://github.com/smith3v/stream14/pull/69).
+Normal merges preserve their histories; merge in that order. PR #68 retains the
+76 native passes, Release pass and independent source review; its runtime is
+unchanged by evidence integration. PR #69's native tool/fixture payload retains
+its independent review and 91 validation checks across three generated H.264/AAC
+fixtures; it does not establish a physical A/V sync pass. Final integration review
+is required before pushing the updated chain. No automatic GitHub merge,
+TestFlight upload/version change, new recording or broadcasting is authorized by
+these preparation/evidence updates. Broader epic acceptance remains open.

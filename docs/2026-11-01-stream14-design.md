@@ -1299,7 +1299,14 @@ mutex-owned scalar observers retain no images or per-frame Tasks. Five seconds
 without this frame evidence fails visibly rather than claiming a ready preview.
 Close/background/generation changes cancel the readiness wait. This bound applies
 to frame readiness after native start, not arbitrary OS hardware/API completion.
-Physical recovery on the corrected source remains pending.
+A separately authorized development retest on runtime `70eca51` (reviewed head
+`7407273`) passed the narrow portrait preview return and manual Close checks: the
+owner confirmed prompt moving preview on both app-switch cycles, then that Close
+persisted with no recording/upload. The recorded visit span was about 186 seconds,
+within its five-minute cutoff; recovery latency itself was not measured. This is
+not landscape, recording/broadcast interruption, overlay freshness/performance or
+TestFlight qualification. Exact source and private native evidence are in the
+[corrected-source phone report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10).
 
 Interrupted recording/broadcast still requires explicit camera reopen, rechecking
 permissions and capture; the separate **Resume same event…** action reads the original channel,

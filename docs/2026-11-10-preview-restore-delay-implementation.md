@@ -89,8 +89,44 @@ xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
   -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
 ```
 
-A later normally signed corrected candidate still needs an explicitly coordinated
-five-minute portrait-first preview visit. No phone operation, private camera/audio
-recording, provider request, broadcasting, version bump or TestFlight replacement
-was performed in this implementation. Preserve original media. Optional landscape
-and manual Close checks must fit the same visit or remain pending.
+No phone operation, private camera/audio recording, provider request, broadcasting,
+version bump or TestFlight replacement was performed during implementation/native
+validation. The separately authorized corrected-source phone retest below
+supersedes the pending portrait/manual Close checks; optional landscape remains
+pending. Independent final source/evidence review at `7407273` found no material
+issues. All 75 local links, fences and diff checks passed before publication.
+
+## Corrected-source attended retest — 2026-11-10
+
+The owner explicitly agreed to a new five-minute preview-only visit. A normally
+signed **Development 0.3 (4), runtime `70eca51`**, matching reviewed head `7407273`,
+was installed in place (native exit 0, 7.460 seconds) and ordinarily launched
+(native exit 0, 2.325 seconds). No uninstall, reset or container read occurred.
+This supersedes the installed main `1960df2` whose earlier return check failed;
+it is not a TestFlight update.
+
+The first device operation was **21:45:22.294340 UTC**, with a strict
+**21:50:22.294340 UTC** cutoff. Root recorded the completed visit at
+**21:48:28 UTC**, about **186 seconds** after device work began. This is the
+coordinated visit span, not measured camera-start or recovery latency.
+
+| Check | Owner-reported result |
+| --- | --- |
+| Portrait Open camera → Codex for about ten seconds → return, repeated once | Moving preview returned promptly both times, without the earlier long dimmed freeze. |
+| Close camera → Codex → return | Camera stayed closed with Open camera available; no recording or upload started. |
+| Wrap-up | Owner left the camera closed; the visit ended within the five-minute cutoff. |
+
+**Result: passed for these preview-only checks on this development source.**
+No rotation, local recording or broadcasting was requested. Recovery latency was
+not timed; overlay freshness, recording/broadcast interruption, A/V sync,
+performance, optional landscape and final TestFlight qualification remain
+unverified by this visit. Original recordings were retained.
+
+Private proof is retained under
+`/private/tmp/stream14-preview-delay-retest-phone-{visit,install,launch,install-outcome,launch-outcome}.json`.
+Owner replies and the recorded end clock are summarized privately in
+`/private/tmp/stream14-preview-delay-retest-observations.json`.
+The signed candidate preparation and reproducible handoff are
+`/private/tmp/stream14-preview-delay-phone-preparation.json` and
+`/private/tmp/stream14-preview-delay-phone-handoff.md`. No private media, signing
+identity or device/account identifier is included in Git.
