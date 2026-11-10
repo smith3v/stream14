@@ -441,3 +441,31 @@ because the last revocation left the app disconnected. Then, only when prepared
 and explicitly operator-confirmed, S1 short Unlisted start/receiver/End. Keep the
 remaining physical inventory pending, five-minute TOTAL visits, retained originals
 and separately agreed A2/A7. Issue #26/epic #13 are not complete from delivery alone.
+
+
+## Preview-only app-switch finding and fix — 2026-11-10
+
+The owner found TestFlight 0.3 (4) **Open camera → Codex → stream14** left the
+overlay over black camera video. This was preview only, with the phone vertical
+throughout and no rotation. Main `ea90bd3` restores overlay/read-only YouTube on
+foreground but never restores explicitly opened camera preview. Native startup
+also lacked a stop check after its awaited start.
+
+Focused branch `codex/fix-preview-foreground` in
+`/private/tmp/stream14-preview-foreground-fix`, app source `b85c8e3`, retains only
+preview intent and reopens fresh capture after completed teardown and foreground
+return. Close, recording start, confirmed broadcast preparation and terminal
+failure cancel that intent. Normal foreground Stop recording returns to preview
+eligibility; interrupted recording/upload never restarts automatically. Stale
+capture callbacks are generation-fenced; opening/closing shows progress rather
+than an inactive viewport. Portrait/landscape UI does not change the media canvas.
+
+Authoritative native result: **70 passes, zero failures/skips**, four affected
+suites; ordinary unsigned Release passed. Independent actual full-diff and final
+source/evidence review found no material issues. First-run fixture failures and
+corrections, exact commands/private artifacts and the pending five-minute physical
+portrait/landscape regression are recorded in the
+[implementation checkpoint](2026-11-10-preview-foreground-implementation.md).
+No phone, provider API, publishing, version bump or TestFlight replacement occurred.
+PR #63's separate unmerged interface work was not folded into this fix. Root owns
+publication into main and later normally signed replacement delivery.

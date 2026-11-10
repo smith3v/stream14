@@ -60,6 +60,17 @@ xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Debug \
 ```
 
 Independent actual-file/full-diff review found no material lifecycle, ownership,
-privacy or media-restart issues. Release verification and final source/evidence
-confirmation are pending at this checkpoint. Physical portrait/landscape camera
-return remains pending on a later normally signed replacement build.
+privacy or media-restart issues. The ordinary unsigned Release target also passed
+at app source `b85c8e3`; log `/private/tmp/stream14-preview-fix-release.log`, native
+exit 0. This checks that production code builds without Debug camera fixtures; it
+is not signing, TestFlight delivery or a physical camera pass. Final independent focused
+source/evidence confirmation at `b85c8e3` also found no material issues. Physical portrait/landscape
+camera return remains pending on a later normally signed replacement build.
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath /private/tmp/stream14-preview-fix-build \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO build
+```
