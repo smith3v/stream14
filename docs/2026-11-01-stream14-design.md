@@ -1401,8 +1401,11 @@ accessibility/media checks are recorded separately in the
 The direct visit installed runtime `6459c74`; owner feedback confirms navigation
 but identifies the More/ellipsis dropdown as unstable. The owner accepted the
 preview/button scroll distance because the horizontal page behaves consistently;
-no relayout is planned for that observation. Full physical interface acceptance
-remains pending; see the source-specific attended report in that checkpoint.
+no relayout is planned for that observation. A later private screenshot also
+shows the owner-identified Start recording and streaming label unreadable on its
+white button in the dark interface. This actual contrast finding is separate from
+the unresolved native AX audit. Full physical interface acceptance remains pending;
+see the source-specific attended report in that checkpoint.
 
 ### Private receiver evidence checkpoint — 2026-11-08
 

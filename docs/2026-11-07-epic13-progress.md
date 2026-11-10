@@ -692,6 +692,10 @@ reported component. The owner accepted the initially questioned preview/button
 scroll distance because the horizontal page behaves consistently, so no relayout
 is planned for that observation. This is not a complete interface pass. Final camera-closed/output
 confirmation, landscape, VoiceOver/larger text and file/receiver remain unknown.
-PR63 stays draft; the separate native contrast investigation is not waived or
-claimed resolved. The [source-specific phone report](2026-11-10-pr63-preview-integration-implementation.md#attended-development-phone-installation-and-interface-findings--2026-11-10)
+A later private screenshot also shows the owner-identified Start recording and
+streaming button as a blank-looking white pill on the dark interface, with an
+unreadable label. This is an actual second contrast finding, distinct from the
+legacy native AX audit. It was supplied after the guided cutoff, not within-visit
+measurement evidence. PR63 stays draft; the separate native contrast
+investigation is not waived or claimed resolved. The [source-specific phone report](2026-11-10-pr63-preview-integration-implementation.md#attended-development-phone-installation-and-interface-findings--2026-11-10)
 retains private proof locations and the earlier candidate's evidence limits.

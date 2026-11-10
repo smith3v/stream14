@@ -2072,8 +2072,11 @@ The owner's report arrived later: navigation worked, but the **More/ellipsis
 dropdown** blinked; the Settings sheet is not the reported component. The owner
 accepted the initially questioned preview/button scroll distance because the
 horizontal page behaves consistently. No auto-scroll/relayout change is planned
-for that observation. PR63 remains draft;
-no complete physical UI pass, final camera-closed/no-output confirmation,
+for that observation. A later private screenshot identifies another actionable
+finding: Start recording and streaming appears as a blank-looking white pill on
+the dark interface, with an unreadable label. This is actual contrast evidence,
+separate from the unresolved native AX audit, supplied after the guided cutoff.
+PR63 remains draft; no complete physical UI pass, final camera-closed/no-output confirmation,
 landscape, VoiceOver/larger-text or file/receiver pass is inferred. See the
 [attended source-specific report](2026-11-10-pr63-preview-integration-implementation.md#attended-development-phone-installation-and-interface-findings--2026-11-10)
 for native timings, private artifact references and remaining scope. Further

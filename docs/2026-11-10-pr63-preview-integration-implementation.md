@@ -145,7 +145,7 @@ after the cutoff. This records the scheduled budget and stop instruction, not a
 measured five-minute completion of every planned check.
 
 The owner's report arrived after the cutoff. Navigation worked, but the owner
-initially reported two observations on this installed source:
+initially reported observations on this installed source:
 
 - The blinking/unstable presentation is the **More/ellipsis dropdown**, not the
   Settings sheet. This remains an actionable UI finding.
@@ -156,12 +156,23 @@ initially reported two observations on this installed source:
 
 These are owner observations, not measured latency or captured frame evidence.
 The horizontal-flow comment does not establish both-landscape geometry acceptance.
+
+After the guided cutoff, the owner also supplied a private portrait screenshot
+showing a blank-looking white primary button on the dark interface and identified
+it as **Start recording and streaming**, whose label was unreadable. Surrounding
+labels and controls are visible. This is a second actionable, actual contrast
+finding, separate from the legacy native audit's unresolved AX-node report. No
+numeric contrast ratio or causal code diagnosis is claimed. The screenshot's
+23:14 local display is after the guided cutoff, not evidence that this check was
+performed inside the five-minute visit. The image and its private filename/path
+are not committed.
+
 The owner reported opening the preview while checking the interface; no recording
 or broadcasting was requested. Final camera-closed and no-output confirmations
 were not received. Both-landscape, app-switch, VoiceOver/larger-text and actual
 file/receiver checks remain unverified. **This is not a complete interface pass**;
-PR63 stays draft while the More dropdown finding and remaining acceptance are
-addressed. The legacy profile contrast audit is being investigated separately; no waiver or
+PR63 stays draft while the More dropdown instability, unreadable primary button
+and remaining acceptance are addressed. The legacy profile contrast audit is being investigated separately; no waiver or
 resolution is claimed by this phone report.
 
 The current recorded phone installation is now **PR63 Development runtime
