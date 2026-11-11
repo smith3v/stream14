@@ -1,14 +1,39 @@
 # Epic #13 progress and resume ledger
 
-Updated: 2026-11-08. Implementation, review and external acceptance are tracked separately.
+Latest resume checkpoint: 2026-11-11. Main is `2001d76`; PR63 source is `0e510f9` (app unchanged from `e6a5c77`).
+Code work/current targeted checks and full-diff review pass; PR63 is ready for review,
+with physical acceptance pending. Read the [latest handoff](ios-development-guide.md#pr63-review-handoff--2026-11-11)
+before resuming. Phone: menu-only `4c097ae`; combined signed build is not installed.
+Epic #13 remains active; full A1–A9 qualification is unverified. Rows/checkpoints
+below are dated history, not instructions to reimplement completed stages.
 
 ## Owner workflow
 
-Use a fresh agent per stage and make useful committed PRs in a chain. The owner explicitly permits development atop unmerged prerequisite PRs, superseding the old wait-for-merge rule. First PR targets main; dependent PRs target their preceding branch and are retargeted after predecessor merges. Do not merge automatically, rewrite shared history or delete branches.
+Use a fresh agent per stage. Start every new focused branch from current main and target every new PR to main, as required by AGENTS.md and the full-app plan. The owner permits normally inheriting unmerged prerequisite commits when coordinating dependent work; that does not change the main PR target. Do not merge automatically, force-push, rewrite shared history or delete branches.
 
 Preserve the original checkout and its private signing/concurrent setup edits. All epic work uses isolated `/private/tmp/stream14-epic13-*` worktrees. Experiments stay at most 15 minutes, originals are retained, and camera upload requires explicit operator action. Longer qualification needs separate agreement.
 
-## Stage ledger
+## Current acceptance audit — 2026-11-11
+
+Canonical gates are in [specification §10](2026-11-01-stream14-design.md#10-later-full-product-acceptance-gates-and-test-matrix). Implementation/fixture evidence is not delivered-build qualification; epic #13 stays active. No new product implementation gap was identified by this audit.
+
+| Gate | Current evidence and remaining acceptance |
+| --- | --- |
+| A1 overlay | Historical local/receiver composition passed; exact current-build 1080p alpha, reference canvas and repeated reload/file/receiver checks remain pending (#14/#17/#23/#62/#27). |
+| A2 smooth video | Synthetic/native timing and instrumentation exist; agreed 30-minute run, physical markers, pipeline drops/stalls and memory/queue bounds remain pending (#14/#25/#27). |
+| A3 YouTube | Short Unlisted Development `625df2a` Live/End, receiver overlay/speech and local playback passed; #15/#16/#18/#20 closed. Current UI and delivered-candidate regression remain pending. |
+| A4 independent backup | Fault/reconnect fixtures exist; real two-minute outage, path switch/same-event file continuity, receiver/queue evidence, overlay hide/fresh recovery and healthy-output writer-fault checks remain pending (#14/#19/#21/#27). |
+| A5 recording recovery | Native recovery implementation/fixtures exist; multiple physical termination points, decoded recovered prefix/loss, original retention, playback and export remain pending (#24/#27). |
+| A6 failure UX | Deterministic API/lifecycle/fault checks exist; selected physical failure presentation, output independence and explicit Home/lock/audio resume/idle/heat evidence remain pending (#19/#22/#23/#27). |
+| A7 long event | Powered three-hour 1080p30 broadcast+recording meeting A2 quality targets and physical start/end A/V offset ≤100 ms remain pending; no run agreement yet (#14/#27). |
+| A8 devices/interface | PR63 targeted native checks/review pass; physical color, both landscapes, large text/VoiceOver, both profiles/mute/zoom/routes/play/export/cancellation and available 15/17 coverage remain pending (#17/#22/#23/#62/#27). |
+| A9 TestFlight | Historical full-app 0.3 (4) delivery/owner installation passed; corrected-source release, actual installation/regression and phone instrumentation overhead/exported JSON remain pending (#25/#26/#27). Owner deferred the update. |
+
+A2/A7 need separate explicit agreement; routine phone visits stay five minutes TOTAL and development recording experiments at most 15 minutes. Retain originals and use physical markers with measured uncertainty. #65 shared-key mitigation and draft #69 custom A/V tooling are deferred, not prerequisites; existing Analyze plus manual markers are sufficient for planned analysis.
+
+## Historical stage ledger
+
+The rows and chain below describe their dated checkpoints; use the current audit and latest guide for present status.
 
 | Stage / issue | Current implementation and PR | Branch / worktree suffix | Remaining acceptance |
 | --- | --- | --- | --- |
@@ -40,9 +65,11 @@ Current chain: F1/#40 → F2/#41 → F4/#42 → F3/#43 → phone plan/#44 → F5
 
 ## Owner-dependent work
 
-The owner will connect/unlock the test iPhone when available; paired discovery is not capture readiness. Concurrent owner setup is now recorded in the original checkout's `docs/2026-11-07-google-youtube-setup.md`: console project, API, testing audience and public iOS OAuth client are prepared and a channel was inspected. Preserve that external local work; do not create duplicate clients/projects. Actual app OAuth scope/callback/channel identity remains unverified. Configure the public client through the selected local configuration mechanism for signed-phone tests.
+The phone is disconnected and the owner is away; no phone operation, capture, publishing or TestFlight update is scheduled. The installed app is menu-only Development 0.3 (4) `4c097ae`, with flicker resolved by owner confirmation. The combined `e6a5c77` candidate was built/signed offline, not installed: all 15 preparation checks and 12 package pins passed; native build exit 0, 9.480 seconds. Recheck binary identity and signing validity before any later in-place installation, preserving the container/originals. Private preparation details stay outside Git.
 
-No dedicated unlisted test event or private RTMPS destination/key is configured. No live camera media has been published. F1's physical performance/receiver/sync gates remain pending, as do later long-run agreement and delivered-build qualification. Missing setup does not block deterministic implementation.
+PR63 `0e510f9` has current targeted checks and independent full-diff review against main `2001d76` with no material findings. The exact unmodified profile accessibility test passed once at `43e6706` (one pass, zero failures/skips, native exit 0); earlier `6459c74` failures remain unexplained history, not a deterministic fix. Menu tests (two native UI cases) plus Release, and contrast tests (four Light/Dark enabled/unavailable native cases, four reviewed crops) plus Release passed. Physical color/UI/accessibility/file/receiver acceptance remains pending before merge and #62/#23 acceptance where required.
+
+Historical OAuth callback/restore/channel/sign-out/revoke checks passed; do not require account setup again unless current state needs it. The short Unlisted `625df2a` Live/End/local-file/receiver run passed, but does not qualify the new UI or final TestFlight. Existing/default reusable keys are allowed: select a safe disposable Unlisted event, auto-stop Off, and preserve all current eligibility/confirmation gates. The older TestFlight 0.3 (4) source is not the current Development UI. Follow the [latest guide](ios-development-guide.md#pr63-review-handoff--2026-11-11), using Session/Recordings and More → Settings; older Preparation click scripts below are historical.
 
 ## Resume procedure
 
@@ -633,8 +660,8 @@ The owner confirmed moving portrait preview returned promptly on both app-switch
 cycles and manual Close remained closed after another switch, with no recording
 or upload. **These checks passed**; no recovery latency, landscape, overlay
 freshness, recording/broadcast interruption, A/V sync or performance was measured.
-The current recorded installed source is `70eca51`, not the earlier failed
-`1960df2` or TestFlight. Full scope/private proof is in the
+At that checkpoint the recorded installed source was `70eca51`, not the earlier
+failed `1960df2` or TestFlight. Full scope/private proof is in the
 [corrected-source report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10).
 
 The review chain keeps both PRs targeting main: [#67 historical device evidence](https://github.com/smith3v/stream14/pull/67)
@@ -650,3 +677,105 @@ for the preview fix. Numerical physical A/V qualification remains pending; a
 simpler manual measurement workflow can be selected later. No automatic GitHub
 merge, TestFlight upload/version change, new recording or broadcasting is
 authorized by these evidence updates. Broader epic acceptance remains open.
+
+
+### Session workspace inherits tested preview recovery — 2026-11-10
+
+PR63 head `100ed21` normally merges reviewed PR68 at `3154200`, then landed main
+`2001d76` at `6459c74`; the second merge has no file delta. Its workspace now
+retains fresh stopped-mixer/view/overlay replacement, frame readiness and explicit
+Metal view identity. No deferred PR69 tooling is included. The owner requests a
+direct development-phone interface check, without TestFlight. Source validation
+and a five-minute interface-only card are in the
+[integration checkpoint](2026-11-10-pr63-preview-integration-implementation.md).
+The legacy profile contrast audit and physical workspace/accessibility/media
+acceptance remain pending; prior preview passes are not reclassified as new UI
+passes. This integration stage performs no phone/capture/publishing operation.
+
+
+The integrated PR63 runtime passed **107 native/UI checks, zero failures/skips**
+(106 native plus one noncapturing navigation case), and ordinary unsigned Release
+passed; both commands exited 0. Main's ancestry merge changed no files relative
+to the checked runtime. Exact source/results and the five-minute UI-only card are
+in the integration checkpoint. Final independent checkpoint review and signed
+candidate preparation precede a new owner-ready visit. Legacy contrast and broad
+physical acceptance remain pending. No phone/TestFlight operation occurred here.
+
+
+### PR63 installed for direct interface review — 2026-11-10
+
+The owner subsequently authorized the five-minute development-phone visit. Signed
+Debug Development 0.3 (4), runtime `6459c74` matching reviewed `e1d239a`, was
+installed in place and ordinarily launched (native exit 0, 7.427/0.816 seconds).
+This supersedes the recorded installed `70eca51`; TestFlight remains unchanged.
+The budget was 22:06:52–22:11:52 UTC, including setup. Root requested wrap-up before
+the cutoff and recorded the visit ended at 22:11:55 UTC; no further guided test or
+phone command was initiated. Action times and full card completion were not
+measured.
+
+The owner's later report confirms navigation worked and identifies the
+**More/ellipsis dropdown** as blinking/unstable; the Settings sheet is not the
+reported component. The owner accepted the initially questioned preview/button
+scroll distance because the horizontal page behaves consistently, so no relayout
+is planned for that observation. This is not a complete interface pass. Final camera-closed/output
+confirmation, landscape, VoiceOver/larger text and file/receiver remain unknown.
+A later private screenshot also shows the owner-identified Start recording and
+streaming button as a blank-looking white pill on the dark interface, with an
+unreadable label. This is an actual second contrast finding, distinct from the
+legacy native AX audit. It was supplied after the guided cutoff, not within-visit
+measurement evidence. PR63 stays draft; the separate native contrast
+investigation is not waived or claimed resolved. The [source-specific phone report](2026-11-10-pr63-preview-integration-implementation.md#attended-development-phone-installation-and-interface-findings--2026-11-10)
+retains private proof locations and the earlier candidate's evidence limits.
+
+
+### PR63 More-dropdown fix and direct owner verification — 2026-11-10
+
+Menu runtime `4c097ae` in `/private/tmp/stream14-pr63-menu-fix` gives More an explicit
+stable toolbar item and a separate menu-specific observation boundary. It retains
+Settings, landscape Navigate and manual overlay controls; preview placement is
+unchanged as accepted by the owner. Original-menu functional baseline passed one
+case; no automated visual flicker reproduction is claimed. The candidate's two
+native UI cases and ordinary unsigned Release exited 0. Root then normally signed,
+installed and launched the same Development 0.3 (4) source in place at the owner's
+request. The owner explicitly confirmed the flickering resolved. Current installed
+source is `4c097ae`, superseding `6459c74`, without TestFlight/version changes.
+
+See the [focused menu checkpoint](2026-11-10-pr63-more-menu-implementation.md) for
+private artifacts, original cutoff, timings and exact limitations. No broader UI,
+VoiceOver, rotation/media/receiver acceptance is inferred; the blank streaming-
+button contrast issue was not included in this phone candidate. Independent final
+review and combination of that separate fix remain root-owned. All native jobs
+for this menu stage are terminal/reaped, and no extra health fixture was added.
+
+
+### PR63 streaming-action contrast correction — 2026-11-10
+
+The blank dark-mode streaming pill is corrected with native bordered styling and
+semantic primary foreground; every unavailable/preflight/publishing predicate is
+unchanged. Four isolated native light/dark enabled/unavailable render cases passed
+with zero failures/skips, plus ordinary Release. Private actual crops show clear
+labels and native unavailable fill; the existing Cancel case separately passed
+before the label-only foreground addition. This is not a combined five-case final
+run or physical color acceptance. The [contrast handoff](2026-11-10-stream-button-contrast-implementation.md)
+records exact runs, prior failed candidates and the non-WCAG inactive visibility
+heuristic. Normal merge `e6a5c77` preserves menu head `b614a42` exactly and is suitable
+for offline signing. The owner is away; no further phone action is authorized or
+needed now. Physical color verification and the distinct legacy native profile
+unknown-node audit remain pending. PR63 remains draft; preview placement is unchanged.
+
+The combined runtime `e6a5c77` is now normally signed for a later development-phone
+visit: native Debug build exit 0, 9.480 seconds, 15 offline checks and 12 locked
+package comparisons passed. The private combined-phone handoff referenced in the
+contrast report records binary identity and signing validity for rechecking before
+installation. No phone operation occurred; installed source remains menu-only
+`4c097ae`, with owner-confirmed flicker resolution. The new color correction is
+not physically verified. Final full-PR review at `a4c4f71` found no material issues;
+the pending native audit and broader physical acceptance are unchanged.
+
+
+### PR63 review handoff — 2026-11-11
+
+The exact unchanged-source profile audit at `43e6706` now passes once (1/1,
+zero failures/skips, native exit 0). This supersedes the preceding draft/audit-pending
+checkpoint. PR63 is ready for review; retained failure history and pending physical
+merge/issue acceptance are detailed in the [current guide](ios-development-guide.md#pr63-review-handoff--2026-11-11).

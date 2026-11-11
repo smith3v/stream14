@@ -1638,15 +1638,30 @@ phone or real service calls and does not establish the long qualification gates.
 
 ## F10 preparation, session and recordings interface (issue #23)
 
-Use Preparation for profile, YouTube connection/channel/event and help/privacy.
-Open Session to open the camera, rehearse or record locally without Google. Choosing
-a tab, event or settings does not publish. Go Live shows the channel title/ID,
-event, visibility and profile for explicit confirmation. While active, profile and
-URL edits remain locked; Overlay settings explains the lock while Session retains
-manual hide and Reload overlay. Watch the distinct Recording, Upload, YouTube and
-Overlay messages. A backup warning is independent of upload; uncertain End offers
-read-only reconciliation and Studio. Interrupted sessions require the F9 explicit
-camera reopen and same-event Resume confirmation.
+Issue #62 replaces Preparation/Session with one Session workspace. Choose or change
+the scheduled event in its picker, use Check camera and sound to explicitly open
+capture, choose quality before opening capture (or close it to change quality), and
+choose a compatible rear lens beside the preparation preview. Record only needs no
+Google connection. Start recording and streaming confirms the actual channel,
+event, visibility and profile; the coordinator revalidates and admits local writing
+before upload. Setup has no required upload test and never uploads camera media.
+
+Upload and Local saving remain independent through startup, reconnection, writer
+failure and finalization, alongside YouTube and Overlay. End session confirms remote
+completion plus stopping local recording/capture. Stop recording remains available
+when upload fails. Unknown End retains reconciliation and Studio. Prepare next
+session waits for finalization and settled remote/coordinator state, then clears the
+old event selection. A failed local writer cannot restart within the live session;
+read the persistent guidance, retain/review/export the incomplete footage and end
+before opening a new file. The gap is not recovered.
+
+Portrait shows Session / Recordings tabs. Landscape hides the whole native tab bar;
+More → Navigate switches destinations. Rotation preserves selection and outputs.
+Normal landscape keeps preview left and scrolling controls right; accessibility
+text stacks them. More offers routine overlay hide/show and reload; overlay failure
+also offers contextual retry/settings. More → Settings contains YouTube account/data
+actions, Overlay draft/apply/disable, About & Legal and Help. Legal pages remain
+reachable before camera/sign-in and consent presents terms before agreement.
 
 Recordings keeps the original MP4, status, date and size, with Play, Export and
 confirmed Delete. Cancel preserves the file. Exported copies remain after deletion;
@@ -1687,6 +1702,118 @@ native nav/tab bounds. It logs that proof; unknown elements, fully visible text,
 controls and other audit types remain failures. This is a narrow native audit
 limitation, not a general contrast waiver or physical VoiceOver evidence. See the
 F10 handoff for exact retained failed/passing runs and independent review status.
+
+### Session workspace validation — issue #62 (2026-11-09–10)
+
+The original change used main `ea90bd3` as its base; PR #63 was rebased onto
+main `1960df2` on 2026-11-10. Independent review inspected the full
+diff and files; fixes addressed stale next-session output status, active recovery
+routes and writer-admission readiness. Focused re-review found no remaining
+material issues. The original iCloud checkout's unrelated project/setup edits are
+preserved; the implementation checkout is `/private/tmp/stream14-issue62-fresh`.
+
+Native evidence uses Xcode 27.2, iOS 27.2 SDK and the iPhone 13 mini Simulator
+`D6BEAF78-D273-4952-8349-B50B2824E6A9`. Release generic-iPhone build disables signing;
+it is compile evidence, not installation or TestFlight delivery. Test builds run the
+shared scheme's branded UI-runner action. The focused 61-test run covers
+BroadcastSession, RecordingFinalization, SharedMediaIntegration and SessionWorkspace:
+writer-before-upload, unknown End, upload outage/recovery with uninterrupted local
+writing, writer failure with uninterrupted compressed upload, finalizer protection
+and next-session reset/archive retention.
+
+Result artifacts (temporary, not committed):
+
+- `/private/tmp/stream14-issue62-second.xcresult`: 61 focused native tests passed;
+  eight UI tests passed, with a rotation-helper failure after returning to portrait.
+  The helper incorrectly chose the hidden-bar route while a visible tab was settling;
+  it now uses existence of the native tab, letting XCTest wait for its tap.
+- `/private/tmp/stream14-issue62-final.xcresult`: permission/event fix routes,
+  publishing cancellation, local-only finish and both-direction rotation passed.
+  A legacy viewport helper overscrolled Start; the corrected adaptive helper is
+  verified by the next run. A profile contrast audit returned an unresolvable
+  SwiftUI accessibility node and auto-scrolled to the camera-closed placeholder.
+- `/private/tmp/stream14-issue62-viewport.xcresult`: the primary action fits the
+  usable native viewport at normal/largest text in both landscape directions.
+  This run reproduces the old placeholder contrast failure before the color fix.
+- `/private/tmp/stream14-issue62-contrast.xcresult`: the 44-point compact-camera-panel
+  target check passed; profile contrast remained unresolved. A later run with a
+  compact primary-color Label/Text placeholder still returned an unknown node,
+  despite its exported screenshot showing black text/icon on white.
+  Audit handling has not been broadened to ignore unknown elements.
+- `/private/tmp/stream14-issue62-profile-final.xcresult`: the unresolved profile
+  audit and its primary-color screenshot are retained.
+- `/private/tmp/stream14-issue62-tab-content.xcresult`: rotation/output preservation
+  passed after restoring the original selected-tab-only rendering pattern. The
+  profile audit still reported an unknown node.
+- `/private/tmp/stream14-issue62-fresh-queries.xcresult`: fresh application/query
+  objects after relaunch did not resolve the same profile contrast report.
+- `/private/tmp/stream14-issue62-release-final.log`: final unsigned Release build passed.
+
+Across focused runs, twelve selected interface tests pass. The legacy
+`testProfileSelectionPersistsAndRemainsAccessibleInLandscape` still fails its native
+contrast audit on a SwiftUI accessibility node XCTest cannot resolve. Its profile
+selection/persistence, target-size and scrolling assertions pass before the audit.
+Exported audit screenshots show the compact camera-closed label/icon and text in
+primary black on white, but this is not a native-audit pass or proof of the audit's
+root cause. No broad exception was added; unknown elements still fail. Retain this
+as an unresolved validation limitation, with the PR draft and issue acceptance open.
+
+The first UI pass also exposed missing Done on pushed Settings destinations and
+test assumptions about native popover cancellation and hidden tabs; these are fixed.
+No result from those failed passes is presented as an unconditional pass.
+
+Reproduce from the implementation checkout with pinned packages:
+
+```sh
+xcodebuild -project Stream14.xcodeproj -scheme Stream14 \
+  -destination 'platform=iOS Simulator,id=D6BEAF78-D273-4952-8349-B50B2824E6A9' \
+  -derivedDataPath /private/tmp/stream14-issue62-build \
+  -clonedSourcePackagesDirPath /private/tmp/stream14-transport-fix-packages \
+  -disableAutomaticPackageResolution \
+  -only-testing:Stream14Tests/BroadcastSessionTests \
+  -only-testing:Stream14Tests/RecordingFinalizationTests \
+  -only-testing:Stream14Tests/SharedMediaIntegrationTests \
+  -only-testing:Stream14Tests/SessionWorkspaceTests \
+  -only-testing:Stream14UITests/SetupScreenTests \
+  -resultBundlePath /private/tmp/stream14-issue62-reproduce-new.xcresult test
+```
+
+Default UI tests never publish camera media. Device/seed-dependent tests skip
+unless explicitly enabled. Debug fixture names additionally include
+`permission-denied`, `no-event`, `writer-pending`, `active-overlay-unavailable`,
+`upload-recovered` and `finalizing`; fixtures are absent from Release. Their local
+record/stop states are presentation-only and create no real file or capture.
+
+Physical 13 mini portrait, both landscape directions, larger text and VoiceOver
+inspection remains pending. Use an attended slot targeting five minutes total;
+fixture-only interface checks need no private camera capture/upload. Actual
+camera/audio route/permission operation, output profile/lens media quality and
+file/receiver exclusion remain separate physical regression evidence. No real
+YouTube publish, TestFlight delivery or long-run qualification is claimed here.
+
+### PR #63 rebase validation — 2026-11-10
+
+Rebased onto current main `1960df2`, retaining #64 preview-only foreground recovery
+and #66 compatible default-stream reuse. The two source conflicts were resolved in
+SetupView and MediaSession. Root scene reporting uses `setCaptureForeground`,
+including initial state; transition UI shows Opening/Closing rather than a stale
+preview. Production open keeps the foreground guard, explicit preview intent and
+capture generation; Debug interface fixtures still exit before native acquisition.
+Recording/upload is never automatically restarted. Help distinguishes preview-only
+restoration from interrupted recording/broadcast resume. Main's YouTube binding
+and client changes are unchanged.
+
+`/private/tmp/stream14-issue62-rebase.xcresult` passed 100 tests across seven native
+suites in 32.542 seconds, plus the deterministic navigation smoke test in 23.013
+seconds. Suites: PreviewForegroundTests, SessionInterruptionTests,
+BroadcastSessionTests, SessionProfileTests, SessionWorkspaceTests,
+YouTubeBindingTests and RecordingFinalizationTests. The final unsigned Release
+build passed in `/private/tmp/stream14-issue62-rebase-release-final.log`.
+Independent full-diff/range-diff and actual-file review found no material issues.
+`git diff --check` and changed-document local-link checks passed. No real camera
+capture, phone install or provider publishing was performed for this rebase.
+The prior native profile contrast-audit failure and physical inspection remain
+open; this rebase does not turn either into a pass or change the PR's draft status.
 
 ## Private synthetic RTMPS receiver checkpoint (2026-11-08)
 
@@ -1866,8 +1993,8 @@ portrait preview-return and manual Close retest: the owner confirmed prompt movi
 preview twice, then a persistent closed camera with no recording/upload. It was
 installed in place and the visit ended in about 186 seconds. Recovery latency was
 not timed. The [corrected-source report](2026-11-10-preview-restore-delay-implementation.md#corrected-source-attended-retest--2026-11-10)
-records exact source, timing and private proof. This is the current recorded
-installed development source, not TestFlight.
+records exact source, timing and private proof. At that checkpoint this was the
+recorded installed development source, not TestFlight.
 
 For remaining physical regressions, select a new visit, **five minutes TOTAL**,
 with no Google or publishing unless separately agreed:
@@ -1905,3 +2032,103 @@ The corrected-source visit subsequently installed Development `70eca51` in place
 and passed portrait return twice plus manual Close persistence, as reported above.
 The phone was left closed with no recording/upload. TestFlight remains unchanged;
 use source-specific evidence rather than the unchanged 0.3 (4) version label.
+
+
+### PR63 development-phone preparation after the preview fix — 2026-11-10
+
+The Session workspace normally incorporates tested PR68 and current main
+`2001d76` at `6459c74`; no shared history was rewritten. It keeps fresh-mixer/frame
+readiness and the replacement Metal view identity while preserving the workspace
+and Debug fixture boundaries. The owner requested direct development-phone testing
+without TestFlight. The [integration checkpoint and five-minute interface-only
+card](2026-11-10-pr63-preview-integration-implementation.md) record the exact source,
+validation and pending physical scope. No recording, broadcasting, account change
+or deletion is part of that card. The prior unresolved profile contrast audit is
+not waived, and the PR remains draft pending its acceptance.
+
+
+The integrated workspace's authoritative
+`/private/tmp/stream14-pr63-preview-integration.xcresult` passed 107 tests: 106 in
+seven native suites plus one noncapturing navigation UI check, with zero
+failures/skips. The full native command exited 0 in 240.729 seconds; ordinary
+unsigned Release exited 0 in 99.476 seconds. Exact reproduction, source ancestry,
+private summaries and scope are in the linked integration checkpoint. This does
+not clear the separate unresolved native profile contrast audit or qualify the
+new UI on the phone. E0 is released to the separate contrast-probe stage; D6 and
+the physical phone remain untouched by this integration.
+
+
+### PR63 direct development installation and initial findings — 2026-11-10
+
+The owner-ready visit subsequently installed PR63 runtime `6459c74`, matching
+reviewed `e1d239a`, as normally signed Debug Development 0.3 (4) in place. Install
+and ordinary launch exited 0; no uninstall/reset or container read occurred.
+This is the current recorded phone source, superseding the prior `70eca51`
+preview-only candidate. There was no TestFlight upload or version change.
+
+The 22:06:52–22:11:52 UTC budget included setup; root requested wrap-up before the
+cutoff and ended the guided visit, without initiating further phone commands.
+The owner's report arrived later: navigation worked, but the **More/ellipsis
+dropdown** blinked; the Settings sheet is not the reported component. The owner
+accepted the initially questioned preview/button scroll distance because the
+horizontal page behaves consistently. No auto-scroll/relayout change is planned
+for that observation. A later private screenshot identifies another actionable
+finding: Start recording and streaming appears as a blank-looking white pill on
+the dark interface, with an unreadable label. This is actual contrast evidence,
+separate from the unresolved native AX audit, supplied after the guided cutoff.
+PR63 remains draft; no complete physical UI pass, final camera-closed/no-output confirmation,
+landscape, VoiceOver/larger-text or file/receiver pass is inferred. See the
+[attended source-specific report](2026-11-10-pr63-preview-integration-implementation.md#attended-development-phone-installation-and-interface-findings--2026-11-10)
+for native timings, private artifact references and remaining scope. Further
+guided device checks need a newly coordinated bounded visit.
+
+
+### More dropdown verification — 2026-11-10
+
+The direct-development menu candidate `4c097ae` is now the recorded installed
+Development 0.3 (4), superseding `6459c74`; no TestFlight upload/version change was
+made. Normal in-place install/ordinary launch succeeded and the owner explicitly
+confirmed the flickering resolved. The separate blank prominent streaming-button
+contrast finding was not part of this installed menu build.
+
+The unchanged original menu passed a safe functional baseline, so no visual
+reproduction is claimed. The stable-toolbar candidate passed two native UI cases
+covering a three-second open menu under 10 Hz fixture updates, Settings, portrait,
+both landscapes and ordinary navigation, with zero failures/skips; native Release
+also passed. No extra health fixture or broader sweep was added after owner
+confirmation. Exact commands, private native evidence, installation cutoff and
+scope are in the [menu implementation checkpoint](2026-11-10-pr63-more-menu-implementation.md).
+No whole-interface, VoiceOver, recording/receiver or TestFlight acceptance follows
+from this narrow result. Camera preview placement remains as accepted by the owner.
+
+
+PR63's streaming-action contrast follow-up uses native bordered styling and a
+semantic primary label while preserving disabled/preflight rules. Four isolated
+native appearance/state cases and Release pass; [the focused handoff](2026-11-10-stream-button-contrast-implementation.md)
+records actual screenshots, timings scope and prior failed candidates. The Debug
+appearance override requires the existing isolated interface fixture and is absent
+from Release/normal launches. The color fix still needs a later owner phone check;
+see the latest unchanged-source profile audit result below.
+
+
+### PR63 review handoff — 2026-11-11
+
+At source `43e6706`, the exact unmodified
+`SetupScreenTests/testProfileSelectionPersistsAndRemainsAccessibleInLandscape`
+passed once: one test, zero failures/skips, native exit 0, body 123.869 seconds.
+All 83 tracked app/test files matched that source. The existing narrow clipped
+static-text exemption applied twice using before/callback viewport geometry;
+blank identifiers and unprinted labels prevent identifying the exact nodes.
+Earlier `6459c74` unmodified failures and diagnostic-only success remain history:
+this pass establishes neither a cause nor a deterministic flakiness fix. No test,
+waiver or threshold changed. Native evidence is retained privately.
+
+The code work, current targeted checks and independent full-diff review against
+main `2001d76` are complete with no material findings: PR63 is ready for review.
+This supersedes earlier draft checkpoints, without authorizing a merge or closing
+#62/#23. The phone remains on owner-confirmed menu runtime `4c097ae`; the signed
+combined `e6a5c77` build is not installed. Recheck its identity/signing before use.
+Physical color, portrait/both-landscape and largest-text/VoiceOver acceptance,
+and actual file/receiver checks remain pending before merge/issue acceptance
+where required. No phone operation or new media run occurred. Epic #13 remains
+active and full A1–A9 qualification unverified; deferred #69/#65 are outside PR63.

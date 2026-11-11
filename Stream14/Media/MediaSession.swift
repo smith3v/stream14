@@ -111,23 +111,78 @@ final class MediaSession {
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     var canSelectLens: Bool { !broadcastConfigurationLocked && !busy && !stopRequested && (phase == .idle || phase == .preview) }
-    var canRecord: Bool { phase == .preview && !busy && !stopRequested && recoveringSampleID == nil && fileFinalization.recordingID == nil }
+    var canRecord: Bool {
+        #if DEBUG
+        if interfaceFixtureName == "writer-pending" { return false }
+        #endif
+        return phase == .preview && !busy && !stopRequested && recoveringSampleID == nil && fileFinalization.recordingID == nil
+    }
     var canDeleteSamples: Bool { !busy && recoveringSampleID == nil && fileFinalization.recordingID == nil && (phase == .idle || phase == .preview) }
     var recordingID: UUID? { recorder == nil ? nil : sample?.id }
     var recordingMetrics: LocalRecorder.Metrics? { recorder?.metrics }
-    var isRecording: Bool { phase == .recording && recorder != nil && !recordingFailed }
+    var isRecording: Bool {
+        #if DEBUG
+        if interfaceFixtureMode { return phase == .recording && !recordingFailed }
+        #endif
+        return phase == .recording && recorder != nil && !recordingFailed
+    }
 
     /// AVAssetWriter.startWriting/startSession must have accepted actual media;
     /// record() returning by itself is not the backup-admission signal.
     var hasStartedWriting: Bool { isRecording && recorder?.hasStarted == true }
     var broadcastCaptureReady: Bool {
-        (phase == .preview || phase == .recording) && !busy && !stopRequested &&
+        #if DEBUG
+        if interfaceFixtureMode { return phase == .preview || phase == .recording }
+        #endif
+        return (phase == .preview || phase == .recording) && !busy && !stopRequested &&
         AVCaptureDevice.authorizationStatus(for: .video) == .authorized &&
         AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     }
     var broadcastPipelineRunning: Bool { sharedEncoder != nil && !stopRequested }
     var broadcastOverlayReady: Bool {
-        overlayURL.isEmpty || (renderer.healthy && renderer.image != nil)
+        #if DEBUG
+        if interfaceFixtureMode { return !["overlay-unavailable", "active-overlay-unavailable"].contains(interfaceFixtureName) }
+        #endif
+        return overlayURL.isEmpty || (renderer.healthy && renderer.image != nil)
+    }
+
+    var capturePermissionDenied: Bool {
+        #if DEBUG
+        if interfaceFixtureName == "permission-denied" { return true }
+        #endif
+        return [.denied, .restricted].contains(AVCaptureDevice.authorizationStatus(for: .video)) ||
+        [.denied, .restricted].contains(AVCaptureDevice.authorizationStatus(for: .audio))
+    }
+
+    var canPrepareNextSession: Bool {
+        !busy && !stopRequested && !hasUpload && fileFinalization.recordingID == nil &&
+        (phase == .idle || phase == .preview)
+    }
+
+    /// Reset only the settled workspace. Archive originals/sidecars are retained.
+    @discardableResult func prepareNextSession() -> Bool {
+        guard canPrepareNextSession else { return false }
+        sample = nil
+        sampleURL = nil
+        recordingFailed = false
+        failure = false
+        interrupted = false
+        startedAt = nil
+        uploadState = .idle
+        uploadMessage = "Upload not started"
+        message = phase == .preview ? "Check the picture and sound before starting the next session." :
+            "Check camera and sound to prepare the next session."
+        return true
+    }
+
+    var localSavingStatus: String {
+        if fileFinalization.recordingID != nil || phase == .stopping { return "Finalizing · keep the app open" }
+        if recordingFailed { return "Failed · incomplete footage retained" }
+        if isRecording { return "Recording" }
+        if phase == .starting { return "Starting" }
+        if let sample, sample.status == .completed { return "Saved" }
+        if let sample, sample.status != .pending { return "Incomplete · inspect in Recordings" }
+        return "Not started"
     }
 
     init(readOverlayURL: @MainActor () throws -> String = OverlayURLStore.read,
@@ -321,6 +376,13 @@ final class MediaSession {
 
     func openPreview() async {
         guard phase == .idle, !busy, captureForeground else { return }
+        #if DEBUG
+        if interfaceFixtureMode {
+            phase = .preview; message = "Fixture camera ready; no capture is running."
+            availableLenses = [.wide]
+            return
+        }
+        #endif
         previewRequested = true
         previewResumePending = false
         captureGeneration &+= 1
@@ -552,7 +614,12 @@ final class MediaSession {
 
     func record(injection: LocalRecorder.Injection = .none) async {
         #if DEBUG
-        guard !interfaceFixtureMode else { return }
+        if interfaceFixtureMode {
+            guard canRecord else { return }
+            phase = .recording; recordingFailed = false
+            message = "Fixture local recording; no file or capture is opened."
+            return
+        }
         #endif
         guard canRecord else { return }
         clearPreviewIntent()
@@ -672,6 +739,14 @@ final class MediaSession {
     }
 
     func stopRecording() async {
+        #if DEBUG
+        if interfaceFixtureMode {
+            guard isRecording else { return }
+            phase = .preview; sample = ExperimentSample(status: .completed)
+            message = "Fixture saved result; no file was created."
+            return
+        }
+        #endif
         guard phase == .recording, !busy, recorder != nil else { return }
         busy = true
         phase = .stopping
@@ -1043,6 +1118,7 @@ final class MediaSession {
 
     #if DEBUG
     private var interfaceFixtureMode = false
+    private var interfaceFixtureName = ""
 
     /// Replaces only native camera acquisition for deterministic lifecycle tests.
     /// Production phases, permission/stop checks and teardown ownership still run.
@@ -1056,14 +1132,27 @@ final class MediaSession {
         previewFrameTimeout = frameTimeout
     }
 
+    /// Bounded UI-regression input; never opens media or changes output ownership.
+    func updateMenuInterfaceFixture(_ tick: Int) {
+        guard interfaceFixtureMode, interfaceFixtureName == "menu-updates" else { return }
+        microphoneLevel = Double(tick % 10) / 10
+        message = "Fixture status update \(tick)"
+    }
+
     /// Presentation-only fixture: no capture, encoder, writer or network is opened.
     func installInterfaceFixture(_ state: String) {
         interfaceFixtureMode = true
-        guard state != "idle" else { return }
+        interfaceFixtureName = state
+        guard state != "idle" && state != "permission-denied" else { return }
         phase = .preview
         message = "Fixture camera ready; no capture is running."
         audioRoute = "Fixture microphone"
         cameraZoom = CameraZoom(value: 1, minimum: 1, maximum: 3)
+        availableLenses = [.wide]
+        if ["reconnecting", "upload-recovered", "active-overlay-unavailable"].contains(state) { phase = .recording }
+        if state == "ended" { sample = ExperimentSample(status: .completed) }
+        if state == "finalizing" { phase = .stopping }
+        if state == "upload-recovered" { uploadMessage = "Connected to the same event" }
         if ["reconnecting", "backup-failed", "unknown-end", "ended"].contains(state) {
             broadcastConfigurationLocked = state != "ended"
             uploadMessage = state == "reconnecting" ? "Reconnecting. Local recording continues while healthy." : "Upload stopped"

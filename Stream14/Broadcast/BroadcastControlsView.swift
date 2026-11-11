@@ -5,15 +5,13 @@ struct BroadcastControlsView: View {
     let media: MediaSession
     let selection: YouTubeEventSelection
     let authorization: YouTubeAuthorization
+    var allowStart = true
     @State private var confirmingEnd = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("YouTube broadcast").font(.headline)
             Text("YouTube: " + broadcast.message).fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("broadcastStatus")
-            Text("Upload: " + media.uploadMessage)
-                .accessibilityIdentifier("uploadStatus")
             if broadcast.reconnectStatus == .exhausted {
                 Button("Retry upload to same event") { broadcast.retryUpload() }
                     .frame(minHeight: 44)
@@ -27,12 +25,15 @@ struct BroadcastControlsView: View {
                     .frame(minHeight: 44)
                     .accessibilityIdentifier("resumeBroadcast")
             }
-            if broadcast.canStart {
-                Button("Go Live", systemImage: "dot.radiowaves.left.and.right") {
+            if allowStart && broadcast.canStart && broadcast.state != .ended {
+                Button("Start recording and streaming", systemImage: "dot.radiowaves.left.and.right") {
                     broadcast.requestConfirmation(channel: selection.channel, event: selection.selected)
                 }
                 .frame(minHeight: 44)
-                .disabled(selection.selected == nil)
+                .buttonStyle(.bordered)
+                .foregroundStyle(.primary)
+                .disabled(selection.selected == nil || !media.broadcastCaptureReady || !media.broadcastOverlayReady ||
+                          !(media.canRecord || media.hasStartedWriting))
                 .accessibilityIdentifier("goLive")
             }
             if broadcast.isWorking && broadcast.state != .ending {
@@ -41,7 +42,7 @@ struct BroadcastControlsView: View {
                     .accessibilityIdentifier("cancelBroadcastStartup")
             }
             if broadcast.activeIntent != nil || broadcast.pendingRemote != nil {
-                Button("End broadcast", role: .destructive) { confirmingEnd = true }
+                Button("End session", role: .destructive) { confirmingEnd = true }
                     .frame(minHeight: 44)
                     .disabled(broadcast.state == .ending)
                     .accessibilityIdentifier("endBroadcast")
@@ -55,7 +56,7 @@ struct BroadcastControlsView: View {
                     .frame(minHeight: 44)
             }
         }
-            .confirmationDialog("Go Live on YouTube?", isPresented: Binding(
+            .confirmationDialog("Start recording and streaming?", isPresented: Binding(
                 get: { broadcast.confirmation != nil },
                 set: { if !$0 { broadcast.dismissConfirmation() } }), titleVisibility: .visible,
                 presenting: broadcast.confirmation) { intent in
@@ -64,14 +65,14 @@ struct BroadcastControlsView: View {
                 } message: { intent in
                     Text("Channel: \(intent.channel.title) (\(intent.channel.id))\nEvent: \(intent.event.title)\nVisibility: \(intent.event.visibility)\nProfile: \(intent.profile.label)\nThis starts local recording and uploads camera and microphone media to this event.")
                 }
-            .confirmationDialog("End YouTube broadcast?", isPresented: $confirmingEnd, titleVisibility: .visible) {
-                Button("End broadcast and local recording", role: .destructive) { broadcast.confirmEnd() }
+            .confirmationDialog("End session?", isPresented: $confirmingEnd, titleVisibility: .visible) {
+                Button("End session and local recording", role: .destructive) { broadcast.confirmEnd() }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 if let intent = broadcast.activeIntent {
-                    Text("End \(intent.event.title) on \(intent.channel.title) (\(intent.event.visibility))? Upload and local capture will stop, even if YouTube completion cannot be confirmed.")
+                    Text("End \(intent.event.title) on \(intent.channel.title) (\(intent.event.visibility))? This ends the YouTube broadcast and stops local recording and capture. Upload and local capture will stop, even if YouTube completion cannot be confirmed.")
                 } else if let pending = broadcast.pendingRemote {
-                    Text("End event \(pending.eventID) on channel \(pending.channelID)? YouTube state will be read before any completion request. Local capture will stop.")
+                    Text("End event \(pending.eventID) on channel \(pending.channelID)? YouTube state will be read before any completion request. This ends the YouTube broadcast and stops local recording and capture, even if remote completion cannot be confirmed.")
                 }
             }
     }

@@ -46,9 +46,25 @@ struct Stream14App: App {
         return MediaSession(profile: SessionProfile.saved())
     }
 
+    #if DEBUG
+    /// Appearance is overridden only for isolated, fail-closed interface fixtures.
+    private var interfaceFixtureColorScheme: ColorScheme? {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["STREAM14_INTERFACE_FIXTURE"] != nil else { return nil }
+        switch environment["STREAM14_INTERFACE_COLOR_SCHEME"] {
+        case "dark": return .dark
+        case "light": return .light
+        default: return nil
+        }
+    }
+    #endif
+
     var body: some Scene {
         WindowGroup {
             SetupView(authorization: authorization, youtubeEvents: youtubeEvents, experiment: media, broadcast: broadcast)
+                #if DEBUG
+                .preferredColorScheme(interfaceFixtureColorScheme)
+                #endif
                 .onOpenURL { authorization.handle($0) }
                 .onChange(of: scenePhase) {
                     if scenePhase == .active { broadcast.expireStoredYouTubeData() }

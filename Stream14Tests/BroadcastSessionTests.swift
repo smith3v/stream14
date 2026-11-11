@@ -4,6 +4,31 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct BroadcastSessionTests {
+    @Test func nextSessionRequiresSettledOutputsAndRemoteState() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.session.requestConfirmation(channel: h.channel, event: h.server.event)
+        #expect(!h.session.prepareNextSession())
+        h.session.dismissConfirmation()
+        h.snapshot.isRecording = true
+        #expect(!h.session.prepareNextSession())
+        h.snapshot.isRecording = false
+        h.snapshot.canPrepareNextSession = false
+        #expect(!h.session.prepareNextSession())
+        h.snapshot.canPrepareNextSession = true
+        h.start(); await h.session.waitForOperation()
+        #expect(!h.session.prepareNextSession())
+        h.server.failure = "endReject"
+        h.session.confirmEnd(); await h.session.waitForOperation()
+        #expect(h.session.state == .needsReconciliation)
+        #expect(!h.session.prepareNextSession())
+        h.server.failure = ""
+        h.session.confirmEnd(); await h.session.waitForOperation()
+        #expect(h.session.state == .ended)
+        #expect(h.session.prepareNextSession())
+        #expect(h.session.state == .idle && h.session.pendingRemote == nil && h.session.activeIntent == nil)
+    }
+
     @Test func activationExpiresEitherJournalDuringLocalUseAndPreservesUnrelatedOriginal() async throws {
         for source in ["binding", "remote"] {
             let h = try await Harness()

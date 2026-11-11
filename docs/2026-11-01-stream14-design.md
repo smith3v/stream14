@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Created: 2026-11-01. Updated: 2026-11-07. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
+Created: 2026-11-01. Updated: 2026-11-10. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -412,17 +412,36 @@ the operator can test the complete composition without going live.
 
 ### Prepare
 
-The main setup screen presents a composed preview and concise readiness information:
-camera/microphone permission, active audio route, overlay loading state,
-selected output profile, and YouTube
-connection/channel/event. Use standard navigation to Settings and Recordings.
+The Session workspace progresses from Next session through Active session to
+Finish. Recordings remains the second native tab with its existing archive layout
+and actions. Portrait shows both tabs; landscape hides the entire native tab bar
+using `toolbarVisibility(_:for: .tabBar)`, driven by available layout. Toolbar More
+contains a Navigate submenu for both destinations when the bar is hidden. Rotation
+and navigation never start, stop or restart media outputs.
+
+The workspace summarizes the selected event, actual API channel, scheduled local
+date/time and visibility. Choose / Change event opens a separate picker containing
+refresh, eligibility details and Studio scheduling help; completed events must not
+be silently reused. Readiness gives direct fixes for camera/permission, account,
+event, overlay and unresolved-state blockers. No upload test is required.
+Check camera and sound explicitly opens the composed preview and permission flow.
+Quality and compatible rear-lens selection sit beside the preparation preview,
+along with input/microphone controls. Quality remains frozen while capture is open:
+Close camera to change quality, choose a supported profile, then check again.
+Active-session locks remain authoritative. Record only remains available without Google.
 
 Request camera and microphone access when the operator first opens the preview,
 explaining both capture and broadcasting. If denied, explain how to enable access
 in Settings; do not keep triggering permission prompts. Preview and local rehearsal
 must work without connecting a Google account.
 
-Settings allows editing and explicitly applying an overlay URL draft and selecting the output profile.
+Settings → Overlay allows editing and explicitly applying a secure URL draft.
+Settings → YouTube contains account switching, restore, sign-out, revoke, deletion
+and the Studio-resolution guard. Contextual connection opens the same consent flow.
+Settings → About & Legal contains policy, service/YouTube terms and notices; Help
+contains documentation and general guidance. These screens remain available before
+camera permission or sign-in. Main screens have no permanent legal/document links;
+consent still presents relevant policies and terms before agreement.
 A committed URL loads automatically while the app is active; unsaved edits never
 change the active source. Validation or secure-storage errors preserve the current
 configuration. Applying a replacement URL is restricted to idle/preview state.
@@ -439,7 +458,8 @@ Changing accounts clears the previous channel's selection and credentials as app
 
 ### Go live
 
-The final action names the channel, event, and visibility. A clear confirmation
+Start recording and streaming is the primary action. Its confirmation names the
+channel, event, visibility and profile. A clear confirmation
 starts this specific event and local recording; opening settings, selecting an
 event, or previewing the camera never transmits camera media to YouTube. Check
 permissions, output configuration, local writer readiness, overlay readiness, authentication, and
@@ -466,11 +486,22 @@ part of the encoded picture. Do not play warning sounds into an active microphon
 
 ### Finish and review
 
-"End broadcast" confirms that the selected YouTube event will end. Request remote
+End session confirms that the selected YouTube event will end and local recording
+and capture will stop. Request remote
 completion, disconnect upload, and finalize the recording regardless of any API
 failure. A bounded remote request must not indefinitely delay local finalization.
 If completion cannot be confirmed, say "YouTube end not confirmed" and offer a
 link to Studio; never imply the remote event ended merely because upload stopped.
+
+Finish shows Finalizing, Saved or Incomplete independently of YouTube state, with
+original Play / Export when available. Prepare next session is blocked by writer
+finalization, active outputs, uncertain remote requests and coordinator locks.
+After a successful reset it clears the previous event selection and requires an
+explicit new choice; it never starts media. Unknown completion keeps reconciliation
+and Studio actions available. Local-saving failure has no in-session restart in the
+current media owner: explain that retained footage is incomplete and a new file
+requires ending/checking a new session; never claim the recording gap was recovered.
+Upload recovery remains independent and reports attempts/exhaustion and retry.
 
 The recording screen lists local sessions with date, duration, size, and complete,
 interrupted, or failed status. It supports playback, explicit export through the
@@ -485,6 +516,12 @@ and text/icons alongside colors. Support larger text in setup and recordings wit
 truncating essential actions. Test landscape operation on the 13 mini, including safe
 areas, permission-denied screens, keyboard entry, and failure warnings. Preserve the
 complete 16:9 output in preview; safe areas affect controls, not the video canvas.
+
+The monochrome streaming action uses native bordered styling and semantic primary
+foreground so its label remains readable in light/dark and unavailable states.
+Unavailable actions remain disabled under the existing readiness rules; readable
+text must not be implemented by enabling a blocked publish action. Native fill
+and accessibility state continue to distinguish unavailability.
 
 ## 4. Browser overlay contract
 
@@ -1331,35 +1368,63 @@ Simulator fixtures exercise control/late-result decisions and injected native
 writer faults. Physical Home/lock/audio-route interruptions, real heat, final-file
 continuity/idle behavior and long-run qualification remain unverified for F9.
 
-### F10 native operator interface (2026-11-08, issue #23)
+### F10 native operator interface (issues #23 and #62)
 
-Native Preparation, Session and Recordings tabs share the existing main-actor
-MediaSession/BroadcastSession owners. Tab selection opens no camera, requests no
-Google mutation and publishes no media. Preparation shows profile, camera/input
-readiness, overlay state, the actual API channel and eligible scheduled events;
-the existing coordinator still performs all preflight and frozen-intent checks.
-Go Live/Resume confirmation retains channel title/ID, event title, visibility and
-profile. Session shows the frozen active event alongside separate recording,
-upload, YouTube and overlay labels, persistent backup/thermal warnings, duration,
-mute/levels, zoom, manual overlay visibility and reload, file Record/Stop and
-confirmed broadcast End. Native controls remain outside the MTHKView composition.
+Issue #62 consolidates preparation/session into one Session workspace while
+preserving the existing Recordings archive. The operator flow in section 3 is the
+UI contract. Existing MediaSession, BroadcastSession, event and authorization
+owners remain authoritative. The coordinator still freezes and revalidates the
+confirmed identity/profile/URL and starts the local writer before upload. Native
+controls remain outside the composed MTHKView media.
 
-At normal text sizes landscape gives the letterboxed full-canvas preview its own
-column and a separately scrolling control column. Accessibility text uses one
-scrolling column so controls remain reachable. URL settings remain inspectable
-while edits are locked; they explain the lock. Applying an empty URL remains the
-explicit disable action, and reload/manual hide remain independent of URL editing.
-Preparation includes account disconnect/revoke, privacy/notices and session help.
-Recordings retain date/size, pending/failed status, original-file playback/export
-and deliberate confirmed per-file deletion with the exported-copy explanation.
-There is no file migration, automatic cleanup, Photos permission or storage estimate.
+Upload and Local saving have independent main-workspace labels from startup through
+failure/recovery/finalization, alongside YouTube and Overlay. Final writer callback
+ownership and remote ambiguity both gate next-session reset. No new capture owner,
+encoder, storage estimation or health polling is introduced. Normal landscape keeps
+the complete 16:9 preview left and a scrolling control column right; larger
+accessibility text stacks the content. Native tab-bar visibility follows available
+layout independently of text size; More → Navigate preserves both destinations.
 
-Debug-only UI fixtures isolate Google, overlay loading and capture, using injected
-failing service closures and presentation state. They exercise the actual native
-views, preflight/confirmation and locked settings without claiming live media
-acceptance. Physical VoiceOver, the smallest phone in hand, actual receiver/file
-control exclusion, keyboard/permission operation and long qualification remain
-separate pending evidence; Simulator snapshots cannot establish them.
+The More dropdown uses an explicitly identified toolbar item and a separate menu
+view with menu-specific scalar inputs and stable owner bindings. Periodic meter,
+status, image and unchanged manual-visibility health updates are not menu-body
+observations. Actions still read the current renderer when selected. The owner
+confirmed the reported More flicker resolved on development source `4c097ae`;
+[focused evidence](2026-11-10-pr63-more-menu-implementation.md#final-validation-and-owner-confirmation)
+does not establish whole-interface or media qualification.
+
+Settings retains secure overlay draft/apply, policy/terms consent, account-change
+restrictions, destructive confirmations and the Studio-resolution guard. Recordings
+retains original playback/export, actual file size, failed/pending files, recovery
+and qualification summaries, with explicit confirmed deletion only.
+
+Debug-only fixtures isolate Google, capture, overlay networking and publishing.
+They verify interface decisions and presentation, while synthetic native integration
+tests verify output independence. See the development guide for current results.
+Phone orientation/VoiceOver, permission/audio-route operation and actual media
+quality remain separate evidence; Simulator results do not qualify those gates.
+
+The workspace integration of 2026-11-10 normally inherits PR68's fresh stopped
+mixer/view/overlay retirement and advancing-frame startup readiness, including an
+explicit Metal view identity. It preserves the workspace's sole state owners and
+Debug capture/network fixture boundary. The earlier `70eca51` phone preview pass
+is not proof of the newly integrated workspace's physical UI. Its direct
+development-phone interface visit, legacy contrast audit and remaining
+accessibility/media checks are recorded separately in the
+[integration checkpoint](2026-11-10-pr63-preview-integration-implementation.md).
+The direct visit installed runtime `6459c74`; owner feedback confirms navigation
+but identifies the More/ellipsis dropdown as unstable. The owner accepted the
+preview/button scroll distance because the horizontal page behaves consistently;
+no relayout is planned for that observation. A later private screenshot also
+shows the owner-identified Start recording and streaming label unreadable on its
+white button in the dark interface. This actual contrast finding is separate from
+the historical native AX audit failure. The final unchanged-source audit passed once
+(see the latest handoff below); full physical interface acceptance remains pending;
+see the source-specific attended report in that checkpoint.
+
+The latest [review handoff](ios-development-guide.md#pr63-review-handoff--2026-11-11)
+records the single unmodified audit pass at `43e6706` and completed code review.
+PR63 is ready for review; physical acceptance, merge and #62/#23 remain pending.
 
 ### Private receiver evidence checkpoint — 2026-11-08
 
