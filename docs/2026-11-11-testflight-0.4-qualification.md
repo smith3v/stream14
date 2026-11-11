@@ -35,6 +35,18 @@ review found no material issues. Apple documents the
 [upload requirements](https://developer.apple.com/news/upcoming-requirements/)
 and [SDK privacy manifest requirements](https://developer.apple.com/support/third-party-SDK-requirements/).
 
+### Delivery result
+
+Xcode uploaded **0.4 (5)** as TestFlight Internal Only on 2026-11-11 at
+11:54 Amsterdam time. App Store Connect finished processing. The saved export
+answer matched the previous release's Apple operating-system encryption
+classification. Build-specific What to Test notes were saved and verified.
+The existing **Owner MVP** group shows the build **Testing**, with 90 days
+remaining at verification. Installation and the physical checks below are
+pending. See Apple's
+[internal testing guidance](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers)
+and [export compliance reference](https://developer.apple.com/help/app-store-connect/reference/app-information/export-compliance-documentation-for-encryption).
+
 ## Five-minute local smoke test
 
 Update stream14 in place through TestFlight and confirm **0.4 (5)** before the

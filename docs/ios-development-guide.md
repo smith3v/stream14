@@ -2153,8 +2153,9 @@ for remaining physical, receiver and longer-run evidence.
 
 ## TestFlight 0.4 (5) qualification — 2026-11-11
 
-The new internal TestFlight candidate is based on merged main `0c2e8f5` and
-includes the startup-audio fix from PR #74. The owner confirmed clear 720p30
-startup speech on the signed Development PR build. See the
+TestFlight **0.4 (5)** is **Testing** in Owner MVP. It is based on merged main
+`0c2e8f5` and includes the startup-audio fix from PR #74. The owner confirmed
+clear 720p30 startup speech on the signed Development PR build. Installation
+and TestFlight device regression are pending. See the
 [delivery and qualification plan](2026-11-11-testflight-0.4-qualification.md)
 for the TestFlight-specific smoke test and storage-limited endurance plan.
