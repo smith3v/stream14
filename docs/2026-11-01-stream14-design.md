@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Created: 2026-11-01. Updated: 2026-11-10. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
+Created: 2026-11-01. Updated: 2026-11-11. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -523,6 +523,12 @@ complete 16:9 output in preview; safe areas affect controls, not the video canva
 Session action buttons use high-contrast labels in light and dark appearances.
 Unavailable actions have neutral styling and retain their disabled accessibility
 state under the existing readiness rules.
+
+On the iOS 27.2 Simulator, screenshot sampling measured 6.74:1 for enabled Start,
+6.40:1 for Stop and both End buttons, and at least 9.56:1 for unavailable Start
+across light and dark appearances. Start fit the native viewport in both
+landscape orientations at standard and largest text sizes. The color treatment
+still needs a physical phone check.
 
 ## 4. Browser overlay contract
 
