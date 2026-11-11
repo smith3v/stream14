@@ -147,7 +147,15 @@ struct SharedMediaEncoderTests {
         _ = try await second.finish()
         #expect(errors.withLock { $0.isEmpty })
         let packets = source.withLock { $0 }
-        let firstAudio = try #require(packets.first { $0.formatDescription?.mediaType == .audio })
+        let audioPackets = packets.filter { $0.formatDescription?.mediaType == .audio }
+        let firstAudio = try #require(audioPackets.first)
+        let audioFormat = try #require(firstAudio.formatDescription)
+        #expect(audioPackets.allSatisfy { $0.formatDescription == audioFormat })
+        for url in [firstURL, secondURL] {
+            let asset = AVURLAsset(url: url)
+            let track = try #require(try await asset.loadTracks(withMediaType: .audio).first)
+            #expect(try await track.load(.formatDescriptions).count == 1)
+        }
         let priming = CMTime(value: 1, timescale: 1) - firstAudio.presentationTimeStamp
         for type in [AVMediaType.video, .audio] {
             let mediaType: CMFormatDescription.MediaType = type == .video ? .video : .audio

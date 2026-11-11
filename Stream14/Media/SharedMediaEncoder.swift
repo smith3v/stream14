@@ -186,6 +186,7 @@ nonisolated final class SharedMediaCodec {
     private var video: VTCompressionSession?
     private var lastVideo = CMTime.invalid
     private var converter: AVAudioConverter?
+    private var audioFormatDescription: CMAudioFormatDescription?
     private var inputFormat: AVAudioFormat?
     private var audioOrigin = CMTime.invalid
     private var audioSourceFrames: Int64 = 0
@@ -365,20 +366,26 @@ nonisolated final class SharedMediaCodec {
             flags: 0, blockBufferOut: &block) == noErr, let block,
             CMBlockBufferReplaceDataBytes(with: buffer.data, blockBuffer: block,
                 offsetIntoDestination: 0, dataLength: Int(buffer.byteLength)) == noErr else { throw SharedMediaEncoder.Failure.codec }
-        var description: CMAudioFormatDescription?
-        let cookie = converter.magicCookie ?? Data()
-        let formatStatus = cookie.withUnsafeBytes {
-            CMAudioFormatDescriptionCreate(allocator: nil, asbd: converter.outputFormat.streamDescription,
-                layoutSize: 0, layout: nil, magicCookieSize: $0.count, magicCookie: $0.baseAddress,
-                extensions: nil, formatDescriptionOut: &description)
+        if audioFormatDescription == nil {
+            // The AAC cookie can update bitrate metadata as packets are encoded.
+            // Use one description for the converter's fixed audio format.
+            var description: CMAudioFormatDescription?
+            let cookie = converter.magicCookie ?? Data()
+            let formatStatus = cookie.withUnsafeBytes {
+                CMAudioFormatDescriptionCreate(allocator: nil, asbd: converter.outputFormat.streamDescription,
+                    layoutSize: 0, layout: nil, magicCookieSize: $0.count, magicCookie: $0.baseAddress,
+                    extensions: nil, formatDescriptionOut: &description)
+            }
+            guard formatStatus == noErr, let description else { throw SharedMediaEncoder.Failure.codec }
+            audioFormatDescription = description
         }
-        guard formatStatus == noErr, let description else { throw SharedMediaEncoder.Failure.codec }
+        guard let audioFormatDescription else { throw SharedMediaEncoder.Failure.codec }
         let leading = Int64(converter.primeInfo.leadingFrames)
         let frame = audioPackets * 1024
         let time = audioOrigin + CMTime(value: frame - leading, timescale: 44_100)
         var sample: CMSampleBuffer?
         guard CMAudioSampleBufferCreateReadyWithPacketDescriptions(allocator: nil, dataBuffer: block,
-            formatDescription: description, sampleCount: Int(buffer.packetCount), presentationTimeStamp: time,
+            formatDescription: audioFormatDescription, sampleCount: Int(buffer.packetCount), presentationTimeStamp: time,
             packetDescriptions: buffer.packetDescriptions, sampleBufferOut: &sample) == noErr, let sample else {
             throw SharedMediaEncoder.Failure.codec
         }
@@ -405,6 +412,7 @@ nonisolated final class SharedMediaCodec {
     func invalidate() {
         if let video { VTCompressionSessionInvalidate(video) }
         video = nil; converter = nil; pendingPCM.removeAll(); pendingAudio = nil
+        audioFormatDescription = nil
     }
     deinit { if let video { VTCompressionSessionInvalidate(video) } }
 }
