@@ -1279,6 +1279,32 @@ this draft after reviewing that evidence. The initial CBR target in section 2
 remains an unmet starting criterion pending actual receiver/device rate-control
 qualification and a final default decision; no physical performance is inferred.
 
+#### Stable AAC format description — 2026-11-11
+
+The owner heard distorted startup speech in two 720p30 local recordings on
+Development `5e11ac6`, including after waiting in camera preview before pressing
+Record. The second export peaked below −8 dBFS in both decode paths. Its AAC
+packet timestamps were continuous, but AVAssetReader returned ten 10.16 ms
+silences near the start that were absent in sequential `afconvert` output.
+
+The shared encoder read the converter's magic cookie for every packet. Its
+maximum-bitrate metadata changed during startup even though AAC-LC configuration,
+sample rate and channel count were constant. The MP4 writer recorded 108 and
+88 AAC sample descriptions in the two exports. Normalizing that bitrate field
+alone in private copies made both decodes agree over all 2,997,918 and 817,100
+compared frames, respectively. Pointing all audio chunks to the first description
+independently gave the same result on the second export. The experiments
+preserved the compressed audio payloads and the original files.
+
+The shared encoder now creates the format description from the first emitted
+AAC packet and reuses it for the life of that converter. A six-second generated
+audio and video fixture using the shared encoder and local writer reproduced the
+startup discrepancy with 79 sample descriptions. Reusing the first description
+yielded one description and matching decodes across the first five seconds.
+The change preserves packet data, timestamps, priming, capture settings and the
+YouTube transport path. A short iPhone recording is still needed to confirm
+clear startup speech on the corrected build.
+
 ### F8 same-event supervision implementation (2026-11-08)
 
 After F7 confirms remote Live, `BroadcastSession` owns a cancellable supervision
