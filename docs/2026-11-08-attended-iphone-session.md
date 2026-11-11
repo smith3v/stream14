@@ -9,11 +9,11 @@ INCOMPLETE/BLOCKED if setup consumes the budget; never extend automatically.
 ## Evidence and prerequisites
 
 - Historical [shared-pipeline local smoke](2026-11-08-shared-pipeline-device-smoke.md) passed on 13 mini/F8 `20a0035`: one executed pass, zero failures/skips, 10.173-second body. It predates later RTMPS, UI, interruption, recovery and diagnostics changes.
-- The 13 mini has Development 0.3 (4) from PR #70 head `5e11ac6`. The owner confirmed the brighter green Start action and automatic reconnection to the saved YouTube account. The owner previously confirmed the More flicker fix on `4c097ae`. [PR #63](https://github.com/smith3v/stream14/pull/63) merged at `5f2d5c7` and [PR #70](https://github.com/smith3v/stream14/pull/70) merged at current main `f69f24a`.
+- The 13 mini has Development 0.3 (4) from PR #70 head `5e11ac6`. The owner confirmed the brighter green Start action and automatic reconnection to the saved YouTube account. The owner previously confirmed the More flicker fix on `4c097ae`. [PR #63](https://github.com/smith3v/stream14/pull/63) merged at `5f2d5c7` and [PR #70](https://github.com/smith3v/stream14/pull/70) merged at `f69f24a`.
 - [Account evidence](2026-11-08-attended-account-event-results.md) covers OAuth callback, intended channel, restore, sign-out and revoke; #15/#16 closed. Verify current state and reauthorize/agree policy only if needed, not because an earlier checkpoint ended disconnected.
 - [Short Unlisted development run](2026-11-10-default-key-phone-test.md) passed Live/End, receiver composition/speech and local playback on `625df2a`; #18/#20 closed. Default/reusable keys are supported, with no dedicated-key prerequisite; retain current safe selected-event gates and auto-stop Off. This does not qualify current UI or final TestFlight.
 - #58/#59 are merged. Full-app TestFlight 0.3 (4) was delivered and owner-installed; that older source is not the corrected Development UI. The owner deferred a new release/regression; no upload/version change is scheduled.
-- The next visit is [S2](#card-s2--local-recording-on-the-installed-development-build), pending explicit owner agreement to a local recording of a non-private scene. Broader physical interface/accessibility and receiver acceptance remains open.
+- The owner ran [S2 at 720p30](#720p30-result--2026-11-11). Local saving, playback, mute and overlay composition passed. Startup speech clarity failed and needs a focused retest. Broader physical interface, accessibility and receiver acceptance remains open.
 - For visits that need the Mac, recheck USB/unlocked readiness and operator consent. Restore any changed Auto-Lock/Low Power settings afterwards. A prior connected report is not current readiness.
 
 Use the [latest development handoff](ios-development-guide.md#installed-development-build-and-next-local-visit--2026-11-11) and [current A1–A9 audit](2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11). Current UI is Session/Recordings with More → Settings; older Preparation click scripts and dated readiness wording in the preserved S0–S9 procedures below are historical. Apply the current prerequisites above. Deferred #65 shared-key mitigation and draft #69 custom A/V tooling are not dependencies; existing Analyze/manual markers suffice. Longer A2/A7 qualification remains unagreed; development recordings remain capped at 15 minutes.
@@ -96,6 +96,32 @@ practical and unmuted. Markers enable later measurement of A/V offset.
 - For #25, inspect the actual exported summary privately if collected. Overhead,
   bounded resource behavior and exact A/V sync require separate measurements.
   [Issue #25](https://github.com/smith3v/stream14/issues/25)
+
+### 720p30 result — 2026-11-11
+
+The owner tested Development 0.3 (4) at `5e11ac6` on the iPhone 13 mini. Its
+tracked tree matches the PR #70 merge at `f69f24a`. The recording saved and
+played, mute worked, and the overlay appeared without app controls in the video.
+The owner reported vibrating, unclear speech in the first approximately five
+seconds, so startup intelligibility failed.
+
+AVFoundation decoded approximately 68 seconds of 1280 × 720 H.264 video and
+44.1 kHz AAC audio. Audio packet timestamps were continuous. AVAssetReader
+returned eleven 10.16 ms runs of exact silence between 0.41 and 2.75 seconds.
+The sequential macOS AAC decode with `afconvert` returned low-level signal at
+the corresponding times. After alignment, the two waveforms differed in the
+first four seconds and matched in the later windows checked. Both decodes
+showed two longer mute spans. The AVAssetReader output showed no full-scale
+clipping. An isolated test reproduced audio gap-handling defects in the
+pinned HaishinKit version. The cause of the distortion in this clip remains
+unconfirmed.
+
+For a focused follow-up, use the same 720p30 profile and microphone route. Open
+**Check camera and sound**, wait 10 seconds in preview, then tap **Record only**
+and speak immediately for five seconds. End the local recording, play its
+first five seconds and retain the original. A recurrence after the preview
+wait helps distinguish recording startup from camera or microphone warm-up.
+Orientation, zoom, accessibility and receiver behavior remain open.
 
 ## Later cards — choose by the remaining gap
 

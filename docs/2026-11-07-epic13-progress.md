@@ -1,6 +1,6 @@
 # Epic #13 progress and resume ledger
 
-Latest resume checkpoint: 2026-11-11. Main is `f69f24a` after PR #70, and the
+Latest resume checkpoint: 2026-11-11. PR #71 merged at `8f2161c`, and the
 13 mini has Development 0.3 (4) from PR head `5e11ac6`. PR #63 merged at
 `5f2d5c7`. Read the [latest development handoff](ios-development-guide.md#installed-development-build-and-next-local-visit--2026-11-11) before resuming. Epic #13 remains active and
 full A1–A9 qualification remains open. Later sections preserve dated history.
@@ -65,8 +65,10 @@ Current chain: F1/#40 → F2/#41 → F4/#42 → F3/#43 → phone plan/#44 → F5
 
 The owner confirmed the brighter green Start action and automatic saved-account
 reconnection on Development `5e11ac6`, and previously confirmed the More fix on
-`4c097ae`. Next is [local recording card S2](2026-11-08-attended-iphone-session.md#card-s2--local-recording-on-the-installed-development-build), pending explicit agreement. The card links the
-selected local checks to #17/#62/#23/#25 and records the remaining acceptance.
+`4c097ae`. The [720p30 local recording check](2026-11-08-attended-iphone-session.md#720p30-result--2026-11-11)
+passed saving, playback, mute and overlay composition. Startup speech clarity
+failed. The card records the finding and a focused follow-up, with remaining
+acceptance tracked in #17/#62/#23/#25.
 
 Historical OAuth callback/channel/sign-out/revoke checks and the short Unlisted
 `625df2a` Live/End/local-file/receiver run passed. Current receiver regression
