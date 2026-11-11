@@ -29,9 +29,7 @@ struct BroadcastControlsView: View {
                 Button("Start recording and streaming", systemImage: "dot.radiowaves.left.and.right") {
                     broadcast.requestConfirmation(channel: selection.channel, event: selection.selected)
                 }
-                .frame(minHeight: 44)
-                .buttonStyle(.bordered)
-                .foregroundStyle(.primary)
+                .buttonStyle(SessionActionButtonStyle.start)
                 .disabled(selection.selected == nil || !media.broadcastCaptureReady || !media.broadcastOverlayReady ||
                           !(media.canRecord || media.hasStartedWriting))
                 .accessibilityIdentifier("goLive")
@@ -43,7 +41,7 @@ struct BroadcastControlsView: View {
             }
             if broadcast.activeIntent != nil || broadcast.pendingRemote != nil {
                 Button("End session", role: .destructive) { confirmingEnd = true }
-                    .frame(minHeight: 44)
+                    .buttonStyle(SessionActionButtonStyle.stop)
                     .disabled(broadcast.state == .ending)
                     .accessibilityIdentifier("endBroadcast")
             }

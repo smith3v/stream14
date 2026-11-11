@@ -28,6 +28,7 @@ struct GoogleAuthorizationAccount: Equatable, Sendable {
 
 // Only this test seam hides the SDK; no app-owned credential storage is introduced.
 @MainActor protocol GoogleAuthorizationDriving {
+    var hasPreviousSignIn: Bool { get }
     func connect(presenting: UIViewController) async throws -> GoogleAuthorizationAccount
     func restore() async throws -> GoogleAuthorizationAccount
     func accessToken(accountID: String) async throws -> String
@@ -52,6 +53,7 @@ enum YouTubeAuthorizationError: Error, Equatable {
     private func clearAPIData() -> Bool { onDeleteAPIData?() ?? true }
     let isConfigured: Bool
     @ObservationIgnored private let driver: (any GoogleAuthorizationDriving)?
+    @ObservationIgnored private var handledLaunchRestore = false
 
     init(driver: (any GoogleAuthorizationDriving)?, configured: Bool, policyAccepted: Bool = false,
          savePolicyAcceptance: @escaping (Bool) -> Void = { _ in }) {
@@ -112,13 +114,30 @@ enum YouTubeAuthorizationError: Error, Equatable {
     }
 
     func restore(broadcastActive: Bool = false) async {
+        await restore(broadcastActive: broadcastActive, automatically: false)
+    }
+
+    /// Foreground activation can recur. Check the SDK's saved state once per
+    /// launch, after consent and outside any account or broadcast operation.
+    func restoreOnLaunchIfAvailable(broadcastActive: Bool) async {
+        await restore(broadcastActive: broadcastActive, automatically: true)
+    }
+
+    private func restore(broadcastActive: Bool, automatically: Bool) async {
+        if automatically {
+            guard !handledLaunchRestore, isConfigured, policyAccepted, account == nil,
+                  !broadcastActive, !isWorking, !Task.isCancelled, let driver else { return }
+            handledLaunchRestore = true
+            guard driver.hasPreviousSignIn else { return }
+        }
         guard begin(broadcastActive: broadcastActive), let driver else { return }
+        if automatically { message = "Restoring saved YouTube connection…" }
         let operation = generation
         defer { isWorking = false }
         do {
             let result = try await driver.restore()
             try accept(result, operation: operation)
-        } catch { finish(error, operation: operation) }
+        } catch { finish(error, operation: operation, preserveSavedSignIn: automatically) }
     }
 
     func signOut(broadcastActive: Bool = false) {
@@ -192,11 +211,14 @@ enum YouTubeAuthorizationError: Error, Equatable {
         return true
     }
 
-    private func invalidate() { generation &+= 1; account = nil }
+    private func invalidate() {
+        handledLaunchRestore = true
+        generation &+= 1
+        account = nil
+    }
 
     private func accept(_ result: GoogleAuthorizationAccount, operation: UInt64) throws {
         guard operation == generation, !Task.isCancelled else {
-            driver?.signOut()
             throw YouTubeAuthorizationError.cancelled
         }
         guard !result.id.isEmpty, result.grantedScopes.contains(Self.requiredScope) else {
@@ -206,15 +228,13 @@ enum YouTubeAuthorizationError: Error, Equatable {
         message = "Google authorized. YouTube channel identity will be checked before selecting an event."
     }
 
-    private func finish(_ error: any Error, operation: UInt64) {
+    private func finish(_ error: any Error, operation: UInt64, preserveSavedSignIn: Bool = false) {
         guard operation == generation else { driver?.signOut(); return }
-        driver?.signOut()
         account = nil
-        // Unknown/network restore errors retain exact reconciliation context.
-        // Only explicit SDK loss classifications erase API-derived identifiers.
-        if [.authorizationRequired, .missingScope].contains(error as? YouTubeAuthorizationError) {
-            _ = clearAPIData()
-        }
+        let lostAccess = [.authorizationRequired, .missingScope].contains(error as? YouTubeAuthorizationError)
+        if lostAccess || !preserveSavedSignIn { driver?.signOut() }
+        // Only definitive access loss erases API-derived reconciliation context.
+        if lostAccess { _ = clearAPIData() }
         switch error as? YouTubeAuthorizationError {
         case .cancelled: message = "YouTube connection cancelled. Local recording is available."
         case .noPreviousSignIn: message = "No saved Google authorization. Connect YouTube to continue."

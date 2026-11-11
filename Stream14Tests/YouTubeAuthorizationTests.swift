@@ -24,6 +24,95 @@ import AppAuth
         #expect(choices == [true])
     }
 
+    @Test func launchRestoreWaitsForConsentAndAccountUnlockAndUsesOnlySavedAuthorization() async {
+        let driver = FakeGoogleAuthorizationDriver()
+        driver.result = good
+        let auth = YouTubeAuthorization(driver: driver, configured: true)
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+        auth.acceptYouTubePolicy()
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: true)
+        #expect(driver.savedSignInChecks == 0 && driver.restoreCalls == 0)
+
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+        #expect(auth.isAuthorized && auth.account == good)
+        #expect(driver.savedSignInChecks == 1 && driver.restoreCalls == 1 && driver.connectCalls == 0)
+    }
+
+    @Test func launchWithoutSavedSignInLeavesTheManualConnectionAvailable() async {
+        let driver = FakeGoogleAuthorizationDriver()
+        driver.hasSavedSignIn = false
+        driver.result = good
+        let unconfigured = YouTubeAuthorization(driver: driver, configured: false, policyAccepted: true)
+        await unconfigured.restoreOnLaunchIfAvailable(broadcastActive: false)
+        #expect(driver.savedSignInChecks == 0)
+
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
+        let message = auth.message
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+        #expect(auth.message == message && !auth.isWorking && !auth.isAuthorized)
+        #expect(driver.savedSignInChecks == 1 && driver.restoreCalls == 0)
+        await auth.connect(presenting: UIViewController())
+        #expect(driver.connectCalls == 1 && auth.isAuthorized)
+    }
+
+    @Test func launchRestoreFailurePreservesSavedSignInAndOffersManualConnection() async {
+        let driver = FakeGoogleAuthorizationDriver()
+        driver.result = good
+        driver.failure = .unavailable
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
+        var erasures = 0
+        auth.onDeleteAPIData = { erasures += 1; return true }
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+        #expect(erasures == 0 && driver.signOutCalls == 0)
+        #expect(!auth.isAuthorized && !auth.isWorking && auth.message.contains("try again"))
+        #expect(driver.restoreCalls == 1 && driver.connectCalls == 0)
+        driver.failure = nil
+        await auth.connect(presenting: UIViewController())
+        #expect(driver.connectCalls == 1 && auth.isAuthorized)
+    }
+
+    @Test func launchRestoreErasesSavedDataOnDefinitiveAccessLoss() async {
+        for failure in [YouTubeAuthorizationError.authorizationRequired, nil] {
+            let driver = FakeGoogleAuthorizationDriver()
+            driver.failure = failure // The default account omits the required YouTube scope.
+            let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
+            var erasures = 0
+            auth.onDeleteAPIData = { erasures += 1; return true }
+            await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+            #expect(erasures == 1 && driver.signOutCalls == 1)
+            #expect(!auth.isAuthorized && !auth.isWorking)
+        }
+    }
+
+    @Test func launchRestoreSerializesWorkAndDiscardsCallbackAfterSignOut() async {
+        let driver = FakeGoogleAuthorizationDriver()
+        driver.result = good
+        driver.holdRestore = true
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
+        let operation = Task { await auth.restoreOnLaunchIfAvailable(broadcastActive: false) }
+        while driver.pending == nil { await Task.yield() }
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+        await auth.connect(presenting: UIViewController())
+        #expect(driver.restoreCalls == 1 && driver.connectCalls == 0)
+        auth.signOut()
+        driver.completeConnection()
+        await operation.value
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+        #expect(!auth.isAuthorized && !auth.isWorking && auth.message.contains("Signed out"))
+        #expect(driver.restoreCalls == 1 && driver.signOutCalls == 2)
+    }
+
+    @Test func explicitSignOutSupersedesLaunchRestore() async {
+        let driver = FakeGoogleAuthorizationDriver()
+        let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
+        auth.signOut()
+        await auth.restoreOnLaunchIfAvailable(broadcastActive: false)
+        #expect(driver.savedSignInChecks == 0 && driver.restoreCalls == 0)
+    }
+
     @Test func signOutRetainsJournalsButDeletionRevokeAndDetectedAccessLossRequestErasure() async {
         let driver = FakeGoogleAuthorizationDriver(); driver.result = good
         let auth = YouTubeAuthorization(driver: driver, configured: true, policyAccepted: true)
@@ -268,7 +357,15 @@ import AppAuth
     var failure: YouTubeAuthorizationError?
     var signOutCalls = 0
     var connectCalls = 0
+    var restoreCalls = 0
+    var savedSignInChecks = 0
+    var hasSavedSignIn = true
+    var hasPreviousSignIn: Bool {
+        savedSignInChecks += 1
+        return hasSavedSignIn
+    }
     var holdConnection = false
+    var holdRestore = false
     var holdToken = false
     var pendingToken: CheckedContinuation<String, any Error>?
     func completeToken() { let callback = pendingToken; pendingToken = nil; callback?.resume(returning: "fixture-access-token") }
@@ -281,6 +378,8 @@ import AppAuth
     }
     func completeConnection() { let callback = pending; pending = nil; callback?.resume(returning: result) }
     func restore() async throws -> GoogleAuthorizationAccount {
+        restoreCalls += 1
+        if holdRestore { return try await withCheckedThrowingContinuation { pending = $0 } }
         if let failure { throw failure }
         return result
     }

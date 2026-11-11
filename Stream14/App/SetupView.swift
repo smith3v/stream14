@@ -100,7 +100,7 @@ struct SetupView: View {
                 guard !runsIsolatedMediaHarness else { return }
                 experiment.setOverlayForeground(scenePhase != .background)
                 experiment.setCaptureForeground(scenePhase != .background)
-                if scenePhase == .active { broadcast.foregroundReturned() }
+                if scenePhase == .active { activateYouTube() }
                 while !Task.isCancelled {
                     experiment.reconcileOverlay()
                     do { try await Task.sleep(for: .seconds(1)) } catch { break }
@@ -111,18 +111,33 @@ struct SetupView: View {
                 if phase == .starting || phase == .recording { sessionHasRun = true }
             }
             .onChange(of: experiment.cameraZoom.value) { _, value in zoomDraft = value }
+            .onChange(of: authorization.isAuthorized) { _, isAuthorized in
+                if isAuthorized && scenePhase == .active && !runsIsolatedMediaHarness {
+                    broadcast.foregroundReturned()
+                }
+            }
             .onChange(of: scenePhase) { _, phase in
                 guard !runsIsolatedMediaHarness else { return }
                 if phase == .active {
                     experiment.setOverlayForeground(true)
                     experiment.setCaptureForeground(true)
-                    broadcast.foregroundReturned()
+                    activateYouTube()
                 }
                 if phase == .background {
                     experiment.setOverlayForeground(false)
                     experiment.setCaptureForeground(false)
                 }
             }
+    }
+
+    private func activateYouTube() {
+        broadcast.foregroundReturned()
+        // Let the SDK finish across brief inactive transitions. The authorization
+        // owner serializes the one launch attempt and rejects stale callbacks.
+        Task {
+            guard UIApplication.shared.applicationState == .active else { return }
+            await authorization.restoreOnLaunchIfAvailable(broadcastActive: broadcast.requiresEndFirst)
+        }
     }
 
     private func navigationScreen<Content: View>(_ content: Content, landscape: Bool) -> some View {
@@ -333,16 +348,18 @@ struct SetupView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(finished ? "Session finished" : (sessionHasRun || broadcast.locksSelection ? "Active session" : "Next session"))
                 .font(.headline).accessibilityIdentifier("setupStatus")
-            eventSummary
-            outputStatuses
-            overlayRecovery
             if !authorization.isAuthorized {
                 Text(authorization.isConfigured ? authorization.message :
                     "YouTube connection is unavailable in this build. Record only is available; open Settings → Help for setup guidance.")
                     .font(.footnote)
-                Button("Connect / reconnect YouTube") { showingConnection = true }
-                    .frame(minHeight: 44).accessibilityIdentifier("fixYouTube")
+                if !authorization.isWorking {
+                    Button("Connect / reconnect YouTube") { showingConnection = true }
+                        .frame(minHeight: 44).accessibilityIdentifier("fixYouTube")
+                }
             }
+            eventSummary
+            outputStatuses
+            overlayRecovery
             backupFailureWarning
             if !experiment.thermalWarning.isEmpty {
                 Text(experiment.thermalWarning).accessibilityLabel("Thermal warning: " + experiment.thermalWarning)
@@ -384,7 +401,7 @@ struct SetupView: View {
             } else {
                 Text("No scheduled event selected")
             }
-            if !broadcast.locksSelection && !finished {
+            if authorization.isAuthorized && !broadcast.locksSelection && !finished {
                 Button(youtubeEvents.selected == nil ? "Choose event" : "Change event") { showingEvents = true }
                     .frame(minHeight: 44).accessibilityIdentifier("chooseEvent")
             }
@@ -465,7 +482,7 @@ struct SetupView: View {
     @ViewBuilder private var localActions: some View {
         if experiment.isRecording && broadcast.activeIntent == nil && broadcast.pendingRemote == nil && !broadcast.isWorking {
             Button("End session", role: .destructive) { confirmingLocalEnd = true }
-                .frame(minHeight: 44)
+                .buttonStyle(SessionActionButtonStyle.stop)
                 .confirmationDialog("End local session?", isPresented: $confirmingLocalEnd, titleVisibility: .visible) {
                     Button("Stop local recording and capture", role: .destructive) { experiment.requestStop() }
                     Button("Cancel", role: .cancel) {}
@@ -475,7 +492,8 @@ struct SetupView: View {
         }
         if experiment.isRecording {
             Button("Stop recording", systemImage: "stop.circle") { Task { await experiment.stopRecording() } }
-                .frame(minHeight: 44).disabled(!experiment.canAdjustMedia)
+                .buttonStyle(SessionActionButtonStyle.stop)
+                .disabled(!experiment.canAdjustMedia)
                 .accessibilityIdentifier("recordSample")
         } else if experiment.canRecord && !finished {
             Button("Record only", systemImage: "record.circle") { Task { await experiment.record() } }

@@ -12,6 +12,8 @@ import UIKit
         sdk.configuration = GIDConfiguration(clientID: configuration.clientID)
     }
 
+    var hasPreviousSignIn: Bool { sdk.hasPreviousSignIn() }
+
     func connect(presenting: UIViewController) async throws -> GoogleAuthorizationAccount {
         // Clear the SDK session and let Google present its supported account-selection flow.
         sdk.signOut()
@@ -28,7 +30,7 @@ import UIKit
     }
 
     func restore() async throws -> GoogleAuthorizationAccount {
-        guard sdk.hasPreviousSignIn() else { throw YouTubeAuthorizationError.noPreviousSignIn }
+        guard hasPreviousSignIn else { throw YouTubeAuthorizationError.noPreviousSignIn }
         return try await withCheckedThrowingContinuation { continuation in
             sdk.restorePreviousSignIn { user, error in
                 if let error { continuation.resume(throwing: Self.safeError(error)); return }

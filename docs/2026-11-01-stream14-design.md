@@ -1,6 +1,6 @@
 # stream14 application specification and design
 
-Created: 2026-11-01. Updated: 2026-11-10. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
+Created: 2026-11-01. Updated: 2026-11-11. Status: integrated local recording in development; M1 demonstrated, qualification of M2–M5 pending.
 Owner: Slava Kuznetsov. Source-code license: BSD-3-Clause.
 
 This document is the product and technical source of truth. "Required" describes
@@ -437,7 +437,9 @@ must work without connecting a Google account.
 
 Settings → Overlay allows editing and explicitly applying a secure URL draft.
 Settings → YouTube contains account switching, restore, sign-out, revoke, deletion
-and the Studio-resolution guard. Contextual connection opens the same consent flow.
+and the Studio-resolution guard. The Session workspace places Connect / reconnect
+YouTube above the event summary while disconnected and offers Choose / Change event
+once authorization is ready. Contextual connection opens the same consent flow.
 Settings → About & Legal contains policy, service/YouTube terms and notices; Help
 contains documentation and general guidance. These screens remain available before
 camera permission or sign-in. Main screens have no permanent legal/document links;
@@ -450,16 +452,21 @@ reference URL is offered as a copyable example, not fetched silently on first la
 Before a broadcast, a configured overlay must have rendered successfully; if it
 cannot load, the operator may explicitly disable it and recheck the preview.
 
-Connect YouTube through Google's supported authorization UI, then display the actual
-authorized channel identity. Paginate scheduled events, show title, scheduled time
-in the device's locale/time zone, visibility, and eligibility. Provide refresh and a
-useful empty state with instructions for scheduling an encoder broadcast in Studio.
+On app activation, restore saved Google authorization silently once per launch
+when setup and consent are in place and account changes are permitted. Use Google's
+supported authorization UI when manual connection is needed. Display the actual
+authorized channel identity in the event picker. Paginate scheduled events, show
+title, scheduled time in the device's locale/time zone, visibility, and eligibility.
+Provide refresh and a useful empty state with instructions for scheduling an
+encoder broadcast in Studio.
 Changing accounts clears the previous channel's selection and credentials as appropriate.
 
 ### Go live
 
-Start recording and streaming is the primary action. Its confirmation names the
-channel, event, visibility and profile. A clear confirmation
+Start recording and streaming is the primary action. It uses a bright green fill
+with a dark label when available and a neutral fill with a readable label when
+unavailable. Record only uses the standard neutral control. The streaming
+confirmation names the channel, event, visibility and profile. A clear confirmation
 starts this specific event and local recording; opening settings, selecting an
 event, or previewing the camera never transmits camera media to YouTube. Check
 permissions, output configuration, local writer readiness, overlay readiness, authentication, and
@@ -486,8 +493,9 @@ part of the encoded picture. Do not play warning sounds into an active microphon
 
 ### Finish and review
 
-End session confirms that the selected YouTube event will end and local recording
-and capture will stop. Request remote
+Stop recording and both local and YouTube End session buttons use a red fill
+when available. End session confirms that the selected YouTube event will end and
+local recording and capture will stop. Request remote
 completion, disconnect upload, and finalize the recording regardless of any API
 failure. A bounded remote request must not indefinitely delay local finalization.
 If completion cannot be confirmed, say "YouTube end not confirmed" and offer a
@@ -517,11 +525,18 @@ truncating essential actions. Test landscape operation on the 13 mini, including
 areas, permission-denied screens, keyboard entry, and failure warnings. Preserve the
 complete 16:9 output in preview; safe areas affect controls, not the video canvas.
 
-The monochrome streaming action uses native bordered styling and semantic primary
-foreground so its label remains readable in light/dark and unavailable states.
-Unavailable actions remain disabled under the existing readiness rules; readable
-text must not be implemented by enabling a blocked publish action. Native fill
-and accessibility state continue to distinguish unavailability.
+Session action buttons use high-contrast labels in light and dark appearances.
+Unavailable actions have neutral styling and retain their disabled accessibility
+state under the existing readiness rules.
+
+On the iOS 27.2 Simulator, screenshot sampling measured 6.49:1 for the enabled
+Start label in both appearances. The brighter green fill measured 3.24:1 against
+the light page and 6.49:1 against the dark page. Earlier Simulator checks at
+`e7ca771` measured 6.40:1 for Stop and both End buttons and at least 9.56:1 for
+unavailable Start. Start fit the native viewport in both landscape orientations
+at standard and largest text sizes on that source. The owner saw the earlier
+green Start button on iPhone. The brighter color and launch restore still need
+a physical phone check.
 
 ## 4. Browser overlay contract
 
@@ -1109,7 +1124,13 @@ The concrete MainActor authorization owner serializes SDK account operations,
 validates the YouTube scope and changes an account generation before changes.
 Only Sendable account snapshots/token strings cross SDK callbacks; SDK objects
 are read synchronously on its documented main callback queue. The SDK alone owns
-Keychain credentials. Explicit restore never publishes or opens the camera.
+Keychain credentials. Launch restore checks for a saved SDK sign-in before
+calling the silent restore API. A temporary failure retains saved credentials
+and reconciliation data for a later attempt and shows the manual connection
+action. Confirmed authorization loss or missing scope retains existing credential
+and API-data cleanup. Authorization becoming ready while foregrounded allows
+the existing read-only interrupted-session reconciliation. Event selection and
+media remain explicit operator actions.
 Cancellation/stale callbacks cannot restore signed-out readiness; API cancellation
 does not invalidate a valid session. Account actions provide an active-broadcast
 guard for the later coordinator. Local media/overlay state is independent.
@@ -1424,7 +1445,11 @@ see the source-specific attended report in that checkpoint.
 
 The latest [review handoff](ios-development-guide.md#pr63-review-handoff--2026-11-11)
 records the single unmodified audit pass at `43e6706` and completed code review.
-PR63 is ready for review; physical acceptance, merge and #62/#23 remain pending.
+That handoff predates the merge. The owner subsequently reported that the
+development build from merged main `5f2d5c7` worked as expected on their iPhone.
+The later green Start and red Stop/End treatment still needs a phone check.
+The general owner report leaves specific VoiceOver, media and TestFlight
+qualification checks open.
 
 ### Private receiver evidence checkpoint — 2026-11-08
 

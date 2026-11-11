@@ -73,6 +73,16 @@ final class SetupScreenTests: XCTestCase {
     func testYouTubeConsentLeavesLocalRehearsalAvailable() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = fixtureApp("policy-unaccepted")
+        let connect = app.buttons["fixYouTube"]
+        let eventSummary = app.staticTexts["No scheduled event selected"]
+        XCTAssertTrue(connect.waitForExistence(timeout: 5))
+        XCTAssertTrue(eventSummary.exists)
+        XCTAssertLessThan(connect.frame.maxY, eventSummary.frame.minY)
+        XCTAssertFalse(app.buttons["chooseEvent"].exists)
+        connect.tap()
+        XCTAssertTrue(app.navigationBars["YouTube"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["acceptYouTubePolicy"].exists)
+        app.buttons["Done"].tap()
         let camera = app.buttons["openExperiment"]
         scrollTo(camera, in: app)
         camera.tap()
@@ -144,6 +154,7 @@ final class SetupScreenTests: XCTestCase {
         app.buttons["About & Legal"].tap()
         XCTAssertTrue(app.links["privacyPolicy"].waitForExistence(timeout: 5))
         app.buttons["Done"].tap()
+        XCTAssertFalse(app.buttons["fixYouTube"].exists)
         let event = app.buttons["chooseEvent"]
         scrollTo(event, in: app)
         event.tap()
