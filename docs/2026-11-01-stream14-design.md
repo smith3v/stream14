@@ -437,7 +437,9 @@ must work without connecting a Google account.
 
 Settings → Overlay allows editing and explicitly applying a secure URL draft.
 Settings → YouTube contains account switching, restore, sign-out, revoke, deletion
-and the Studio-resolution guard. Contextual connection opens the same consent flow.
+and the Studio-resolution guard. The Session workspace places Connect / reconnect
+YouTube above the event summary while disconnected and offers Choose / Change event
+once authorization is ready. Contextual connection opens the same consent flow.
 Settings → About & Legal contains policy, service/YouTube terms and notices; Help
 contains documentation and general guidance. These screens remain available before
 camera permission or sign-in. Main screens have no permanent legal/document links;
@@ -450,18 +452,21 @@ reference URL is offered as a copyable example, not fetched silently on first la
 Before a broadcast, a configured overlay must have rendered successfully; if it
 cannot load, the operator may explicitly disable it and recheck the preview.
 
-Connect YouTube through Google's supported authorization UI, then display the actual
-authorized channel identity. Paginate scheduled events, show title, scheduled time
-in the device's locale/time zone, visibility, and eligibility. Provide refresh and a
-useful empty state with instructions for scheduling an encoder broadcast in Studio.
+On app activation, restore saved Google authorization silently once per launch
+when setup and consent are in place and account changes are permitted. Use Google's
+supported authorization UI when manual connection is needed. Display the actual
+authorized channel identity in the event picker. Paginate scheduled events, show
+title, scheduled time in the device's locale/time zone, visibility, and eligibility.
+Provide refresh and a useful empty state with instructions for scheduling an
+encoder broadcast in Studio.
 Changing accounts clears the previous channel's selection and credentials as appropriate.
 
 ### Go live
 
-Start recording and streaming is the primary action. It uses a green fill when
-available and a neutral fill with a readable label when unavailable. Record only
-uses the standard neutral control. The streaming confirmation names the channel,
-event, visibility and profile. A clear confirmation
+Start recording and streaming is the primary action. It uses a bright green fill
+with a dark label when available and a neutral fill with a readable label when
+unavailable. Record only uses the standard neutral control. The streaming
+confirmation names the channel, event, visibility and profile. A clear confirmation
 starts this specific event and local recording; opening settings, selecting an
 event, or previewing the camera never transmits camera media to YouTube. Check
 permissions, output configuration, local writer readiness, overlay readiness, authentication, and
@@ -1116,7 +1121,13 @@ The concrete MainActor authorization owner serializes SDK account operations,
 validates the YouTube scope and changes an account generation before changes.
 Only Sendable account snapshots/token strings cross SDK callbacks; SDK objects
 are read synchronously on its documented main callback queue. The SDK alone owns
-Keychain credentials. Explicit restore never publishes or opens the camera.
+Keychain credentials. Launch restore checks for a saved SDK sign-in before
+calling the silent restore API. A temporary failure retains saved credentials
+and reconciliation data for a later attempt and shows the manual connection
+action. Confirmed authorization loss or missing scope retains existing credential
+and API-data cleanup. Authorization becoming ready while foregrounded allows
+the existing read-only interrupted-session reconciliation. Event selection and
+media remain explicit operator actions.
 Cancellation/stale callbacks cannot restore signed-out readiness; API cancellation
 does not invalidate a valid session. Account actions provide an active-broadcast
 guard for the later coordinator. Local media/overlay state is independent.

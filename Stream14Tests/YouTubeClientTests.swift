@@ -296,6 +296,7 @@ private actor ReadFixtureServer {
 }
 
 @MainActor private final class ReadAuthorizationDriver: GoogleAuthorizationDriving {
+    let hasPreviousSignIn = true
     func connect(presenting: UIViewController) async throws -> GoogleAuthorizationAccount { try await restore() }
     func restore() async throws -> GoogleAuthorizationAccount {
         GoogleAuthorizationAccount(id: "fixture-account", grantedScopes: [YouTubeAuthorization.requiredScope])

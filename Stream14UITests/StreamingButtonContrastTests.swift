@@ -23,7 +23,7 @@ final class StreamingButtonContrastTests: XCTestCase {
 
         let button = app.buttons["goLive"]
         try check(button, in: app, label: "Start recording and streaming", style: style,
-                  enabled: enabled, fill: enabled ? .green : .neutral)
+                  enabled: enabled, fill: enabled ? .green : .neutral, pageLuminance: pageLuminance)
         XCTAssertEqual(app.buttons["recordSample"].label, "Record only")
         XCTAssertFalse(app.buttons["endBroadcast"].exists)
     }
@@ -68,7 +68,7 @@ final class StreamingButtonContrastTests: XCTestCase {
     }
 
     private func check(_ button: XCUIElement, in app: XCUIApplication, label: String,
-                       style: String, enabled: Bool, fill: Fill) throws {
+                       style: String, enabled: Bool, fill: Fill, pageLuminance: Double? = nil) throws {
         XCTAssertTrue(button.waitForExistence(timeout: 5))
         let scroll = app.scrollViews.firstMatch
         for _ in 0..<12 {
@@ -90,7 +90,7 @@ final class StreamingButtonContrastTests: XCTestCase {
         let pixels = try interiorPixels(image)
         let fillCount = pixels.count { pixel in
             switch fill {
-            case .green: pixel.green - pixel.red >= 25 && pixel.green - pixel.blue >= 25
+            case .green: pixel.green >= 155 && pixel.green - pixel.red >= 25 && pixel.green - pixel.blue >= 25
             case .red: pixel.red - pixel.green >= 25 && pixel.red - pixel.blue >= 25
             case .neutral:
                 max(pixel.red, pixel.green, pixel.blue) - min(pixel.red, pixel.green, pixel.blue) <= 12
@@ -109,6 +109,11 @@ final class StreamingButtonContrastTests: XCTestCase {
         // for the blank-pill defect; screenshots still require visual review.
         XCTAssertGreaterThanOrEqual(ratio, enabled ? 4.5 : 1.5,
             "The actual rendered label must remain visible against its fill")
+        if fill == .green, let pageLuminance {
+            let edgeRatio = (max(light, pageLuminance) + 0.05) / (min(light, pageLuminance) + 0.05)
+            print("Start fill contrast against the \(style) page: \(edgeRatio)")
+            XCTAssertGreaterThanOrEqual(edgeRatio, 3, "The green fill must be distinct from the page")
+        }
     }
 
     private struct Pixel {
