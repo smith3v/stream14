@@ -1443,13 +1443,13 @@ the historical native AX audit failure. The final unchanged-source audit passed 
 (see the latest handoff below); full physical interface acceptance remains pending;
 see the source-specific attended report in that checkpoint.
 
-The latest [review handoff](ios-development-guide.md#pr63-review-handoff--2026-11-11)
+The [PR #63 review handoff](ios-development-guide.md#pr63-review-handoff--2026-11-11)
 records the single unmodified audit pass at `43e6706` and completed code review.
 That handoff predates the merge. The owner subsequently reported that the
 development build from merged main `5f2d5c7` worked as expected on their iPhone.
-The later green Start and red Stop/End treatment still needs a phone check.
-The general owner report leaves specific VoiceOver, media and TestFlight
-qualification checks open.
+The owner confirmed the brighter green Start action on the later PR #70 build.
+The red Stop/End treatment and specific VoiceOver, media and TestFlight
+qualification checks remain open. See the [current development handoff](ios-development-guide.md#installed-development-build-and-next-local-visit--2026-11-11).
 
 ### Private receiver evidence checkpoint — 2026-11-08
 

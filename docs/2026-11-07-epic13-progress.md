@@ -1,11 +1,9 @@
 # Epic #13 progress and resume ledger
 
-Latest resume checkpoint: 2026-11-11. Main is `2001d76`; PR63 source is `0e510f9` (app unchanged from `e6a5c77`).
-Code work/current targeted checks and full-diff review pass; PR63 is ready for review,
-with physical acceptance pending. Read the [latest handoff](ios-development-guide.md#pr63-review-handoff--2026-11-11)
-before resuming. Phone: menu-only `4c097ae`; combined signed build is not installed.
-Epic #13 remains active; full A1–A9 qualification is unverified. Rows/checkpoints
-below are dated history, not instructions to reimplement completed stages.
+Latest resume checkpoint: 2026-11-11. Main is `f69f24a` after PR #70, and the
+13 mini has Development 0.3 (4) from PR head `5e11ac6`. PR #63 merged at
+`5f2d5c7`. Read the [latest development handoff](ios-development-guide.md#installed-development-build-and-next-local-visit--2026-11-11) before resuming. Epic #13 remains active and
+full A1–A9 qualification remains open. Later sections preserve dated history.
 
 ## Owner workflow
 
@@ -26,7 +24,7 @@ Canonical gates are in [specification §10](2026-11-01-stream14-design.md#10-lat
 | A5 recording recovery | Native recovery implementation/fixtures exist; multiple physical termination points, decoded recovered prefix/loss, original retention, playback and export remain pending (#24/#27). |
 | A6 failure UX | Deterministic API/lifecycle/fault checks exist; selected physical failure presentation, output independence and explicit Home/lock/audio resume/idle/heat evidence remain pending (#19/#22/#23/#27). |
 | A7 long event | Powered three-hour 1080p30 broadcast+recording meeting A2 quality targets and physical start/end A/V offset ≤100 ms remain pending; no run agreement yet (#14/#27). |
-| A8 devices/interface | PR63 targeted native checks/review pass; physical color, both landscapes, large text/VoiceOver, both profiles/mute/zoom/routes/play/export/cancellation and available 15/17 coverage remain pending (#17/#22/#23/#62/#27). |
+| A8 devices/interface | The owner confirmed the brighter Start action and earlier More fix. Physical portrait/both landscapes, large text/VoiceOver, both profiles/mute/zoom/routes/play/export/cancellation and available 15/17 coverage remain pending (#17/#22/#23/#62/#27). |
 | A9 TestFlight | Historical full-app 0.3 (4) delivery/owner installation passed; corrected-source release, actual installation/regression and phone instrumentation overhead/exported JSON remain pending (#25/#26/#27). Owner deferred the update. |
 
 A2/A7 need separate explicit agreement; routine phone visits stay five minutes TOTAL and development recording experiments at most 15 minutes. Retain originals and use physical markers with measured uncertainty. #65 shared-key mitigation and draft #69 custom A/V tooling are deferred, not prerequisites; existing Analyze plus manual markers are sufficient for planned analysis.
@@ -65,11 +63,15 @@ Current chain: F1/#40 → F2/#41 → F4/#42 → F3/#43 → phone plan/#44 → F5
 
 ## Owner-dependent work
 
-The phone is disconnected and the owner is away; no phone operation, capture, publishing or TestFlight update is scheduled. The installed app is menu-only Development 0.3 (4) `4c097ae`, with flicker resolved by owner confirmation. The combined `e6a5c77` candidate was built/signed offline, not installed: all 15 preparation checks and 12 package pins passed; native build exit 0, 9.480 seconds. Recheck binary identity and signing validity before any later in-place installation, preserving the container/originals. Private preparation details stay outside Git.
+The owner confirmed the brighter green Start action and automatic saved-account
+reconnection on Development `5e11ac6`, and previously confirmed the More fix on
+`4c097ae`. Next is [local recording card S2](2026-11-08-attended-iphone-session.md#card-s2--local-recording-on-the-installed-development-build), pending explicit agreement. The card links the
+selected local checks to #17/#62/#23/#25 and records the remaining acceptance.
 
-PR63 `0e510f9` has current targeted checks and independent full-diff review against main `2001d76` with no material findings. The exact unmodified profile accessibility test passed once at `43e6706` (one pass, zero failures/skips, native exit 0); earlier `6459c74` failures remain unexplained history, not a deterministic fix. Menu tests (two native UI cases) plus Release, and contrast tests (four Light/Dark enabled/unavailable native cases, four reviewed crops) plus Release passed. Physical color/UI/accessibility/file/receiver acceptance remains pending before merge and #62/#23 acceptance where required.
-
-Historical OAuth callback/restore/channel/sign-out/revoke checks passed; do not require account setup again unless current state needs it. The short Unlisted `625df2a` Live/End/local-file/receiver run passed, but does not qualify the new UI or final TestFlight. Existing/default reusable keys are allowed: select a safe disposable Unlisted event, auto-stop Off, and preserve all current eligibility/confirmation gates. The older TestFlight 0.3 (4) source is not the current Development UI. Follow the [latest guide](ios-development-guide.md#pr63-review-handoff--2026-11-11), using Session/Recordings and More → Settings; older Preparation click scripts below are historical.
+Historical OAuth callback/channel/sign-out/revoke checks and the short Unlisted
+`625df2a` Live/End/local-file/receiver run passed. Current receiver regression
+and TestFlight qualification still need their own evidence. The owner deferred
+a new TestFlight release.
 
 ## Resume procedure
 

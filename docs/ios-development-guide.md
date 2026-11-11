@@ -2132,3 +2132,20 @@ Physical color, portrait/both-landscape and largest-text/VoiceOver acceptance,
 and actual file/receiver checks remain pending before merge/issue acceptance
 where required. No phone operation or new media run occurred. Epic #13 remains
 active and full A1–A9 qualification unverified; deferred #69/#65 are outside PR63.
+
+### Installed Development build and next local visit — 2026-11-11
+
+[PR #63](https://github.com/smith3v/stream14/pull/63) merged at `5f2d5c7`.
+[PR #70](https://github.com/smith3v/stream14/pull/70) merged at `f69f24a`,
+current main. The tracked trees at the PR #70 head and merge are identical.
+Development 0.3 (4) from head `5e11ac6` was installed in place on the 13 mini
+and launched after 22 artifact checks passed. The owner confirmed the brighter
+green Start action and automatic reconnection to the saved YouTube account.
+The earlier More dropdown fix was owner-confirmed on `4c097ae`.
+
+The next visit is the five-minute [local recording card S2](2026-11-08-attended-iphone-session.md#card-s2--local-recording-on-the-installed-development-build), pending explicit owner agreement
+to record a non-private scene. No local file or receiver result was obtained
+during the color and account checks. The installed Development build is
+separate from the earlier TestFlight 0.3 (4); the owner deferred a new release.
+See the [epic acceptance audit](2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11)
+for remaining physical, receiver and longer-run evidence.
