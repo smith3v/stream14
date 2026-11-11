@@ -1857,8 +1857,8 @@ checkpoint time and observation count before relying on the report.
 Follow the [qualification report template](qualification-report-template.md) for
 clap markers, native original-file analysis, receiver observation, overhead and
 power/network/ambient controls. The development device harness still clamps to
-900 seconds, while normal app recording remains unlimited. No 30-minute or
-three-hour run is implicitly authorized. Short instrumentation overhead on the
+900 seconds, while normal app recording remains unlimited. Agree on timing and
+markers before the 30-minute A2 or one-hour A7 run. Short instrumentation overhead on the
 13 mini and actual installed-app diagnostic export remain pending.
 
 ## Private synthetic RTMPS receiver checkpoint (2026-11-08)
@@ -2150,3 +2150,12 @@ Development build is separate from the earlier TestFlight 0.3 (4). The owner
 deferred a new release.
 See the [epic acceptance audit](2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11)
 for remaining physical, receiver and longer-run evidence.
+
+## TestFlight 0.4 (5) qualification — 2026-11-11
+
+TestFlight **0.4 (5)** is **Testing** in Owner MVP. It is based on merged main
+`0c2e8f5` and includes the startup-audio fix from PR #74. The owner confirmed
+clear 720p30 startup speech on the signed Development PR build, then installed
+0.4 (5) through TestFlight and reported the five-minute local smoke passed. The
+owner set A7 to one hour. See the [delivery and qualification plan](2026-11-11-testflight-0.4-qualification.md)
+for the short Unlisted 1080p30 check and the powered endurance run.

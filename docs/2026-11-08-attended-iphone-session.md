@@ -9,14 +9,13 @@ INCOMPLETE/BLOCKED if setup consumes the budget; never extend automatically.
 ## Evidence and prerequisites
 
 - Historical [shared-pipeline local smoke](2026-11-08-shared-pipeline-device-smoke.md) passed on 13 mini/F8 `20a0035`: one executed pass, zero failures/skips, 10.173-second body. It predates later RTMPS, UI, interruption, recovery and diagnostics changes.
-- The 13 mini has Development 0.3 (4) from PR #70 head `5e11ac6`. The owner confirmed the brighter green Start action and automatic reconnection to the saved YouTube account. The owner previously confirmed the More flicker fix on `4c097ae`. [PR #63](https://github.com/smith3v/stream14/pull/63) merged at `5f2d5c7` and [PR #70](https://github.com/smith3v/stream14/pull/70) merged at `f69f24a`.
+- The earlier Development 0.3 (4) build on the 13 mini came from PR #70 head `5e11ac6`. The owner confirmed the brighter green Start action and automatic reconnection to the saved YouTube account. The owner previously confirmed the More flicker fix on `4c097ae`. [PR #63](https://github.com/smith3v/stream14/pull/63) merged at `5f2d5c7` and [PR #70](https://github.com/smith3v/stream14/pull/70) merged at `f69f24a`.
 - [Account evidence](2026-11-08-attended-account-event-results.md) covers OAuth callback, intended channel, restore, sign-out and revoke; #15/#16 closed. Verify current state and reauthorize/agree policy only if needed, not because an earlier checkpoint ended disconnected.
 - [Short Unlisted development run](2026-11-10-default-key-phone-test.md) passed Live/End, receiver composition/speech and local playback on `625df2a`; #18/#20 closed. Default/reusable keys are supported, with no dedicated-key prerequisite; retain current safe selected-event gates and auto-stop Off. This does not qualify current UI or final TestFlight.
-- #58/#59 are merged. Full-app TestFlight 0.3 (4) was delivered and owner-installed; that older source is not the corrected Development UI. The owner deferred a new release/regression; no upload/version change is scheduled.
-- The owner ran [S2 at 720p30](#720p30-result--2026-11-11). Local saving, playback, mute and overlay composition passed. Startup speech clarity failed and needs a focused retest. Broader physical interface, accessibility and receiver acceptance remains open.
+- The owner installed TestFlight **0.4 (5)** and reported that the five-minute local 720p30 smoke test passed. The earlier [S2 startup speech issue](#720p30-result--2026-11-11) was fixed in PR #74. The next short test is [S1 at 1080p30](#card-s1--short-unlisted-end-to-end) on TestFlight. Broader physical interface, accessibility and receiver acceptance remains open.
 - For visits that need the Mac, recheck USB/unlocked readiness and operator consent. Restore any changed Auto-Lock/Low Power settings afterwards. A prior connected report is not current readiness.
 
-Use the [latest development handoff](ios-development-guide.md#installed-development-build-and-next-local-visit--2026-11-11) and [current A1–A9 audit](2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11). Current UI is Session/Recordings with More → Settings; older Preparation click scripts and dated readiness wording in the preserved S0–S9 procedures below are historical. Apply the current prerequisites above. Deferred #65 shared-key mitigation and draft #69 custom A/V tooling are not dependencies; existing Analyze/manual markers suffice. Longer A2/A7 qualification remains unagreed; development recordings remain capped at 15 minutes.
+Use the [latest TestFlight handoff](ios-development-guide.md#testflight-04-5-qualification--2026-11-11) and [current A1–A9 audit](2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11). Current UI is Session/Recordings with More → Settings; older Preparation click scripts and dated readiness wording in the preserved S0–S9 procedures below are historical. Apply the current prerequisites above. Deferred #65 shared-key mitigation and draft #69 custom A/V tooling are not dependencies; existing Analyze/manual markers suffice. The owner approved the one-hour A7 requirement. Agree on timing before running A2/A7. Development recordings remain capped at 15 minutes.
 
 ## Laptop preflight when needed
 
@@ -43,19 +42,21 @@ Use the [latest development handoff](ios-development-guide.md#installed-developm
 Budget: 0:00–3:30 install/update and verify exact version/build/route, accept
 necessary device prompts, inspect policy/notices links, then deliberate policy
 agreement and Google reauthorization if time permits; 3:30–5:00 record readiness
-and close. Leave Go Live untouched. If install/account setup is slow, this is the
-whole visit. A9 still needs actual full-app TestFlight delivery and regression.
+and close. Leave streaming controls untouched. If install or account setup is
+slow, this is the whole visit. The owner confirmed 0.4 (5) installation and local
+smoke. Policy/notices links and remaining A9 regression still need evidence.
 
 ## Card S1 — short Unlisted end-to-end
 
-Only select after installation/account/event/receiver preflight is ready. A fresh
-sign-in or event repair that consumes the slot replaces this card with S0.
+Run on TestFlight 0.4 (5) with **1080p30 · 14 Mbps** selected while the camera is
+closed. Prepare the account, event and second-device receiver before starting
+the timer. Use S0 if sign-in or event setup needs the slot.
 
 | Budget | Operator action and observable evidence |
 | --- | --- |
-| 0:00–0:45 | Verify installed identity, intended channel/title/Unlisted visibility and explicit permission to send camera/microphone media and use/end this test event. Confirm Go Live in the app |
+| 0:00–0:45 | Verify the intended channel and Unlisted test event. Tap **Check camera and sound**. After checking picture and mic, tap **Start recording and streaming** and confirm **Go Live — Unlisted** |
 | 0:45–2:30 | Observe separate recording/upload/YouTube labels. Monitor-enabled events pass through testing; Testing/socket-connected alone is not Live. Wait for confirmed Live and second-device playback; observe changing overlay and audible speech, with visible/audible beginning/end claps if feasible |
-| 2:30–3:30 | Confirm End in the app. Require actual confirmed remote completion or record uncertainty and reconciliation; inspect retained file/finalization status separately |
+| 2:30–3:30 | Tap **End session → End session and local recording**. Verify remote completion and local finalization. Reconcile in the app or YouTube Studio if completion is uncertain |
 | 3:30–5:00 | Brief original playback and explicit original/diagnostic export if time remains; record receiver result, stopped capture and retained-file inventory. Defer exports if they would exceed the budget |
 
 A slow transition/receiver means INCOMPLETE, not a pass or an extra five minutes.
@@ -146,10 +147,9 @@ separate confirmation. Never run Simulator seeding/privacy-reset scripts on the 
 
 ## Deferred qualification and result record
 
-The formal A2 **30-minute** run and A7 **three-hour** powered 1080p30 broadcast/local
-run remain pending, with separate explicit agreement for their exact time and
-markers. Five-minute samples, fake clocks and synthetic numeric models do not replace
-those gates. Available iPhone 15/17/Pro coverage also remains pending; a 13 mini
+The formal A2 **30-minute** measurement and A7 **one-hour** powered 1080p30
+broadcast and local recording are pending. Follow the [TestFlight qualification plan](2026-11-11-testflight-0.4-qualification.md)
+and agree on the run time and physical markers before starting. Available iPhone 15/17/Pro coverage also remains pending; a 13 mini
 cannot substitute. Use the [qualification report](qualification-report-template.md)
 for measurements and scope limits.
 

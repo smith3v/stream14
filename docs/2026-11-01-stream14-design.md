@@ -1038,9 +1038,13 @@ criteria; the table below qualifies the eventual broadcaster, not the local-only
 | A4: Independent backup | Startup/API rejection, two-minute internet loss, failed reconnects, and a remotely completed event leave healthy local A/V running while storage remains available. Restoring connectivity resumes only the same eligible event. An overlay outage hides the layer after 10 seconds and restores a fresh image after recovery, without interrupting recording. |
 | A5: Recording recovery | The chosen native movie file plays and exports without transcoding; forced app termination preserves demonstrably recoverable completed fragments or the limitation is resolved before claiming crash recovery |
 | A6: Failure UX | Permission denial, missing/disabled events, expired consent, quota/rate-limit responses, unreachable overlay, local writer/disk-full failure, and unknown remote completion are distinct and actionable; predictive storage stats are not required |
-| A7: Long event | A three-hour 1080p30 broadcast and local recording on the 13 mini, powered and on a stable qualified network, satisfies A2 quality targets and keeps measured A/V offset within 100 ms at start and end |
+| A7: Long event | An uninterrupted one-hour 1080p30 broadcast and local recording on the 13 mini, powered and on a stable qualified network, satisfies A2 quality targets and keeps measured A/V offset within 100 ms at start and end |
 | A8: Devices/interface | Physical tests on the 13 mini and available iPhone 15/17 representatives; Pro variants use no required Pro-only behavior; test 720p, audio interruptions, screen lock/backgrounding, VoiceOver, larger text, playback/export, and cancellation |
 | A9: TestFlight regression | The later broadcaster is also uploaded/installed through TestFlight and its privacy declarations/notices/review information reflect the added streaming behavior; initial local-only TestFlight delivery is already required by M5 |
+
+The owner set the one-hour A7 qualification duration on 2026-11-11 to fit
+the test iPhone’s available storage. R8 retains the product’s one-to-three-hour
+event target.
 
 Automate API decoding/pagination, readiness, lifecycle reconciliation, retry/cancellation,
 and independent failure-state decisions with fixtures and fake services. Exercise
