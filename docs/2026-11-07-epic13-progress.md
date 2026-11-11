@@ -2,8 +2,9 @@
 
 Latest resume checkpoint — 2026-11-11. The owner installed TestFlight **0.4 (5)**
 and reported that the five-minute 720p30 local smoke test passed. The owner
-approved one hour for A7. Read the [1080p30 qualification plan](2026-11-11-testflight-0.4-qualification.md)
-before resuming. Epic #13 remains open pending full A1–A9 qualification.
+approved one hour for A7. The [first 1080p30 run](2026-11-11-testflight-0.4-qualification.md#first-1080p30-run-results)
+produced a 60:36 local recording and a 59:45 YouTube replay. Epic #13 remains
+open pending full A1–A9 qualification.
 
 ## Owner workflow
 
@@ -18,14 +19,14 @@ Canonical gates are in [specification §10](2026-11-01-stream14-design.md#10-lat
 | Gate | Current evidence and remaining acceptance |
 | --- | --- |
 | A1 overlay | Historical local/receiver composition passed; exact current-build 1080p alpha, reference canvas and repeated reload/file/receiver checks remain pending (#14/#17/#23/#62/#27). |
-| A2 smooth video | Synthetic/native timing and instrumentation exist; agreed 30-minute run, physical markers, pipeline drops/stalls and memory/queue bounds remain pending (#14/#25/#27). |
-| A3 YouTube | Short Unlisted Development `625df2a` Live/End, receiver overlay/speech and local playback passed; #15/#16/#18/#20 closed. Current UI and delivered-candidate regression remain pending. |
+| A2 smooth video | TestFlight 0.4 (5) original decoded fully with no video timestamp gaps ≥500 ms. The whole-file output cadence estimate was 1.61% missing intervals, compared with 0.0019% app encoder video rejections. Full pipeline drop rate and memory and queue growth criteria remain open (#14/#25/#27). |
+| A3 YouTube | Earlier Unlisted Development `625df2a` Live/End, receiver overlay and speech, and local playback passed. TestFlight 0.4 (5) produced a completed Unlisted 1080p30 replay with changing overlay. Delivered-build receiver audio and full A3 evidence remain pending. #15/#16/#18/#20 closed. |
 | A4 independent backup | Fault/reconnect fixtures exist; real two-minute outage, path switch/same-event file continuity, receiver/queue evidence, overlay hide/fresh recovery and healthy-output writer-fault checks remain pending (#14/#19/#21/#27). |
 | A5 recording recovery | Native recovery implementation/fixtures exist; multiple physical termination points, decoded recovered prefix/loss, original retention, playback and export remain pending (#24/#27). |
 | A6 failure UX | Deterministic API/lifecycle/fault checks exist; selected physical failure presentation, output independence and explicit Home/lock/audio resume/idle/heat evidence remain pending (#19/#22/#23/#27). |
-| A7 long event | Owner approved one hour. The powered 1080p30 broadcast and local recording meeting A2 targets with physical start/end A/V offset ≤100 ms remains pending (#14/#27). |
+| A7 long event | The first TestFlight run produced a finalized 60:36 1080p30 original. A 59:45 replay and three publisher generations leave uninterrupted one-hour receiver output unverified. The local start marker was within 100 ms. Local end sync, receiver sync and the remaining A2 quality evidence are pending (#14/#27). |
 | A8 devices/interface | The owner confirmed the brighter Start action and earlier More fix. Physical portrait/both landscapes, large text/VoiceOver, both profiles/mute/zoom/routes/play/export/cancellation and available 15/17 coverage remain pending (#17/#22/#23/#62/#27). |
-| A9 TestFlight | Owner confirmed 0.4 (5) TestFlight installation and a five-minute local smoke pass. Exact-build Unlisted broadcast, remaining delivered-build regression and phone instrumentation overhead/exported JSON remain pending (#25/#26/#27). |
+| A9 TestFlight | Owner confirmed 0.4 (5) TestFlight installation and a five-minute local smoke pass. The delivered build produced the completed 1080p30 replay and matching exported diagnostics. Remaining delivered-build regression and instrumentation overhead are pending (#25/#26/#27). |
 
 Agree on the A2/A7 run time and physical markers before recording. Routine phone visits stay five minutes total and development recording experiments at most 15 minutes. Retain originals and use physical markers with measured uncertainty. #65 shared-key mitigation and draft #69 custom A/V tooling are deferred, not prerequisites; existing Analyze plus manual markers are sufficient for planned analysis.
 
@@ -71,10 +72,10 @@ smoke passed. Remaining physical interface and diagnostic checks are tracked in
 #17/#62/#23/#25.
 
 Historical OAuth callback, channel, sign-out and revoke checks passed, as did
-the short Unlisted Live/End and local/receiver run on `625df2a`. The next
-broadcast check uses the current TestFlight build at 1080p30. See the
-[qualification plan](2026-11-11-testflight-0.4-qualification.md) for the
-short run and the one-hour endurance test.
+the short Unlisted Live/End and local/receiver run on `625df2a`. The first
+[TestFlight 1080p30 run](2026-11-11-testflight-0.4-qualification.md#first-1080p30-run-results)
+added local duration and completed replay evidence. A7 remains open for receiver
+continuity, sync and the remaining quality measurements.
 
 ## Resume procedure
 
