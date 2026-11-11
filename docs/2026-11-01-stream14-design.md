@@ -529,11 +529,14 @@ Session action buttons use high-contrast labels in light and dark appearances.
 Unavailable actions have neutral styling and retain their disabled accessibility
 state under the existing readiness rules.
 
-On the iOS 27.2 Simulator, screenshot sampling measured 6.74:1 for enabled Start,
-6.40:1 for Stop and both End buttons, and at least 9.56:1 for unavailable Start
-across light and dark appearances. Start fit the native viewport in both
-landscape orientations at standard and largest text sizes. The color treatment
-still needs a physical phone check.
+On the iOS 27.2 Simulator, screenshot sampling measured 6.49:1 for the enabled
+Start label in both appearances. The brighter green fill measured 3.24:1 against
+the light page and 6.49:1 against the dark page. Earlier Simulator checks at
+`e7ca771` measured 6.40:1 for Stop and both End buttons and at least 9.56:1 for
+unavailable Start. Start fit the native viewport in both landscape orientations
+at standard and largest text sizes on that source. The owner saw the earlier
+green Start button on iPhone. The brighter color and launch restore still need
+a physical phone check.
 
 ## 4. Browser overlay contract
 
