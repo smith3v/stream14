@@ -63,11 +63,23 @@ YouTube terms. Only that nonsecret policy-version choice is saved in app-only
 UserDefaults; local rehearsal does not require YouTube agreement. Without Google setup,
 local recording remains available and no Google authorization request is made.
 
+The 0.3 (4) build distributed through TestFlight on November 9, 2026 restores
+saved sign-in only when you choose **Restore saved connection**. In builds with
+automatic restore, after you have agreed and signed in, the app can try to restore
+your saved Google sign-in once per launch when the app becomes active and YouTube
+is configured. The Google Sign-In SDK may contact Google to refresh authorization
+tokens. After a successful restore, the app may send read-only requests to
+YouTube to check the status of a previously interrupted broadcast session. Event
+selection and starting a broadcast still require your action. If automatic
+restore fails, try **Restore saved connection** or sign in again with
+**Connect YouTube**.
+
 The SDK stores its credentials in the iPhone Keychain. stream14 does not copy them
 to preferences, files, an app backend or overlay JavaScript. A fresh access token
-is held in memory only for authorized API use. Sign out removes this iPhone's SDK
-session; Revoke Google access additionally requests revocation from Google. If
-revocation fails, the app says so and you can review access in your Google Account.
+is held in memory only for authorized API use. **Sign out on this iPhone** clears
+the saved SDK session used for automatic restore. **Revoke Google access** also
+requests revocation from Google. If revocation fails, the app says so and you can
+review access in your Google Account.
 Local sign-out clears in-memory account/channel/event readiness but retains pending
 request journals for safe reconciliation; it is distinct from data deletion.
 Revoke additionally deletes saved YouTube API data on this iPhone, even if the
@@ -109,8 +121,8 @@ A separate protected, backup-excluded pending-session journal stores unresolved
 channel/event IDs and any outstanding transition type/operation ID. It contains
 no Google token, stream key, ingestion address, event title or overlay URL. It
 prevents a relaunch or unknown transition from silently starting another upload.
-Ordinary sign-out retains this reconciliation record; relaunch only offers read-only
-reconciliation. An ambiguous mutation is not erased merely because an immediate
+Ordinary sign-out retains this reconciliation record. Reconciliation on relaunch
+is read-only. An ambiguous mutation is not erased merely because an immediate
 read still reports an upcoming event.
 
 ### Deleting YouTube data and revoking access
