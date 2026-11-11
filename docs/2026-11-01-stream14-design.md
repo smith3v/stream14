@@ -458,8 +458,10 @@ Changing accounts clears the previous channel's selection and credentials as app
 
 ### Go live
 
-Start recording and streaming is the primary action. Its confirmation names the
-channel, event, visibility and profile. A clear confirmation
+Start recording and streaming is the primary action. It uses a green fill when
+available and a neutral fill with a readable label when unavailable. Record only
+uses the standard neutral control. The streaming confirmation names the channel,
+event, visibility and profile. A clear confirmation
 starts this specific event and local recording; opening settings, selecting an
 event, or previewing the camera never transmits camera media to YouTube. Check
 permissions, output configuration, local writer readiness, overlay readiness, authentication, and
@@ -486,8 +488,9 @@ part of the encoded picture. Do not play warning sounds into an active microphon
 
 ### Finish and review
 
-End session confirms that the selected YouTube event will end and local recording
-and capture will stop. Request remote
+Stop recording and both local and YouTube End session buttons use a red fill
+when available. End session confirms that the selected YouTube event will end and
+local recording and capture will stop. Request remote
 completion, disconnect upload, and finalize the recording regardless of any API
 failure. A bounded remote request must not indefinitely delay local finalization.
 If completion cannot be confirmed, say "YouTube end not confirmed" and offer a
@@ -517,11 +520,9 @@ truncating essential actions. Test landscape operation on the 13 mini, including
 areas, permission-denied screens, keyboard entry, and failure warnings. Preserve the
 complete 16:9 output in preview; safe areas affect controls, not the video canvas.
 
-The monochrome streaming action uses native bordered styling and semantic primary
-foreground so its label remains readable in light/dark and unavailable states.
-Unavailable actions remain disabled under the existing readiness rules; readable
-text must not be implemented by enabling a blocked publish action. Native fill
-and accessibility state continue to distinguish unavailability.
+Session action buttons use high-contrast labels in light and dark appearances.
+Unavailable actions have neutral styling and retain their disabled accessibility
+state under the existing readiness rules.
 
 ## 4. Browser overlay contract
 
@@ -1424,7 +1425,11 @@ see the source-specific attended report in that checkpoint.
 
 The latest [review handoff](ios-development-guide.md#pr63-review-handoff--2026-11-11)
 records the single unmodified audit pass at `43e6706` and completed code review.
-PR63 is ready for review; physical acceptance, merge and #62/#23 remain pending.
+That handoff predates the merge. The owner subsequently reported that the
+development build from merged main `5f2d5c7` worked as expected on their iPhone.
+The later green Start and red Stop/End treatment still needs a phone check.
+The general owner report leaves specific VoiceOver, media and TestFlight
+qualification checks open.
 
 ### Private receiver evidence checkpoint — 2026-11-08
 
