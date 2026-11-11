@@ -1,6 +1,8 @@
 # Full-app TestFlight candidate — preparation record
 
-Updated: 2026-11-09. **0.3 (4) is Testing in Owner MVP; the owner confirmed installation through TestFlight. Current-build regression and physical qualification remain pending. Issue #26 remains open.**
+TestFlight delivery on 2026-11-09. **0.3 (4) reached Testing in Owner MVP and
+the owner confirmed installation through TestFlight. Current-build regression
+and physical qualification remain pending. Issue #26 remains open.**
 The previous [0.2 (3) local-only delivery](2026-11-07-testflight-0.2.md) and owner
 MVP evidence remain historical. This record identifies the later full-app source
 and its outstanding delivery/acceptance checkpoints.
@@ -351,3 +353,32 @@ merged main, including the privacy assessment, delivery/installation checkpoints
 and status-only privacy/support introductions. No material privacy, factual-claim
 or resume-gap findings remained. Current local-link and whitespace checks passed;
 no native app tests were repeated for documentation-only changes.
+
+## Unsigned current-main archive checkpoint — 2026-11-11
+
+A clean checkout of main `f69f24ac96b6fe719b3a6f92ba283c11f87b39a3` produced an
+unsigned generic iOS Release archive with Xcode 27.2 (27B52) and iOS SDK 27.2.
+The native archive command exited 0. The archive identifies
+`com.smith3v.stream14`, minimum iOS 27, and retains source metadata 0.3 (4).
+Google authorization was intentionally unconfigured. The TestFlight delivery
+above refers to the earlier signed build from `1ae3f87` and its matching merged
+app tree.
+
+The bundle audit passed 22 checks. All nine privacy manifests and 55 Apple/Swift
+dynamic load paths match the earlier signed archive. The app's declared reasons
+are CA92.1, 35F9.1 and C617.1. Compiled assets, app icons and dependency notices
+are byte-identical to the earlier archive. The app bundle has only camera and
+microphone usage descriptions and contains no background modes, test bundles,
+HTML fixtures or Debug seams checked by the audit. The symbol audit found no
+OpenSSL, SRT or WebRTC indicators. The archive has no signature or provisioning
+profile. Local evidence is retained in
+`/private/tmp/stream14-f13-main-f69f24a.jiocMGnQ/` as `Stream14.xcarchive`,
+`archive-native.log` and `audit.json`.
+
+The [privacy draft](privacy.md) describes saved sign-in restoration in builds
+that support it, possible Google token refresh, and the read-only status check
+for an interrupted broadcast. The owner deferred the TestFlight update.
+Policy publication, an account-enabled signed archive, Organizer privacy
+report and distribution validation remain pending for the next release.
+This stage performed no upload, App Store Connect changes, phone installation
+or live Google/YouTube verification.
