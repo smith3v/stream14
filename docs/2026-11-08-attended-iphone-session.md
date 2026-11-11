@@ -72,9 +72,9 @@ prompts and playback. Use **Record only**. Keep the originals in Recordings.
 | Budget | Operator action and observable evidence |
 | --- | --- |
 | 0:00–0:45 | In **Session**, note the current profile. Tap **Check camera and sound**. Look for the composed preview, overlay if already configured and healthy, and the microphone input label and moving level meter. |
-| 0:45–2:00 | Tap **Record only** for about 20 seconds. Say a short phrase, tap **Mute microphone**, repeat it, tap **Unmute microphone** and repeat it again. If convenient, move **Camera zoom** on the rear Wide lens and rotate through both landscape directions. Look for the full preview left and scrolling controls right. Check that Upload stays idle while Local saving shows recording. Tap **End session**, then **Stop local recording and capture**. |
+| 0:45–2:00 | Tap **Record only** for about 20 seconds. Say a short phrase, tap **Mute microphone**, repeat it, tap **Unmute microphone** and repeat it again. If the owner agreed to those checks and time permits, move **Camera zoom** on the rear Wide lens and rotate through both landscape directions. Look for the full preview left and scrolling controls right. Check that Upload stays idle while Local saving shows recording. Tap **End session**, then **Stop local recording and capture**. |
 | 2:00–4:00 | Open **Recordings** from the portrait tab or **More → Navigate → Recordings** in landscape. Play the new file and listen for audible speech before and after mute and silence in between. Check that expected zoom/overlay changes are present, the picture stays correctly oriented, and app controls stay outside the video. |
-| 4:00–5:00 | Confirm the new original remains in Recordings. Note the profile, playback result and skipped checks. If finalization is slow, prioritize preserving the file and record playback as pending. |
+| 4:00–5:00 | Reserve this minute for wrap-up. If recording never started and preview is still open, use **Camera controls → Close camera**. Confirm any new original remains in Recordings. Note the profile, playback result and skipped checks. If finalization is slow, prioritize preserving the file and record playback as pending. |
 
 If time and the owner’s agreed scope allow, choose at most one optional check
 before wrap-up. For the other profile, use **Prepare next session** after
