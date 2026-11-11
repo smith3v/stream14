@@ -2150,3 +2150,11 @@ Development build is separate from the earlier TestFlight 0.3 (4). The owner
 deferred a new release.
 See the [epic acceptance audit](2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11)
 for remaining physical, receiver and longer-run evidence.
+
+## TestFlight 0.4 (5) qualification — 2026-11-11
+
+The new internal TestFlight candidate is based on merged main `0c2e8f5` and
+includes the startup-audio fix from PR #74. The owner confirmed clear 720p30
+startup speech on the signed Development PR build. See the
+[delivery and qualification plan](2026-11-11-testflight-0.4-qualification.md)
+for the TestFlight-specific smoke test and storage-limited endurance plan.
