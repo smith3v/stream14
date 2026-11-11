@@ -40,7 +40,7 @@ Read AGENTS.md, docs/2026-11-01-stream14-design.md (R1–R11, sections 2–10, A
 
 Baseline is Swift 6/SwiftUI, iOS 27, one HaishinKit 2.3.0 MediaMixer, attached MainActor WebKit at about 1 Hz, explicit ScreenActor overlay visibility and a concrete LocalRecorder on composed NV12/PCM output. AVAssetWriter currently encodes H.264/AAC once for the file; shared encoded streaming output is unproven. Keep source/render freshness separate, 10-second hide/fresh-image recovery and manual-hide precedence. Keep Google/transport state separate from recording. No backend, analytics, generic output framework, 60 fps/HDR/camera switching or storage-estimation/polling/threshold subsystem.
 
-Development media experiments stay at most 15 minutes; 30-minute/three-hour qualification needs a later explicit owner-agreed run. Never automatically delete originals, including failed/pending files. Never publish camera media without an explicit test/operator action. Secrets, token-bearing URLs, signing/tester information and raw recordings stay out of Git/issues/logs. Preserve normal signing and distinct test-runner branding.
+Development media experiments stay at most 15 minutes; 30-minute A2 and one-hour A7 qualification needs a later explicit owner-agreed run. Never automatically delete originals, including failed/pending files. Never publish camera media without an explicit test/operator action. Secrets, token-bearing URLs, signing/tester information and raw recordings stay out of Git/issues/logs. Preserve normal signing and distinct test-runner branding.
 
 ## Delivery for this issue
 
@@ -372,7 +372,7 @@ Define and implement minimal on-device instrumentation usable in the actual Rele
 
 Extend existing per-record metrics/sidecars with bounded sampling/checkpoints outside media callbacks. Keep diagnostics private, backup-excluded and under deliberate export. No analytics/cloud/crash SDK. Export only sanitized summaries: no overlay URL/path/query, auth headers/tokens, stream keys, raw API payloads, tester identity or private media. SDK descriptions/error strings must be sanitized too.
 
-Add a small useful diagnostic export/control and instructions for start/end visible+audible clap markers, original-file analysis, receiver observation and power/network/ambient conditions. A generic internal debug panel is unnecessary. Maintain the development harness 900-second cap; never auto-run 30-minute or three-hour tests. Normal user recording has no artificial limit.
+Add a small useful diagnostic export/control and instructions for start/end visible+audible clap markers, original-file analysis, receiver observation and power/network/ambient conditions. A generic internal debug panel is unnecessary. Maintain the development harness 900-second cap; never auto-run 30-minute A2 or one-hour A7 tests. Normal user recording has no artificial limit.
 
 Provide reproducible native tools/scripts for analyzing original sample timestamps/decodability and a qualification report template mapping A1–A9. If measurement hooks differ by build type, prove the delivered build uses the claimed route. Scope new instrumentation as a normal PR into main; it does not retroactively change the evidence for the earlier MVP build.
 
@@ -420,11 +420,11 @@ Perform the common delivery steps above, including focused tests, documentation,
 
 **Prompt:**
 
-Use the actual full-app TestFlight candidate from F13 and complete the specification’s A1–A9 matrix. Issue #6 is closed following MVP delivery/owner review, with objective measurement limits retained; this issue must independently prove the full-product gates. Before any 30-minute or three-hour recording, obtain the owner’s explicit agreement on that run/time and physical markers. Current development experiments remain capped at 15 minutes.
+Use the actual full-app TestFlight candidate from F13 and complete the specification’s A1–A9 matrix. Issue #6 is closed following MVP delivery/owner review, with objective measurement limits retained; this issue must independently prove the full-product gates. Agree on timing and physical markers with the owner before starting the 30-minute A2 or one-hour A7 run. Current development experiments remain capped at 15 minutes.
 
 On 13 mini/iOS 27, qualify both profiles with exact-canvas alpha/reloads and common preview/file/remote composition. Cover manual/auto-start, confirmed remote start/end and second-device playback. Exercise permission denial, empty/disabled/missing/wrong-channel events, expired/revoked consent, quota/rate-limit, startup reject/timeout, two-minute real network loss, retry exhaustion, remote completion, overlay freshness/manual hide, writer faults, route/audio/camera interruptions, background/lock/explicit resume and A5 forced-termination recovery.
 
-Run the agreed 30-minute A2 and powered three-hour 1080p30 broadcast+recording A7 on stable qualified network: <1% measured pipeline drops, no repeated video stalls ≥500 ms, no monotonic memory/queue growth, A/V offset ≤100 ms at start/end with uncertainty. Record delivered build/commit/device/OS/profile, power/mount/case/brightness/airflow/ambient/network, original-file and receiver analysis, instrumentation limits and private evidence locations. Test without external cooling first. Do not silently lower resolution or substitute a newer device if 13 mini fails.
+Run the agreed 30-minute A2 and powered one-hour 1080p30 broadcast and recording A7 on stable qualified network: <1% measured pipeline drops, no repeated video stalls ≥500 ms, no monotonic memory/queue growth, A/V offset ≤100 ms at start/end with uncertainty. Record delivered build/commit/device/OS/profile, power/mount/case/brightness/airflow/ambient/network, original-file and receiver analysis, instrumentation limits and private evidence locations. Test without external cooling first. Do not silently lower resolution or substitute a newer device if 13 mini fails.
 
 Validate available iPhone 15/17 representatives including Pro variants, 720p, VoiceOver/larger text and full Files export/delete flows. Record unavailable required coverage as pending and resolve with owner before full-release acceptance. Fix material failures through PRs into main, deliver a new candidate and rerun affected gates; never infer a changed build passed from old media.
 

@@ -1,9 +1,9 @@
 # Epic #13 progress and resume ledger
 
-Latest resume checkpoint: 2026-11-11. PR #71 merged at `8f2161c`, and the
-13 mini has Development 0.3 (4) from PR head `5e11ac6`. PR #63 merged at
-`5f2d5c7`. Read the [latest development handoff](ios-development-guide.md#installed-development-build-and-next-local-visit--2026-11-11) before resuming. Epic #13 remains active and
-full A1–A9 qualification remains open. Later sections preserve dated history.
+Latest resume checkpoint — 2026-11-11. The owner installed TestFlight **0.4 (5)**
+and reported that the five-minute 720p30 local smoke test passed. The owner
+approved one hour for A7. Read the [1080p30 qualification plan](2026-11-11-testflight-0.4-qualification.md)
+before resuming. Epic #13 remains open pending full A1–A9 qualification.
 
 ## Owner workflow
 
@@ -23,11 +23,11 @@ Canonical gates are in [specification §10](2026-11-01-stream14-design.md#10-lat
 | A4 independent backup | Fault/reconnect fixtures exist; real two-minute outage, path switch/same-event file continuity, receiver/queue evidence, overlay hide/fresh recovery and healthy-output writer-fault checks remain pending (#14/#19/#21/#27). |
 | A5 recording recovery | Native recovery implementation/fixtures exist; multiple physical termination points, decoded recovered prefix/loss, original retention, playback and export remain pending (#24/#27). |
 | A6 failure UX | Deterministic API/lifecycle/fault checks exist; selected physical failure presentation, output independence and explicit Home/lock/audio resume/idle/heat evidence remain pending (#19/#22/#23/#27). |
-| A7 long event | Powered three-hour 1080p30 broadcast+recording meeting A2 quality targets and physical start/end A/V offset ≤100 ms remain pending; no run agreement yet (#14/#27). |
+| A7 long event | Owner approved one hour. The powered 1080p30 broadcast and local recording meeting A2 targets with physical start/end A/V offset ≤100 ms remains pending (#14/#27). |
 | A8 devices/interface | The owner confirmed the brighter Start action and earlier More fix. Physical portrait/both landscapes, large text/VoiceOver, both profiles/mute/zoom/routes/play/export/cancellation and available 15/17 coverage remain pending (#17/#22/#23/#62/#27). |
-| A9 TestFlight | Historical full-app 0.3 (4) delivery/owner installation passed; corrected-source release, actual installation/regression and phone instrumentation overhead/exported JSON remain pending (#25/#26/#27). Owner deferred the update. |
+| A9 TestFlight | Owner confirmed 0.4 (5) TestFlight installation and a five-minute local smoke pass. Exact-build Unlisted broadcast, remaining delivered-build regression and phone instrumentation overhead/exported JSON remain pending (#25/#26/#27). |
 
-A2/A7 need separate explicit agreement; routine phone visits stay five minutes TOTAL and development recording experiments at most 15 minutes. Retain originals and use physical markers with measured uncertainty. #65 shared-key mitigation and draft #69 custom A/V tooling are deferred, not prerequisites; existing Analyze plus manual markers are sufficient for planned analysis.
+Agree on the A2/A7 run time and physical markers before recording. Routine phone visits stay five minutes total and development recording experiments at most 15 minutes. Retain originals and use physical markers with measured uncertainty. #65 shared-key mitigation and draft #69 custom A/V tooling are deferred, not prerequisites; existing Analyze plus manual markers are sufficient for planned analysis.
 
 ## Historical stage ledger
 
@@ -63,17 +63,18 @@ Current chain: F1/#40 → F2/#41 → F4/#42 → F3/#43 → phone plan/#44 → F5
 
 ## Owner-dependent work
 
-The owner confirmed the brighter green Start action and automatic saved-account
-reconnection on Development `5e11ac6`, and previously confirmed the More fix on
-`4c097ae`. The [720p30 local recording check](2026-11-08-attended-iphone-session.md#720p30-result--2026-11-11)
-passed saving, playback, mute and overlay composition. Startup speech clarity
-failed. The card records the finding and a focused follow-up, with remaining
-acceptance tracked in #17/#62/#23/#25.
+The owner confirmed the brighter Start action and automatic saved-account
+reconnection on Development `5e11ac6`, and the More fix on `4c097ae`. PR #74
+resolved the [720p30 startup speech issue](2026-11-08-attended-iphone-session.md#720p30-result--2026-11-11).
+The owner installed TestFlight 0.4 (5) and reported that the five-minute local
+smoke passed. Remaining physical interface and diagnostic checks are tracked in
+#17/#62/#23/#25.
 
-Historical OAuth callback/channel/sign-out/revoke checks and the short Unlisted
-`625df2a` Live/End/local-file/receiver run passed. Current receiver regression
-and TestFlight qualification still need their own evidence. The owner deferred
-a new TestFlight release.
+Historical OAuth callback, channel, sign-out and revoke checks passed, as did
+the short Unlisted Live/End and local/receiver run on `625df2a`. The next
+broadcast check uses the current TestFlight build at 1080p30. See the
+[qualification plan](2026-11-11-testflight-0.4-qualification.md) for the
+short run and the one-hour endurance test.
 
 ## Resume procedure
 

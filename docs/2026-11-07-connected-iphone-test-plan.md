@@ -2,32 +2,32 @@
 
 Updated: 2026-11-11. Routine connected-iPhone testing has a **five-minute TOTAL
 wall-clock budget**, including install, prompts, actions and wrap-up. This full
-inventory is a backlog, not a one-hour session or a combined command. Build,
+inventory lists separate checks. Build,
 resolve, run fixtures/Simulator checks and prepare analysis tools on the laptop
 first. Pick ONE [attended-session card](2026-11-08-attended-iphone-session.md).
 
 ## Current evidence and next visit
 
 - Historical [shared-pipeline local smoke](2026-11-08-shared-pipeline-device-smoke.md) passed on 13 mini/F8 `20a0035`: one executed pass, zero failures/skips, 10.173-second body. It predates later RTMPS, UI, interruption, recovery and diagnostics changes.
-- The 13 mini has Development 0.3 (4) from PR #70 head `5e11ac6`. The owner confirmed the brighter green Start action and automatic reconnection to the saved YouTube account. The owner previously confirmed the More flicker fix on `4c097ae`. [PR #63](https://github.com/smith3v/stream14/pull/63) merged at `5f2d5c7` and [PR #70](https://github.com/smith3v/stream14/pull/70) merged at current main `f69f24a`.
+- The earlier Development 0.3 (4) build on the 13 mini came from PR #70 head `5e11ac6`. The owner confirmed the brighter green Start action and automatic reconnection to the saved YouTube account. The owner previously confirmed the More flicker fix on `4c097ae`. [PR #63](https://github.com/smith3v/stream14/pull/63) merged at `5f2d5c7` and [PR #70](https://github.com/smith3v/stream14/pull/70) merged at `f69f24a`.
 - [Account/event checks](2026-11-08-attended-account-event-results.md) verified OAuth callback, intended channel, restore, sign-out and revoke; #15/#16 closed. Do not repeat setup unless the current account/policy state actually requires it.
 - [Short Unlisted development run](2026-11-10-default-key-phone-test.md) passed on `625df2a`: confirmed Live/End, receiver composition/speech and retained local playback; #18/#20 closed. This is not current UI or final TestFlight qualification. Default/reusable keys are supported; no dedicated-key prerequisite. “Dedicated test event” below means a disposable test event, not an exclusive key. Preserve selected-event eligibility and auto-stop Off.
-- Full-app TestFlight 0.3 (4) was delivered and owner-installed; #58/#59 are merged. Its source predates the corrected Development UI. The owner deferred a new TestFlight release/regression; no upload/version change is scheduled.
-- Next visit is [local recording card S2](2026-11-08-attended-iphone-session.md#card-s2--local-recording-on-the-installed-development-build), pending explicit owner agreement to a local recording of a non-private scene. Full physical portrait/both-landscape, largest-text/VoiceOver, both-profile and actual file/receiver checks remain open where required by #17/#62/#23.
+- The owner installed TestFlight **0.4 (5)** and reported that the five-minute local 720p30 smoke test passed. See the [delivery record and endurance plan](2026-11-11-testflight-0.4-qualification.md).
+- The next short media check is [S1 on TestFlight](2026-11-08-attended-iphone-session.md#card-s1--short-unlisted-end-to-end) at 1080p30 with an Unlisted test event. Full physical portrait/both-landscape, largest-text/VoiceOver, both-profile and actual file/receiver checks remain open where required by #17/#62/#23.
 
-Use the [latest development handoff](ios-development-guide.md#installed-development-build-and-next-local-visit--2026-11-11) and [current A1–A9 audit](2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11). Current UI is Session/Recordings with More → Settings. Older Preparation click scripts and backlog status snapshots below are historical coverage, not current navigation or pass claims. All backlog rows remain intact. Deferred #65 shared-key mitigation and draft #69 custom A/V tooling do not block these visits; existing Analyze/manual markers suffice.
+Use the [latest TestFlight handoff](ios-development-guide.md#testflight-04-5-qualification--2026-11-11) and [current A1–A9 audit](2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11). Current UI is Session/Recordings with More → Settings. Older Preparation click scripts and backlog status snapshots below are historical coverage, not current navigation or pass claims. All backlog rows remain intact. Deferred #65 shared-key mitigation and draft #69 custom A/V tooling do not block these visits; existing Analyze/manual markers suffice.
 
 A prepared event and explicit operator confirmation are required before media
 publishing. Intentional lock and force-termination also need operator agreement.
 An earlier connected/unlocked report does not establish present attendance.
 Stop starting tests at wrap-up; record incomplete work instead of extending.
-The 15-minute development ceiling is not a routine target. Formal 30-minute A2
-and three-hour A7 runs remain pending, unscheduled and separately agreed; shorter
-samples and fake-clock tests do not qualify elapsed-duration performance.
+Development experiments remain capped at 15 minutes. Schedule the formal 30-minute
+A2 and owner-approved one-hour A7 qualification with the owner before recording.
+Both need measured physical evidence.
 
 ## What the owner needs to do
 
-[Local recording card S2](2026-11-08-attended-iphone-session.md#card-s2--local-recording-on-the-installed-development-build) uses the already installed app. For visits that need the Mac, connect the iPhone 13 mini by USB, unlock it and trust the Mac or enable Developer Mode if requested. Codex handles builds, commands and authorized private analysis.
+[The TestFlight qualification plan](2026-11-11-testflight-0.4-qualification.md) uses the already installed 0.4 (5) build. For visits that need the Mac, connect the iPhone 13 mini by USB, unlock it and trust the Mac or enable Developer Mode if requested. Codex handles builds, commands and authorized private analysis.
 
 For media checks, obtain explicit owner agreement and aim the phone at a non-private test scene. Make visible and audible clap markers when selected for measurement. For streaming checks, have a second device ready to observe the selected disposable Unlisted event. Do not use a real match or valuable scheduled event as a fixture.
 
@@ -257,9 +257,9 @@ These are unverified requirements, not an extension of the five-minute visit. Ea
 
 | ID | Required run | Conditions / pass evidence | Availability |
 | --- | --- | --- | --- |
-| Q01 | Install actual full-app TestFlight candidate and complete selected regression cards across visits | Delivered build/version and policy/notices (S0), selected private end-to-end (S1), local audio/export and interruption gaps (later cards); not all in one visit. Xcode install does not pass A9 | F13 delivery pending; A9 exact-build physical checks pending |
+| Q01 | Verify the delivered full-app TestFlight candidate across selected regression cards | Exact build and policy/notices (S0), Unlisted end-to-end (S1), local audio/export and interruption gaps (later cards) | TestFlight 0.4 (5) installation and five-minute local smoke passed by owner report. Remaining A9 exact-build checks pending |
 | Q02 | Agreed 30-minute compositing/recording qualification, both selected profiles as required by the final matrix | <1% measured pipeline drops, no repeated stalls ≥500 ms, no monotonic memory/queue growth; start/end physical markers and delivered-app metrics with limits | Separate explicit agreement; F14/A2 |
-| Q03 | Agreed powered three-hour 1080p30 simultaneous broadcast + local backup on 13 mini | A2 quality targets, physical A/V offset ≤100 ms at start/end, receiver and original analysis, stable qualified network; record mount/case/power/brightness/ambient/airflow, first without external cooling | Separate explicit agreement; F14/A7 |
+| Q03 | Uninterrupted powered one-hour 1080p30 broadcast and local recording on 13 mini | A2 quality targets, physical A/V offset ≤100 ms at start/end, receiver and original analysis, stable qualified network; record mount/case/power/brightness/ambient/airflow, first without external cooling | Separate explicit agreement; F14/A7 |
 | Q04 | Available iPhone 15/17 representatives and relevant Pro variants | 720p/1080p, real route/interruption/background/VoiceOver/larger-text/play/export/cancel checks; no required Pro-only behavior | F14 pending; unavailable representatives remain explicit acceptance gaps |
 
 A1–A9 inventory mapping (all full-product gates remain pending for the delivered candidate): A1=L01/L06/B06; A2=I08/I10/Q02; A3=G03/B05/B06/B11; A4=L07/L08/B07–B10/B13; A5=L10/L11/I07/I08; A6=P03/G01/G04/G07/B04/B07/B10/B11/I01–I06; A7=Q03; A8=P04/P05/L01/L04/L05/B13/I02/I03/Q04; A9=P01/L12/I10/Q01. Preserve earlier MVP evidence and its measurement limits; no new row is passed by a historical build.

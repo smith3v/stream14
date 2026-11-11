@@ -42,12 +42,15 @@ Xcode uploaded **0.4 (5)** as TestFlight Internal Only on 2026-11-11 at
 answer matched the previous release's Apple operating-system encryption
 classification. Build-specific What to Test notes were saved and verified.
 The existing **Owner MVP** group shows the build **Testing**, with 90 days
-remaining at verification. Installation and the physical checks below are
-pending. See Apple's
+remaining at verification. On 2026-11-11 the owner confirmed installation of
+0.4 (5) through TestFlight and a passing five-minute local smoke test. The
+broadcast and endurance checks are pending. See Apple's
 [internal testing guidance](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers)
 and [export compliance reference](https://developer.apple.com/help/app-store-connect/reference/app-information/export-compliance-documentation-for-encryption).
 
 ## Five-minute local smoke test
+
+Result for 0.4 (5) on 2026-11-11: **passed, owner-reported**.
 
 Update stream14 in place through TestFlight and confirm **0.4 (5)** before the
 timed test. Resolve permissions and overlay setup beforehand if necessary. Keep
@@ -64,38 +67,57 @@ Use a separate [five-minute Unlisted broadcast card](2026-11-08-attended-iphone-
 to verify 1080p30, receiver picture and speech, confirmed End, and local playback
 on the delivered build. Prepare the event and receiver before the timed visit.
 
-## Storage-limited endurance plan
+## One-hour 1080p30 endurance run
 
-Plan one uninterrupted **60-minute 1080p30 broadcast and simultaneous local
-recording** on the iPhone 13 mini. At 14 Mbps video plus 128 kbps audio, the nominal
-local size is 6.36 GB for an hour and 19.07 GB for three hours, before container
-overhead and bitrate variation. Check Settings → General → iPhone Storage before
-starting. Aim for about **9 GB free** for an hour and reserve space on the Mac for
-both the original and receiver evidence. If space is tight, set a shorter cutoff
-before starting. Retain originals and export to the Mac without making a second
-large on-phone copy.
+The owner adopted **60 continuous minutes** for A7 on 2026-11-11. Use the
+TestFlight **0.4 (5)** build on the powered iPhone 13 mini. The run is pending.
 
-1. Confirm the TestFlight build and prepare a dedicated Unlisted event, a
-   stable Wi-Fi connection, power and airflow, an overlay fixture, and a second
-   device to observe or retain the receiver playback. Keep the phone foregrounded
-   for the run.
-2. Confirm **Start recording and streaming** for that event. Once live, make a
-   visible and audible clap. Note elapsed time, receiver playback and both output
-   states at 15, 30 and 45 minutes. Record any heat warning, stall, local failure
-   or dropped connection. End early if storage, thermal or capture warnings
-   threaten the recording.
-3. At the end, make a second visible and audible clap, confirm End, and check that
-   the event ended and the file plays. Retain the original, receiver evidence,
-   and exported qualification summary privately.
-4. Inspect cadence and diagnostic counters against A2, including the first
-   30 minutes of the file. Target less than 1% pipeline frame drops, no repeated
-   stalls of 500 ms or more, and no monotonic memory or queue growth. Report the scope of each counter and
-   measurement. Measure start and end A/V offset with uncertainty against the
-   100 ms limit. A missing marker or unavailable metric stays pending.
+### Before starting
 
-The one-hour run is the practical endurance target for this phone's storage.
-It can measure A2 within the run and evaluate a proposed one-hour A7 criterion.
-A healthy hour provides no observation of faults beginning after minute 60.
-The [current specification](2026-11-01-stream14-design.md#10-later-full-product-acceptance-gates-and-test-matrix)
-still calls for three hours. Agree and record the revised A7 duration before
-using one-hour evidence for epic closure.
+- Check **Settings → General → iPhone Storage**. The nominal one-hour recording
+  is 6.36 GB at 14 Mbps video plus 128 kbps audio, before container overhead and
+  bitrate variation. Aim for about **9 GB free** on the phone. Reserve room on
+  the Mac for the original and receiver evidence. Export valuable older originals
+  if space is tight. An early stop records a partial run.
+- Prepare an unused **Unlisted** scheduled encoder event in the intended channel
+  with auto-stop off. Use a non-private test scene and the configured overlay. On a second device,
+  open the event's YouTube watch page and prepare receiver evidence that includes
+  picture and sound at both clap markers.
+- Plug in the phone and mount it in landscape with airflow. Start without
+  external cooling. Use stable Wi-Fi, keep stream14 foregrounded and the screen
+  awake, and note the device/OS, power, mount/case, brightness and room conditions.
+- In **Session**, choose **1080p30 · 14 Mbps** with the camera closed, select the
+  intended event, and tap **Check camera and sound**. Verify moving preview,
+  overlay and mic activity. Use the short broadcast card above for an initial
+  delivered-build receiver check if needed. A completed test event needs a
+  different scheduled event for the endurance run.
+
+### Run
+
+| Elapsed | Operator action and evidence |
+| --- | --- |
+| Start | Tap **Start recording and streaming**. Confirm the channel, event, Unlisted visibility and profile, then confirm **Go Live**. Once YouTube is Live and Local saving is recording, confirm picture, overlay and speech on the receiver. Make a visible, sharp clap with hands in frame and start the timer. |
+| 15, 30 and 45 minutes | Note both output states, receiver playback and any thermal warning, stall or reconnect. Keep the scene and network stable. A failure that interrupts either output breaks the continuous run. |
+| 60 minutes | Make another visible, sharp clap. Allow the receiver to play it. Tap **End session → End session and local recording**. Verify remote completion and check the finalized file plays. If remote status is uncertain, reconcile in the app or verify it in YouTube Studio. |
+
+If a storage, heat or capture warning threatens the recording, end the session
+and preserve the partial evidence.
+
+### After the run
+
+1. From **Recordings**, export the original to the Mac, then use **Load
+   qualification summary → Export qualification summary**. Retain both files
+   and the receiver evidence privately. Record the event result and actual
+   elapsed time in the [qualification report](qualification-report-template.md).
+2. Analyze the original's frame cadence and stalls and reconcile those with the
+   exported encoder/file/transport counters. Evaluate the 30-minute A2 evidence
+   within the run where measured, and review the full hour for less than 1%
+   measured pipeline frame drops, no repeated stalls of 500 ms or more, and no
+   monotonic memory or queue growth. The existing analyzer scans the whole file.
+   A first-30-minute cadence result needs a read-only timestamp range scan.
+   The diagnostic export reports lifetime counters and peaks. It does not
+   provide a separate minute-30 counter snapshot. Report these coverage limits.
+3. Measure A/V offset from visible clap contact and the audio transient at each
+   marker. Report uncertainty and the original and receiver results separately. A7 requires start and end offset
+   within 100 ms. Missing markers or unavailable measurements leave the affected
+   criteria pending.

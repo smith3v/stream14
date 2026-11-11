@@ -59,7 +59,7 @@ Do not infer overhead or stability from Simulator or model fixtures.
 | A4 independence | Startup rejection, >=2-minute loss/retry exhaustion/remote end, uninterrupted original A/V, same-event resume, overlay 10s hide/recovery | pending |
 | A5 recovery | Multiple physical termination points before/after fragments, retained originals, separate copies, measured lost tail, playback/export | pending |
 | A6 failure UX | Permissions/event/auth/quota/overlay/write failure/ambiguous end, distinct actionable states | pending |
-| A7 long event | Separately agreed powered three-hour 1080p30 run on 13 mini, A2 targets, physical beginning/end sync <=100ms with uncertainty | pending |
+| A7 long event | Uninterrupted powered one-hour 1080p30 broadcast and local recording on 13 mini, A2 targets, physical beginning/end sync ≤100 ms with uncertainty | pending |
 | A8 devices/UI | Physical 13 mini and available 15/17/Pro, 720p, audio interruptions/lock/background/VoiceOver/large text/export/delete cancellation | pending |
 | A9 TestFlight | Actual later full-app uploaded/installed identity and regression, privacy declarations/notices/policy verification | pending |
 
