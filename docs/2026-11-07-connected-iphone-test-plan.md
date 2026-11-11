@@ -37,11 +37,11 @@ For media checks, obtain explicit owner agreement and aim the phone at a non-pri
 
 | Requirement | Action before selecting a card |
 | --- | --- |
-| Phone | Confirm current USB/unlocked/owner availability; record exact 13 mini/OS privately |
+| Phone | Confirm the phone is unlocked and the owner is available. Check USB only for cards that need the Mac. Record the exact device and OS privately |
 | Prepared binary | Normally signed exact reviewed source, appropriate public OAuth callback outside Git, recognizable app/branded runner; TestFlight route required for A9 |
 | Recordings | Inventory/export valuable originals before update; never uninstall/reset or automatically clean up |
 | Authorization | Reuse historical checks; verify current state and perform deliberate policy agreement/reauthorization only if actually needed |
-| Event and receiver | Freshly verify selected disposable Unlisted encoder event (existing/default reusable key allowed), auto-start/auto-stop/monitor/binding eligibility, second-device receiver; no private keys or links in public artifacts |
+| Event and receiver | For streaming cards, verify the selected disposable Unlisted encoder event, auto-start/auto-stop/monitor/binding eligibility, and second-device receiver. An existing/default reusable key is allowed. Keep private keys and links out of public artifacts |
 | Overlay | Known nonsecret reference and changing transparent fixture with controllable source access |
 | Recovery/diagnostics | Implemented/reviewed flows exist and #58/#59 are merged; physical current-build recovery, overhead and exported JSON evidence remains pending |
 | Routine time | Five minutes total including setup/wrap; one selected card, no automatic extension |
