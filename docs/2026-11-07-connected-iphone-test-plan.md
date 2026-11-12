@@ -6,6 +6,9 @@ inventory lists separate checks. Build,
 resolve, run fixtures/Simulator checks and prepare analysis tools on the laptop
 first. Pick ONE [attended-session card](2026-11-08-attended-iphone-session.md).
 
+Use the [connected qualification runner and grouped owner visits](2026-11-12-connected-qualification.md)
+to execute the checks below and reuse evidence across cases.
+
 ## Current evidence and next visit
 
 - Historical [shared-pipeline local smoke](2026-11-08-shared-pipeline-device-smoke.md) passed on 13 mini/F8 `20a0035`: one executed pass, zero failures/skips, 10.173-second body. It predates later RTMPS, UI, interruption, recovery and diagnostics changes.
