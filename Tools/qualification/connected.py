@@ -360,7 +360,7 @@ def run(args, directory, report):
     command_args = [
         "xcodebuild", "-xctestrun", str(xctestrun),
         "-destination", f"platform=iOS,id={args.device}", "-destination-timeout", "10",
-        "-parallel-testing-enabled", "NO", "-test-iterations", "1",
+        "-parallel-testing-enabled", "NO",
         "-test-timeouts-enabled", "YES", "-maximum-test-execution-time-allowance", "90",
         f"-only-testing:{SMOKE_SUITE}", "-resultBundlePath", str(directory / "tests.xcresult"),
         "test-without-building",
