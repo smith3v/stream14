@@ -106,7 +106,7 @@ struct MediaDeviceTests {
         let controller = UIViewController()
         window.rootViewController = controller
         controller.view.backgroundColor = .black
-        let host = OverlayViewport(webView: session.renderer.webView)
+        let host = OverlaySnapshotHost(webView: session.renderer.webView)
         host.frame = CGRect(x: 0, y: 0, width: 320, height: 180)
         controller.view.addSubview(host)
         session.preview.frame = CGRect(x: 0, y: 180, width: 320, height: 180)

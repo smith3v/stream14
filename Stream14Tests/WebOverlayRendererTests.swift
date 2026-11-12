@@ -25,11 +25,11 @@ struct WebOverlayRendererTests {
         let window = UIWindow(windowScene: scene)
         let controller = UIViewController()
         window.rootViewController = controller
-        let host = OverlayViewport(webView: renderer.webView)
+        let host = OverlaySnapshotHost(webView: renderer.webView)
         host.frame = CGRect(x: 0, y: 80, width: 375, height: 60)
         controller.view.addSubview(host)
-        // Main-screen source host sits behind an opaque scroll surface, without
-        // being hidden, detached, zero-sized or made transparent itself.
+        // Cover the scene anchor as the main screen does. WebKit snapshots
+        // come from the separate hidden window.
         let cover = UIView(frame: controller.view.bounds)
         cover.backgroundColor = .systemBackground
         cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -49,7 +49,8 @@ struct WebOverlayRendererTests {
         #expect(image.height == 1080)
         #expect(renderer.visible)
         #expect(renderer.viewport == "1920×1080 CSS → 1920×1080 pixels")
-        #expect(renderer.webView.window != nil)
+        let snapshotWindow = try #require(renderer.webView.window)
+        #expect(snapshotWindow !== window && snapshotWindow.isHidden && !snapshotWindow.isKeyWindow)
         #expect(!host.isHidden && host.alpha == 1)
         // Normalize to RGBA and inspect untouched transparency and the CSS panel.
         let data = try #require(image.dataProvider?.data)
@@ -104,7 +105,7 @@ struct WebOverlayRendererTests {
         let window = UIWindow(windowScene: scene)
         let controller = UIViewController()
         window.rootViewController = controller
-        let host = OverlayViewport(webView: renderer.webView)
+        let host = OverlaySnapshotHost(webView: renderer.webView)
         host.frame = CGRect(x: 0, y: 80, width: 375, height: 60)
         controller.view.addSubview(host)
         window.makeKeyAndVisible()
@@ -207,7 +208,7 @@ struct WebOverlayRendererTests {
         let window = UIWindow(windowScene: scene)
         let controller = UIViewController()
         window.rootViewController = controller
-        let host = OverlayViewport(webView: renderer.webView)
+        let host = OverlaySnapshotHost(webView: renderer.webView)
         host.frame = CGRect(x: 0, y: 80, width: 375, height: 211)
         controller.view.addSubview(host)
         window.makeKeyAndVisible()

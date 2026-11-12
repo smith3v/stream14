@@ -470,17 +470,52 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? { nil }
 }
 
-/// The WKWebView remains attached, visible and alpha=1. Scaling its layer changes
-/// presentation size without changing the CSS viewport or snapshot rectangle.
+/// Keep the snapshot window scoped to the scene that owns the overlay.
 struct AttachedOverlayView: UIViewRepresentable {
     let renderer: WebOverlayRenderer
-    func makeUIView(context: Context) -> OverlayViewport {
-        OverlayViewport(webView: renderer.webView)
+    func makeUIView(context: Context) -> OverlaySnapshotHost {
+        OverlaySnapshotHost(webView: renderer.webView)
     }
-    func updateUIView(_ uiView: OverlayViewport, context: Context) { uiView.setWebView(renderer.webView) }
+    func updateUIView(_ uiView: OverlaySnapshotHost, context: Context) { uiView.setWebView(renderer.webView) }
 }
 
-final class OverlayViewport: UIView {
+final class OverlaySnapshotHost: UIView {
+    private let viewport: OverlayViewport
+    private var snapshotWindow: UIWindow?
+
+    init(webView: WKWebView) {
+        viewport = OverlayViewport(webView: webView)
+        super.init(frame: .zero)
+        isUserInteractionEnabled = false
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    func setWebView(_ view: WKWebView) { viewport.setWebView(view) }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        let scene = window?.windowScene
+        guard snapshotWindow?.windowScene !== scene else { return }
+        viewport.removeFromSuperview()
+        snapshotWindow?.windowScene = nil
+        snapshotWindow = nil
+        guard let scene else { return }
+
+        // The visible-window WebKit snapshot loses alpha on the iPhone 13 mini.
+        // Attach the viewport directly because a hidden window does not lay out
+        // its root controller. This window never becomes visible or key.
+        let window = UIWindow(windowScene: scene)
+        window.isUserInteractionEnabled = false
+        viewport.frame = CGRect(x: 0, y: 0, width: 320, height: 60)
+        window.addSubview(viewport)
+        viewport.layoutIfNeeded()
+        snapshotWindow = window
+    }
+}
+
+/// Scale the attached view without changing its CSS canvas or snapshot rectangle.
+private final class OverlayViewport: UIView {
     private var webView: WKWebView
     private var canvasSize: CGSize
     init(webView: WKWebView) {
@@ -498,6 +533,7 @@ final class OverlayViewport: UIView {
         canvasSize = view.bounds.size
         addSubview(view)
         setNeedsLayout()
+        layoutIfNeeded()
     }
     required init?(coder: NSCoder) { nil }
     override func layoutSubviews() {
