@@ -116,6 +116,21 @@ Check failure, skip, and timeout handling before starting a phone visit. Record
 the prepared revision, build and result summary. The connected run starts
 when the owner has supplied the wired phone and approved the short capture.
 
-On 2026-11-12 the Mac-side runner recorded **181 passes across 23 suites**, zero
-failures and zero skips on the iPhone 13 mini Simulator with iOS 27.2. This is
-fixture evidence. The connected execution is pending.
+On 2026-11-12 revision `aadb545` passed the Mac-side runner with **181 passes
+across 23 suites**, zero failures and zero skips on the iPhone 13 mini Simulator
+with iOS 27.2. The unsigned Release build and signed Development preparation
+for 0.4 (5) also passed. Xcode enumerated one phone test for the visit.
+
+The first connected run failed the transparency check on both profiles. The
+visible-window WebKit snapshot returned alpha 255 in the clear and
+half-transparent regions before normalization. The corrected renderer attaches
+its snapshot viewport to a hidden window. The rerun on the iPhone 13 mini
+with iOS 27.2 passed **one test with zero failures and zero skips**. On both
+profiles the clear, half-transparent and opaque fixture pixels measured alpha
+0, 128 and 255. The saved originals retained the composed marker change and
+passed video-format and native AAC decode checks. The originals were 2.833 s
+at 1080p30 and 3.233 s at 720p30.
+
+This local Development run used a synthetic overlay fixture. Speech and mute
+listening, real overlay and network recovery, installed TestFlight behavior
+and physical A/V sync remain manual observations.
