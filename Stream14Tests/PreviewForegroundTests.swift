@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 @testable import HaishinKit
 import Testing
+import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct PreviewForegroundTests {
@@ -27,6 +28,44 @@ import Testing
         media.setCaptureForeground(true)
         await Task.yield()
         #expect(opens == 2)
+        media.requestStop()
+        try await until { media.phase == .idle }
+    }
+
+    @Test func captureKeepsItsLandscapeOrientationUntilItReopens() async throws {
+        @MainActor final class OrientationSource {
+            var current = UIInterfaceOrientation.landscapeLeft
+            var reads = 0
+        }
+        let source = OrientationSource()
+        let media = session(orientation: {
+            source.reads += 1
+            return source.current
+        })
+        media.installPreviewLifecycleFixture(start: {})
+        await media.openPreview()
+        #expect(media.phase == .preview)
+        #expect(await media.mixer.videoOrientation == .landscapeLeft)
+
+        source.current = .portrait
+        media.setCaptureForeground(true)
+        await media.openPreview()
+        #expect(await media.mixer.videoOrientation == .landscapeLeft)
+        #expect(source.reads == 1)
+
+        media.setCaptureForeground(false)
+        try await until { media.phase == .idle }
+        media.setCaptureForeground(true)
+        try await until { media.phase == .preview }
+        #expect(await media.mixer.videoOrientation == .landscapeRight)
+        #expect(source.reads == 2)
+
+        media.requestStop()
+        try await until { media.phase == .idle }
+        source.current = .landscapeRight
+        await media.openPreview()
+        #expect(await media.mixer.videoOrientation == .landscapeRight)
+        #expect(source.reads == 3)
         media.requestStop()
         try await until { media.phase == .idle }
     }
@@ -296,9 +335,10 @@ import Testing
         #expect(result.2 == 120 && (result.3 ?? 0) > 120 && (result.3 ?? 999) < 121)
     }
 
-    private func session(authorize: @escaping @MainActor () async -> Bool = { true }) -> MediaSession {
+    private func session(orientation: @escaping @MainActor () -> UIInterfaceOrientation = { .unknown },
+                         authorize: @escaping @MainActor () async -> Bool = { true }) -> MediaSession {
         MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in }, profile: .hd,
-                     persistProfile: { _ in }, authorizeCapture: authorize)
+                     persistProfile: { _ in }, interfaceOrientation: orientation, authorizeCapture: authorize)
     }
     private func until(_ condition: () -> Bool) async throws {
         for _ in 0..<400 {

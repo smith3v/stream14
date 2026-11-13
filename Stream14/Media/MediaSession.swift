@@ -38,6 +38,7 @@ final class MediaSession {
     }
     var canSelectProfile: Bool { !broadcastConfigurationLocked && phase == .idle && !busy && !stopRequested }
     private let authorizeCapture: @MainActor () async -> Bool
+    private let interfaceOrientation: @MainActor () -> UIInterfaceOrientation
     private let persistProfile: @MainActor (SessionProfile) -> Void
     private(set) var microphoneMuted = false
     private(set) var microphoneLevel = 0.0
@@ -191,6 +192,13 @@ final class MediaSession {
          persistProfile: @escaping @MainActor (SessionProfile) -> Void = {
              UserDefaults.standard.set($0.rawValue, forKey: SessionProfile.preferenceKey)
          },
+         interfaceOrientation: @escaping @MainActor () -> UIInterfaceOrientation = {
+             let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+             // Permission prompts can leave the app's scene temporarily inactive.
+             let scene = scenes.first { $0.activationState == .foregroundActive } ??
+                 scenes.first { $0.activationState == .foregroundInactive }
+             return scene?.effectiveGeometry.interfaceOrientation ?? .unknown
+         },
          authorizeCapture: @escaping @MainActor () async -> Bool = {
              guard await AVCaptureDevice.requestAccess(for: .video) else { return false }
              return await AVCaptureDevice.requestAccess(for: .audio)
@@ -198,6 +206,7 @@ final class MediaSession {
         self.profile = profile
         self.persistProfile = persistProfile
         self.authorizeCapture = authorizeCapture
+        self.interfaceOrientation = interfaceOrientation
         renderer = WebOverlayRenderer(profile: profile)
         self.saveOverlayURL = saveOverlayURL
         do { overlayURL = try readOverlayURL() }
@@ -420,6 +429,11 @@ final class MediaSession {
     /// A fresh native setup follows completed teardown, never startRunning on
     /// the interrupted session while its previous stop is still suspended.
     private func startPreviewCapture(generation: UInt64) async throws {
+        // Sample once for this capture generation. The mixer applies this to
+        // the camera input before the shared landscape composition.
+        let orientation = interfaceOrientation()
+        let videoOrientation = orientation.isLandscape ? DeviceUtil.videoOrientation(by: orientation) : nil
+        await mixer.setVideoOrientation(videoOrientation ?? .landscapeRight)
         #if DEBUG
         if let previewStartFixture { try await previewStartFixture(); return }
         #endif
@@ -433,7 +447,6 @@ final class MediaSession {
             throw RearCameraLens.ConfigurationError.unavailable
         }
         await mixer.setSessionPreset(.inputPriority)
-        await mixer.setVideoOrientation(.landscapeRight)
         await mixer.setVideoMixerSettings(VideoMixerSettings(mode: .offscreen))
         try await mixer.setDynamicRangeMode(.sdr)
         await mixer.setAudioMixerSettings(profile.audioSettings(muted: microphoneMuted))
