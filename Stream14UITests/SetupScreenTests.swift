@@ -498,6 +498,7 @@ final class SetupScreenTests: XCTestCase {
         expectation(for: NSPredicate(format: "label CONTAINS %@", "Stop recording"), evaluatedWith: record)
         waitForExpectations(timeout: 5)
         XCTAssertFalse(selector.exists)
+        assertCameraCloseIsAbsent(in: app)
         sleep(3)
         record.tap()
         let next = app.buttons["prepareNextSession"]
@@ -516,10 +517,7 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(done.waitForExistence(timeout: 5))
         done.tap()
         navigate("Session", in: app)
-        let controls = app.buttons["Camera controls"]
-        reveal(controls)
-        controls.tap()
-        let close = app.buttons["Close camera"]
+        let close = app.buttons["closeCamera"]
         reveal(close)
         XCTAssertTrue(close.isHittable)
         close.tap()
