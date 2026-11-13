@@ -426,9 +426,9 @@ be silently reused. Readiness gives direct fixes for camera/permission, account,
 event, overlay and unresolved-state blockers. No upload test is required.
 Check camera and sound explicitly opens the composed preview and permission flow.
 Quality and compatible rear-lens selection sit beside the preparation preview,
-along with input/microphone controls. Quality remains frozen while capture is open:
-Close camera to change quality, choose a supported profile, then check again.
-Active-session locks remain authoritative. Record only remains available without Google.
+along with input/microphone controls. During preview-only use, Close camera returns
+to setup and unlocks quality selection. Use the recording and session stop controls
+while recording or broadcasting. Record only remains available without Google.
 
 Request camera and microphone access when the operator first opens the preview,
 explaining both capture and broadcasting. If denied, explain how to enable access
