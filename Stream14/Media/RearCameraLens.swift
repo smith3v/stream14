@@ -87,6 +87,12 @@ nonisolated struct CameraZoom: Sendable {
     var value: Double = 1
     var minimum: Double = 1
     var maximum: Double = 1
+
+    static func clamped(_ requested: Double, minimum: Double, deviceMaximum: Double) -> Self {
+        let maximum = min(10, deviceMaximum)
+        let value = requested.isFinite ? min(maximum, max(minimum, requested)) : minimum
+        return Self(value: value, minimum: minimum, maximum: maximum)
+    }
 }
 
 extension MediaMixer {
@@ -94,13 +100,13 @@ extension MediaMixer {
         let result = Mutex(CameraZoom())
         try configuration(video: 0) { unit in
             guard let device = unit.device else { throw RearCameraLens.ConfigurationError.unavailable }
-            let minimum = Double(device.minAvailableVideoZoomFactor)
-            let maximum = Double(device.maxAvailableVideoZoomFactor)
-            let value = requested.isFinite ? min(maximum, max(minimum, requested)) : minimum
             try device.lockForConfiguration()
             defer { device.unlockForConfiguration() }
-            device.videoZoomFactor = CGFloat(value)
-            result.withLock { $0 = CameraZoom(value: value, minimum: minimum, maximum: maximum) }
+            let zoom = CameraZoom.clamped(requested,
+                                          minimum: Double(device.minAvailableVideoZoomFactor),
+                                          deviceMaximum: Double(device.maxAvailableVideoZoomFactor))
+            device.videoZoomFactor = CGFloat(zoom.value)
+            result.withLock { $0 = zoom }
         }
         return result.withLock { $0 }
     }

@@ -1181,7 +1181,8 @@ stop; there is no background capture or automatic recording restart.
 
 Zoom uses the existing mixer's public throwing `configuration(video:configuration:)`
 to clamp finite requests to the active physical device's supported zoom range,
-with device locking on the media actor. The standard slider commits when released,
+with a lens-relative ceiling of 10× (issue #79). The slider uses the same capped
+range. Device locking stays on the media actor. The standard slider commits when released,
 so dragging cannot launch a task for every intermediate value. Media operations
 remain serialized; mute/zoom are available in preview/recording and profile/lens
 changes remain locked during recording/finalization. Original export and deliberate
