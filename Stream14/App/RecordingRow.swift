@@ -27,7 +27,7 @@ struct RecordingRow: View {
             Text(sample.status == .needsInspection ? "Metadata needs inspection" : sample.status.rawValue).font(.caption)
                 .accessibilityIdentifier("recordingStatus-" + sample.id.uuidString)
             if let duration = RecordingDuration(sample.duration) {
-                Text("Duration: \(duration.clock(locale: locale))")
+                Text("Duration: \(duration.clock)")
                     .accessibilityLabel("Duration: \(duration.spoken(locale: locale))")
                     .accessibilityIdentifier("recordingDuration-" + sample.id.uuidString)
             }
@@ -113,7 +113,7 @@ struct RecordingRow: View {
                 .font(.headline)
                 .accessibilityIdentifier("recoveryStatus-" + recovery.id.uuidString)
             if let duration = RecordingDuration(recovery.duration) {
-                Text("Duration: \(duration.clock(locale: locale)) · may be truncated")
+                Text("Duration: \(duration.clock) · may be truncated")
                     .accessibilityLabel("Duration: \(duration.spoken(locale: locale)), may be truncated")
                     .accessibilityIdentifier("recoveryDuration-" + recovery.id.uuidString)
             }
@@ -144,7 +144,6 @@ struct RecordingRow: View {
     }
 }
 
-
 struct RecordingDuration {
     private let elapsed: Duration
 
@@ -154,8 +153,9 @@ struct RecordingDuration {
         elapsed = .seconds(wholeSeconds)
     }
 
-    func clock(locale: Locale) -> String {
-        elapsed.formatted(.time(pattern: .hourMinuteSecond(padHourToLength: 2)).locale(locale))
+    var clock: String {
+        elapsed.formatted(.time(pattern: .hourMinuteSecond(padHourToLength: 2))
+            .locale(Locale(identifier: "en_US_POSIX")))
     }
 
     func spoken(locale: Locale) -> String {

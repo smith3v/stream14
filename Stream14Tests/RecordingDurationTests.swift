@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import Stream14
 
+@MainActor
 struct RecordingDurationTests {
     @Test(arguments: [
         (0.0, "00:00:00", "0 seconds"),
@@ -15,7 +16,7 @@ struct RecordingDurationTests {
     func formatsWholeElapsedSeconds(seconds: Double, clock: String, spoken: String) throws {
         let duration = try #require(RecordingDuration(seconds))
         let locale = Locale(identifier: "en_US")
-        #expect(duration.clock(locale: locale) == clock)
+        #expect(duration.clock == clock)
         #expect(duration.spoken(locale: locale) == spoken)
     }
 
