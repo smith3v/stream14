@@ -1,6 +1,3 @@
----
----
-
 # stream14 beta privacy
 
 Effective: 2026-11-09. This policy covers the broadcasting beta, including local

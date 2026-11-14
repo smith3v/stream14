@@ -35,3 +35,7 @@ artifacts/
 *.mp4
 *.mov
 *.m4v
+
+# Hugo build output
+/website/public/
+/.hugo_build.lock

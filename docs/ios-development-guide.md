@@ -194,18 +194,19 @@ client, verification result and fresh-account result here after checking them.
    Enable YouTube Data API v3 and create an iOS OAuth client for
    `com.smith3v.stream14`. Keep development on its separate project. See [Google's
    deployment-tier policy](https://developers.google.com/identity/protocols/oauth2/policies#use-separate-projects-for-testing-and-production).
-2. In GitHub Settings → Pages, deploy from `main` → `/docs` after merging the
-   homepage. Connect a custom domain under the owner's DNS control and enforce
-   HTTPS. Check that the homepage, `privacy.html`, `terms.html` and `support.html`
-   open without sign-in. The existing `github.com` policy and terms are publicly
-   readable. Repository control alone does not prove domain ownership.
-3. Verify the owned domain as a Search Console Domain property via DNS TXT with
-   a Google account that is an owner or editor of the production project. Add the
-   verified top private domain to Branding → Authorized domains. Use the same
-   privacy URL on the homepage and consent form. The default Pages hostname can
-   preview the site while the custom domain is configured. See [Google's brand
-   verification guide](https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification)
-   and [domain ownership troubleshooting](https://support.google.com/cloud/answer/13804266).
+2. Deploy the Hugo site in `website/` from this repository using Cloudflare Pages.
+   Build from the repository root with `hugo --config website/hugo.toml --minify`
+   and publish `website/public` from `main`. Set `HUGO_VERSION` to `0.169.0` in
+   production and preview. Use `website/*`, `docs/privacy.md`, `docs/terms.md`,
+   and `docs/support.md` as build watch paths. Attach `stream14.app` to the Pages
+   project and check that `/`, `/privacy/`, `/terms/`, and `/support/` open over
+   HTTPS without sign-in. The site renders the same Markdown policies as GitHub.
+   See [Cloudflare Pages for Hugo](https://developers.cloudflare.com/pages/framework-guides/deploy-a-hugo-site/).
+3. Verify `stream14.app` as a Search Console Domain property via DNS TXT in
+   Cloudflare, using a Google account that is an owner or editor of the production
+   project. Add `stream14.app` to Branding → Authorized domains. Use
+   `https://stream14.app/privacy/` on the consent form to match the homepage link.
+   See [Google's brand verification guide](https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification).
 4. In Branding enter `stream14`, use the shipped app icon (export a square
    120 × 120 copy from `Stream14/Assets.xcassets/AppIcon.appiconset/AppIcon.png`),
    add the verified homepage, privacy and terms URLs, and confirm the owner-approved

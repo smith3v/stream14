@@ -1,0 +1,38 @@
+:root {
+  color-scheme: light dark;
+  font: 100%/1.65 system-ui, sans-serif;
+}
+
+body {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 5vw, 4rem);
+  color: CanvasText;
+  background: Canvas;
+}
+
+h1, h2, h3 {
+  line-height: 1.2;
+}
+
+.app-icon {
+  border-radius: 22%;
+}
+
+footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid GrayText;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.25rem;
+}
+
+nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}

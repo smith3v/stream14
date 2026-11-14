@@ -1,6 +1,3 @@
----
----
-
 # stream14 beta support
 
 The broadcasting beta is distributed through TestFlight and supports optional

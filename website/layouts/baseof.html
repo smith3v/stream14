@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ if not .IsHome }}{{ .Title }} · {{ end }}{{ site.Title }}</title>
+  <link rel="icon" href="{{ "app-icon.png" | relURL }}">
+  <link rel="stylesheet" href="{{ "style.css" | relURL }}">
+</head>
+<body>
+  <main>
+    {{ block "main" . }}{{ end }}
+  </main>
+  <footer>
+    <nav aria-label="Site navigation">
+      <a href="{{ "" | relURL }}">Home</a>
+      <a href="{{ "privacy/" | relURL }}">Privacy policy</a>
+      <a href="{{ "terms/" | relURL }}">Service terms</a>
+      <a href="{{ "support/" | relURL }}">Support</a>
+    </nav>
+  </footer>
+</body>
+</html>
