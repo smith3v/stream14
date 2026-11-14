@@ -375,6 +375,12 @@ struct SetupView: View {
             if experiment.phase == .idle {
                 Button("Check camera and sound", systemImage: "camera") { Task { await experiment.openPreview() } }
                     .frame(minHeight: 44).accessibilityIdentifier("openExperiment")
+            } else if experiment.phase == .preview && !experiment.hasUpload &&
+                        !broadcast.requiresEndFirst && broadcast.confirmation == nil {
+                Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
+                    .frame(minHeight: 44)
+                    .disabled(!experiment.canAdjustMedia)
+                    .accessibilityIdentifier("closeCamera")
             }
             if !sessionHasRun && !broadcast.locksSelection {
                 profileControls
@@ -509,16 +515,6 @@ struct SetupView: View {
             Text("Local saving cannot recover in this session. Saved footage is incomplete; export or review it in Recordings. After outputs stop, prepare the next session and check the camera to start a new file. Upload continues while healthy; the recording gap is not recovered.")
                 .font(.footnote).accessibilityIdentifier("localRecoveryGuidance")
         }
-        if experiment.phase != .idle {
-            DisclosureGroup {
-                Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
-                    .frame(minHeight: 44)
-                    .disabled(experiment.phase == .stopping || broadcast.requiresEndFirst)
-                Text("Close the camera to change quality. Camera and quality are locked while starting, active or finalizing.").font(.caption)
-            } label: {
-                Text("Camera controls").frame(minHeight: 44)
-            }
-        }
     }
 
     private var finishControls: some View {
@@ -599,10 +595,6 @@ struct SetupView: View {
                     }
                     if !experiment.canSelectProfile {
                         Text("Close the camera to change quality, then check the new picture and sound.").font(.caption)
-                        if experiment.phase == .preview && !broadcast.locksSelection {
-                            Button("Close camera to change quality") { experiment.requestStop() }
-                                .frame(minHeight: 44)
-                        }
                     }
     }
 
