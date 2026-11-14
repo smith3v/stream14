@@ -39,3 +39,4 @@ artifacts/
 # Hugo build output
 /website/public/
 /.hugo_build.lock
+/website/.hugo_build.lock
