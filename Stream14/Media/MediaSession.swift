@@ -39,6 +39,15 @@ final class MediaSession {
     var canSelectProfile: Bool { !broadcastConfigurationLocked && phase == .idle && !busy && !stopRequested }
     private let authorizeCapture: @MainActor () async -> Bool
     private let interfaceOrientation: @MainActor () -> UIInterfaceOrientation
+    private var previewOrientation: UIInterfaceOrientation = .unknown
+    private(set) var previewOrientationSettling = false
+    var previewNeedsLandscape: Bool { phase == .preview && !previewOrientation.isLandscape }
+    var canConfirmLandscapeStart: Bool {
+        #if DEBUG
+        if interfaceFixtureMode { return true }
+        #endif
+        return interfaceOrientation().isLandscape
+    }
     private let persistProfile: @MainActor (SessionProfile) -> Void
     private(set) var microphoneMuted = false
     private(set) var microphoneLevel = 0.0
@@ -116,7 +125,13 @@ final class MediaSession {
         #if DEBUG
         if interfaceFixtureName == "writer-pending" { return false }
         #endif
-        return phase == .preview && !busy && !stopRequested && recoveringSampleID == nil && fileFinalization.recordingID == nil
+        #if DEBUG
+        let landscape = interfaceFixtureMode || previewOrientation.isLandscape
+        #else
+        let landscape = previewOrientation.isLandscape
+        #endif
+        return phase == .preview && landscape && !previewOrientationSettling && !busy && !stopRequested &&
+            recoveringSampleID == nil && fileFinalization.recordingID == nil
     }
     var canDeleteSamples: Bool { !busy && recoveringSampleID == nil && fileFinalization.recordingID == nil && (phase == .idle || phase == .preview) }
     var recordingID: UUID? { recorder == nil ? nil : sample?.id }
@@ -192,13 +207,7 @@ final class MediaSession {
          persistProfile: @escaping @MainActor (SessionProfile) -> Void = {
              UserDefaults.standard.set($0.rawValue, forKey: SessionProfile.preferenceKey)
          },
-         interfaceOrientation: @escaping @MainActor () -> UIInterfaceOrientation = {
-             let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-             // Permission prompts can leave the app's scene temporarily inactive.
-             let scene = scenes.first { $0.activationState == .foregroundActive } ??
-                 scenes.first { $0.activationState == .foregroundInactive }
-             return scene?.effectiveGeometry.interfaceOrientation ?? .unknown
-         },
+         interfaceOrientation: @escaping @MainActor () -> UIInterfaceOrientation = { .landscapeRight },
          authorizeCapture: @escaping @MainActor () async -> Bool = {
              guard await AVCaptureDevice.requestAccess(for: .video) else { return false }
              return await AVCaptureDevice.requestAccess(for: .audio)
@@ -429,11 +438,7 @@ final class MediaSession {
     /// A fresh native setup follows completed teardown, never startRunning on
     /// the interrupted session while its previous stop is still suspended.
     private func startPreviewCapture(generation: UInt64) async throws {
-        // Sample once for this capture generation. The mixer applies this to
-        // the camera input before the shared landscape composition.
-        let orientation = interfaceOrientation()
-        let videoOrientation = orientation.isLandscape ? DeviceUtil.videoOrientation(by: orientation) : nil
-        await mixer.setVideoOrientation(videoOrientation ?? .landscapeRight)
+        await applyPreviewOrientation(interfaceOrientation())
         #if DEBUG
         if let previewStartFixture { try await previewStartFixture(); return }
         #endif
@@ -510,11 +515,43 @@ final class MediaSession {
         overlayTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self, self.captureGeneration == generation else { return }
+                await self.refreshPreviewOrientation()
+                guard !Task.isCancelled, self.captureGeneration == generation else { return }
                 self.microphoneLevel = self.microphoneMuted ? 0 : self.microphoneMeter.level
                 await overlay.update(image: self.renderer.image, visible: self.renderer.visible)
                 do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
             }
         }
+    }
+
+    func refreshPreviewOrientation() async {
+        guard phase == .preview, captureForeground, !busy, !stopRequested else { return }
+        let orientation = interfaceOrientation()
+        guard orientation != .unknown, orientation != previewOrientation else {
+            if previewOrientationSettling && previewHasFreshFrames { previewOrientationSettling = false }
+            return
+        }
+
+        // Shares the operation guard with lens changes, shutdown and writer
+        // startup. Recording and upload therefore never see a rotation change.
+        busy = true
+        previewOrientationSettling = true
+        await applyPreviewOrientation(orientation)
+        previewFrameReadiness.waitForRotation(portrait: orientation.isPortrait)
+        if previewHasFreshFrames { previewOrientationSettling = false }
+        finishOperation()
+    }
+
+    private func applyPreviewOrientation(_ orientation: UIInterfaceOrientation) async {
+        await mixer.setVideoOrientation(DeviceUtil.videoOrientation(by: orientation) ?? .landscapeRight)
+        previewOrientation = orientation
+    }
+
+    private var previewHasFreshFrames: Bool {
+        #if DEBUG
+        if let previewReadyFixture { return previewReadyFixture() }
+        #endif
+        return previewFrameReadiness.isReady
     }
 
     private func waitForPreviewFrames(generation: UInt64) async throws {
@@ -526,13 +563,7 @@ final class MediaSession {
         #endif
         let deadline = clock.now.advanced(by: timeout)
         while !stopRequested, captureForeground, captureGeneration == generation {
-            let ready: Bool
-            #if DEBUG
-            ready = previewReadyFixture?() ?? previewFrameReadiness.isReady
-            #else
-            ready = previewFrameReadiness.isReady
-            #endif
-            if ready { return }
+            if previewHasFreshFrames { return }
             guard clock.now < deadline else { throw ExperimentError.previewFrames }
             try await Task.sleep(for: .milliseconds(10))
         }
@@ -635,6 +666,11 @@ final class MediaSession {
         }
         #endif
         guard canRecord else { return }
+        // The device may have turned between the preview loop and the tap.
+        guard interfaceOrientation() == previewOrientation else {
+            message = "Check the picture in landscape before starting again."
+            return
+        }
         clearPreviewIntent()
         busy = true
         phase = .starting
@@ -1111,6 +1147,8 @@ final class MediaSession {
         // Old capture has stopped and detached before the new single owner exists.
         mixer = MediaMixer(captureSessionMode: .single)
         preview = MTHKView(frame: .zero)
+        previewOrientation = .unknown
+        previewOrientationSettling = false
         overlay = nil
         _ = try? await AVAudioSession.sharedInstance().deactivate(options: [.notifyOthersOnDeactivation])
         if backgroundTask != .invalid {

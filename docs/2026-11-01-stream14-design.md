@@ -425,12 +425,14 @@ refresh, eligibility details and Studio scheduling help; completed events must n
 be silently reused. Readiness gives direct fixes for camera/permission, account,
 event, overlay and unresolved-state blockers. No upload test is required.
 Check camera and sound explicitly opens the composed preview and permission flow.
-When capture starts, the mixer applies the window's landscape orientation to the
-camera input before composition. That orientation stays fixed until capture closes,
-including while recording or uploading. The preview and both outputs share the
-fixed 16:9 composition and overlay. Opening in portrait uses the landscape-right
-fallback, so the camera picture can appear sideways. Turn to the desired landscape
-direction, then close and reopen the camera to align the picture.
+While checking the camera, the image follows the window in portrait and both
+landscape directions. The mixer rotates the camera input before composition. In
+portrait the upright image fits inside the fixed 16:9 canvas, with the overlay
+still placed against that canvas. Start each recording in landscape after the
+preview settles. From recording startup through active recording or upload, the
+camera orientation stays fixed. The preview, saved file and upload share that
+composition. Confirm a new upload or explicit resume in landscape, including
+when streaming joins an already running landscape recording.
 Quality and compatible rear-lens selection sit beside the preparation preview,
 along with input/microphone controls. Quality remains frozen while capture is open:
 Close camera to change quality, choose a supported profile, then check again.

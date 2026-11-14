@@ -1665,16 +1665,15 @@ also offers contextual retry/settings. More → Settings contains YouTube accoun
 actions, Overlay draft/apply/disable, About & Legal and Help. Legal pages remain
 reachable before camera/sign-in and consent presents terms before agreement.
 
-For #77, use an upright scene and an overlay with an identifiable top edge on the
-iPhone 13 mini. Open Check camera and sound in one landscape direction, record a
-short local clip, and inspect the preview and playback. Close the camera, turn the
-phone to the opposite landscape direction, and repeat. Check that both clips show
-an upright scene with the overlay in the same place on the 16:9 canvas. While
-recording, rotate the interface and confirm the clip continues with its original
-orientation. During an unlisted broadcast, repeat the rotation and confirm that
-the upload continues with the same composition. In portrait, Session and
-Recordings remain usable and the preview uses the landscape-right fallback. To
-get an upright camera picture, rotate to landscape and reopen the camera.
+For #77, point the iPhone 13 mini at an upright scene and use an overlay with an
+identifiable top edge. Open Check camera and sound, then keep the camera open
+while turning through portrait and both landscape directions. Check that the
+scene stays upright and the overlay stays placed on the 16:9 canvas. In portrait,
+the upright image fits inside the landscape canvas and recording requires turning
+to landscape. In each landscape direction, record a short clip and check playback.
+While recording, rotate the interface and confirm the clip continues with its
+starting orientation. During an unlisted broadcast, repeat the rotation and verify
+that upload continues with the same composition.
 
 Recordings keeps the original MP4, status, date and size, with Play, Export and
 confirmed Delete. Cancel preserves the file. Exported copies remain after deletion;

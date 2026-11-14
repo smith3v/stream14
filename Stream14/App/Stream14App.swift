@@ -43,7 +43,13 @@ struct Stream14App: App {
                 profile: .fullHD, persistProfile: { _ in }, authorizeCapture: { false })
         }
         #endif
-        return MediaSession(profile: SessionProfile.saved())
+        return MediaSession(profile: SessionProfile.saved(), interfaceOrientation: {
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            // Permission prompts can leave the app's scene temporarily inactive.
+            let scene = scenes.first { $0.activationState == .foregroundActive } ??
+                scenes.first { $0.activationState == .foregroundInactive }
+            return scene?.effectiveGeometry.interfaceOrientation ?? .unknown
+        })
     }
 
     #if DEBUG
