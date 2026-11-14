@@ -1364,8 +1364,9 @@ H.264/AAC original MP4 path. Close camera to change profile; profile preference 
 saved without touching the Keychain overlay URL. The rear-lens dialog retains
 supported Ultra Wide/Wide/Telephoto choices for that profile. Preview and recording
 allow microphone mute and a zoom slider, which applies on release. Zoom is relative
-to the selected physical lens; the lens selector still supplies the owner's 0.5×
-Ultra Wide view. Input shows the actual system microphone route. The level display
+to the selected physical lens and tops out at the lower of 10× and the active
+lens and profile's supported maximum. The lens selector still supplies the owner's
+0.5× Ultra Wide view. Input shows the actual system microphone route. The level display
 is an approximate peak of shared mixed audio, so it shows silence when muted.
 
 Verified public source boundaries at pinned HaishinKit 2.3.0:
