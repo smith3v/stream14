@@ -49,7 +49,7 @@ struct ShortPhoneSmokeTests {
         let controller = UIViewController()
         window.rootViewController = controller
         controller.view.backgroundColor = .systemBackground
-        let host = OverlayViewport(webView: session.renderer.webView)
+        let host = OverlaySnapshotHost(webView: session.renderer.webView)
         host.frame = CGRect(x: 0, y: 0, width: 320, height: 60)
         controller.view.addSubview(host)
         let cover = UIView(frame: controller.view.bounds)
@@ -69,12 +69,18 @@ struct ShortPhoneSmokeTests {
             session.renderer.loadFixture(Self.fixture)
             try await wait(until: deadline, seconds: 5) { session.renderer.visible }
             let image = try #require(session.renderer.image)
+            try #require(image.width == profile.width && image.height == profile.height)
             let data = try #require(image.dataProvider?.data)
             let bytes = try #require(CFDataGetBytePtr(data))
-            let alphaCorrect = bytes[3] == 0 && bytes[(40 * profile.width + 40) * 4 + 3] == 128
-            #expect(image.width == profile.width && image.height == profile.height)
-            #expect(alphaCorrect)
-            #expect(host.window != nil && !host.isHidden && host.alpha == 1)
+            let clearAlpha = bytes[3]
+            let panelAlpha = bytes[40 * image.bytesPerRow + 40 * 4 + 3]
+            let markerAlpha = bytes[(image.height - 20) * image.bytesPerRow + (image.width - 20) * 4 + 3]
+            print("Overlay alpha \(profile.rawValue): clear=\(clearAlpha), panel=\(panelAlpha), opaque=\(markerAlpha)")
+            #expect(clearAlpha == 0)
+            #expect(panelAlpha == 128)
+            #expect(markerAlpha == 255)
+            let snapshotWindow = try #require(session.renderer.webView.window)
+            #expect(snapshotWindow !== window && snapshotWindow.isHidden && !snapshotWindow.isKeyWindow)
 
             await session.openPreview()
             try Task.checkCancellation()

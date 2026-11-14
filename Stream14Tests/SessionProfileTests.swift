@@ -76,7 +76,7 @@ struct SessionProfileTests {
         defer { window.isHidden = true }
         for profile in SessionProfile.allCases {
             let renderer = WebOverlayRenderer(profile: profile)
-            let host = OverlayViewport(webView: renderer.webView)
+            let host = OverlaySnapshotHost(webView: renderer.webView)
             host.frame = CGRect(x: 0, y: 80, width: 320, height: 60)
             window.rootViewController!.view.addSubview(host)
             defer { renderer.disable(); host.removeFromSuperview() }

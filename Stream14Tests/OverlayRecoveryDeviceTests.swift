@@ -18,7 +18,7 @@ struct OverlayRecoveryDeviceTests {
         let window = UIWindow(windowScene: scene)
         let controller = UIViewController()
         window.rootViewController = controller
-        let host = OverlayViewport(webView: session.renderer.webView)
+        let host = OverlaySnapshotHost(webView: session.renderer.webView)
         host.frame = CGRect(x: 0, y: 60, width: 320, height: 180)
         controller.view.addSubview(host)
         session.preview.frame = CGRect(x: 0, y: 240, width: 320, height: 180)

@@ -26,8 +26,7 @@ struct SetupView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Keep WebKit attached at a nonzero size for snapshots, covered by
-            // the opaque scroll surface so it takes no separate layout space.
+            // Anchor the overlay's hidden snapshot window in this scene.
             AttachedOverlayView(renderer: experiment.renderer)
                 .frame(height: 60)
                 .accessibilityHidden(true)

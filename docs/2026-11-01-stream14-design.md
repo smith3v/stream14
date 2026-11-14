@@ -610,6 +610,24 @@ reloading the document. Document the source endpoint and change there before use
 no undocumented native-to-page protocol is assumed here. Reassess the experience
 before adding a new rendering framework or changing the general web-URL contract.
 
+### Physical snapshot alpha — 2026-11-12
+
+On the iPhone 13 mini running iOS 27.2, the attached fixture in a visible window
+returned alpha 255 in both the transparent background and the half-transparent
+panel. The same values were present in the raw WebKit snapshot before
+normalization. The main app window reproduced the result, and setting a clear
+under-page color did not change it. This is consistent with the different
+visible-window and offscreen capture paths in
+[WebKit's iOS snapshot implementation](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/WebKit/UIProcess/API/ios/WKWebViewIOS.mm).
+
+The same fixture in a dedicated, never-visible, non-key window returned alpha
+0 for the background, 128 for the panel and 255 for the opaque marker. The
+scene anchor keeps the existing viewport attached to that window with public
+UIKit APIs. The app continues to use one WebView, the selected CSS canvas and
+the existing snapshot cadence, freshness checks and media composition. The
+synthetic fixture exercises ordinary HTML/CSS and its updates. Real source
+reloads and accelerated page content still need their respective evidence.
+
 ## 5. YouTube authorization and broadcast lifecycle
 
 Use one iOS OAuth client tied to the final bundle identifier. Start with the Google
