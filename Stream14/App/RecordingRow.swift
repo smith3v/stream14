@@ -10,6 +10,7 @@ struct RecordingRow: View {
     let recovering: Bool
     let recover: () -> Void
     let deleteRecovery: (ExperimentSample.Recovery) -> Void
+    @Environment(\.locale) private var locale
     @State private var pendingRecoveryDeletion: ExperimentSample.Recovery?
 
     var body: some View {
@@ -25,8 +26,9 @@ struct RecordingRow: View {
                 .accessibilityIdentifier("recordingMetadata-" + sample.id.uuidString)
             Text(sample.status == .needsInspection ? "Metadata needs inspection" : sample.status.rawValue).font(.caption)
                 .accessibilityIdentifier("recordingStatus-" + sample.id.uuidString)
-            if let duration = sample.duration {
-                Text("Duration: " + duration.formatted(.number.precision(.fractionLength(1))) + " seconds")
+            if let duration = RecordingDuration(sample.duration) {
+                Text("Duration: \(duration.clock(locale: locale))")
+                    .accessibilityLabel("Duration: \(duration.spoken(locale: locale))")
                     .accessibilityIdentifier("recordingDuration-" + sample.id.uuidString)
             }
             if let profile = sample.profile {
@@ -110,8 +112,9 @@ struct RecordingRow: View {
             Text(recovery.status == .recovered ? "Recovered copy · inspect playback" : "Incomplete recovery attempt")
                 .font(.headline)
                 .accessibilityIdentifier("recoveryStatus-" + recovery.id.uuidString)
-            if let duration = recovery.duration {
-                Text("Duration: " + duration.formatted(.number.precision(.fractionLength(1))) + " seconds · may be truncated")
+            if let duration = RecordingDuration(recovery.duration) {
+                Text("Duration: \(duration.clock(locale: locale)) · may be truncated")
+                    .accessibilityLabel("Duration: \(duration.spoken(locale: locale)), may be truncated")
                     .accessibilityIdentifier("recoveryDuration-" + recovery.id.uuidString)
             }
             Text(size.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? "Copy file unavailable")
@@ -138,5 +141,24 @@ struct RecordingRow: View {
         }
         .disabled(!canDelete)
         .accessibilityIdentifier("deleteRecovery-" + recovery.id.uuidString)
+    }
+}
+
+
+struct RecordingDuration {
+    private let elapsed: Duration
+
+    init?(_ seconds: Double?) {
+        guard let seconds, seconds >= 0,
+              let wholeSeconds = Int64(exactly: seconds.rounded(.down)) else { return nil }
+        elapsed = .seconds(wholeSeconds)
+    }
+
+    func clock(locale: Locale) -> String {
+        elapsed.formatted(.time(pattern: .hourMinuteSecond(padHourToLength: 2)).locale(locale))
+    }
+
+    func spoken(locale: Locale) -> String {
+        elapsed.formatted(.units(allowed: [.hours, .minutes, .seconds], width: .wide).locale(locale))
     }
 }
