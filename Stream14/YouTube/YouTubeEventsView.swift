@@ -17,6 +17,11 @@ struct YouTubeEventsView: View {
                     .accessibilityIdentifier("refreshYouTubeEvents")
                 }
             }
+            Link(destination: URL(string: "https://studio.youtube.com/")!) {
+                YouTubeBrandLogo()
+            }
+            .accessibilityLabel("YouTube Studio")
+            .accessibilityIdentifier("youTubeEventAttribution")
             if selection.isRefreshing { ProgressView("Reading YouTube…") }
             if let channel = selection.channel {
                 Text("Channel: \(channel.title)").font(.headline)
