@@ -452,6 +452,12 @@ Settings → About & Legal contains policy, service/YouTube terms and notices; H
 contains documentation and general guidance. These screens remain available before
 camera permission or sign-in. Main screens have no permanent legal/document links;
 consent still presents relevant policies and terms before agreement.
+The account connection and switch actions use the official YouTube wordmark
+because they request a YouTube scope. Choose event links the wordmark to YouTube
+Studio as attribution near the channel and scheduled-event data. The asset
+catalog uses the full-color light and dark PNGs from [YouTube Brand Resources](https://brand.youtube/youtube-logo).
+See [Google sign-in branding](https://developers.google.com/identity/branding-guidelines#other_guidelines)
+and [YouTube API branding](https://developers.google.com/youtube/terms/branding-guidelines).
 A committed URL loads automatically while the app is active; unsaved edits never
 change the active source. Validation or secure-storage errors preserve the current
 configuration. Applying a replacement URL is restricted to idle/preview state.

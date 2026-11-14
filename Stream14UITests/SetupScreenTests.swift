@@ -104,7 +104,9 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(app.links["Privacy policy"].exists)
         XCTAssertFalse(app.buttons["Connect YouTube"].exists)
         agree.tap()
-        XCTAssertTrue(app.buttons["Connect YouTube"].waitForExistence(timeout: 5))
+        let authorize = app.buttons["Connect YouTube"]
+        XCTAssertTrue(authorize.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(authorize.frame.height, 44)
         app.buttons["Done"].tap()
         scrollTo(record, in: app)
         XCTAssertEqual(record.label, "Stop recording")
@@ -215,6 +217,7 @@ final class SetupScreenTests: XCTestCase {
         choose.tap()
         XCTAssertTrue(app.links["Schedule an encoder event in YouTube Studio"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["refreshYouTubeEvents"].exists)
+        XCTAssertTrue(app.links["youTubeEventAttribution"].isHittable)
         app.buttons["Done"].tap()
         XCTAssertFalse(app.buttons["goLive"].isEnabled)
     }

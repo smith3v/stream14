@@ -15,8 +15,8 @@ struct YouTubeConnectionView: View {
             Text(authorization.message).fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("youtubeAuthorizationStatus")
             Group {
-                Link("Privacy policy", destination: URL(string: "https://github.com/smith3v/stream14/blob/main/docs/privacy.md")!)
-                Link("stream14 service terms", destination: URL(string: "https://github.com/smith3v/stream14/blob/main/docs/terms.md")!)
+                Link("Privacy policy", destination: URL(string: "https://stream14.app/privacy/")!)
+                Link("stream14 service terms", destination: URL(string: "https://stream14.app/terms/")!)
                 Link("YouTube Terms of Service", destination: URL(string: "https://www.youtube.com/t/terms")!)
                 Link("Google Account access settings", destination: URL(string: "https://security.google.com/settings/security/permissions")!)
             }.frame(minHeight: 44, alignment: .leading)
@@ -30,11 +30,11 @@ struct YouTubeConnectionView: View {
             Group {
                 if authorization.isConfigured && authorization.policyAccepted {
                     if authorization.isAuthorized {
-                        Button("Switch Google account") { connect() }
+                        authorizationButton("Switch Google account")
                         Button("Sign out on this iPhone") { authorization.signOut(broadcastActive: broadcastActive) }
                         Button("Revoke Google access", role: .destructive) { confirmingRevoke = true }
                     } else {
-                        Button("Connect YouTube") { connect() }
+                        authorizationButton("Connect YouTube")
                         Button("Restore saved connection") { Task { await authorization.restore(broadcastActive: broadcastActive) } }
                     }
                 }
@@ -67,6 +67,23 @@ struct YouTubeConnectionView: View {
         } message: {
             Text("In YouTube Studio, finish any previous live event and resolve pending stream creation/bindings. Only confirm after no previous request needs reconciliation. The app has deleted those identifiers and cannot check them for you. This action sends no YouTube request.")
         }
+    }
+
+    private func authorizationButton(_ title: LocalizedStringKey) -> some View {
+        Button(action: connect) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    YouTubeBrandLogo()
+                    Text(title)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    YouTubeBrandLogo()
+                    Text(title)
+                }
+            }
+            .multilineTextAlignment(.leading)
+        }
+        .accessibilityLabel(Text(title))
     }
 
     private func connect() {

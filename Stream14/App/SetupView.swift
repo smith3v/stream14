@@ -236,7 +236,7 @@ struct SetupView: View {
                 NavigationLink("About & Legal") {
                     Form {
                         footerLinks
-                        Link("stream14 service terms", destination: URL(string: "https://github.com/smith3v/stream14/blob/main/docs/terms.md")!)
+                        Link("stream14 service terms", destination: URL(string: "https://stream14.app/terms/")!)
                         Link("YouTube Terms of Service", destination: URL(string: "https://www.youtube.com/t/terms")!)
                     }.navigationTitle("About & Legal")
                         .toolbar { Button("Done") { showingSettings = false } }
@@ -664,7 +664,7 @@ struct SetupView: View {
     }
 
     @ViewBuilder private var footerLinks: some View {
-        Link(destination: URL(string: "https://github.com/smith3v/stream14/blob/main/docs/privacy.md")!) {
+        Link(destination: URL(string: "https://stream14.app/privacy/")!) {
             Text("Privacy policy")
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: 44)
