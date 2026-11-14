@@ -623,6 +623,13 @@ read-only authorization cannot bind streams or start/end broadcasts. Do not requ
 additional unrelated data. Store tokens through SDK-managed Keychain storage and
 refresh before calls. Never use the overlay browser to collect Google credentials.
 
+For public OAuth, use a dedicated production Google project and a matching iOS
+client/callback pair. Google Sign-In can restore a saved grant from another
+client after an in-place upgrade. Verify the restored SDK user's client ID
+before making YouTube API calls. On a mismatch, clear the SDK's local sign-in
+and prompt the user to connect again. Keep pending journals and recordings.
+See the [production OAuth procedure](ios-development-guide.md#production-google-oauth-issue-80).
+
 | API operation | App use |
 | --- | --- |
 | channels.list, mine=true | Resolve/display the authorized channel; no assumption that email identifies the channel |

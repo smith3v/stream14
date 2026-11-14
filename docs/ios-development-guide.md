@@ -177,6 +177,113 @@ Owner update (2026-11-07): routine connected-phone validation targets five minut
 
 The [connected-iPhone test session plan](2026-11-07-connected-iphone-test-plan.md) consolidates the pending physical checks, exact existing opt-in commands, later-stage gates and per-run evidence sheet for one coordinated laptop/phone session. Run capture tests sequentially; long qualification remains separately agreed.
 
+### Production Google OAuth (issue #80)
+
+The signed TestFlight **0.4 (5)** archive for `com.smith3v.stream14` contains
+client `48499523695-5aj467n8p3f13ll50o3teh3i7ejg60je.apps.googleusercontent.com`
+and callback `com.googleusercontent.apps.48499523695-5aj467n8p3f13ll50o3teh3i7ejg60je`.
+This matches the recorded development project `stream14-514016`. M06 encountered
+Google's verification block with a second account. The archive confirms the
+client and callback, while the console must confirm current Audience, Branding,
+Data Access and Verification Center status. Record the production project,
+client, verification result and fresh-account result here after checking them.
+
+#### Public branding and project
+
+1. Create a dedicated production Google Cloud project under the owner account.
+   Enable YouTube Data API v3 and create an iOS OAuth client for
+   `com.smith3v.stream14`. Keep development on its separate project. See [Google's
+   deployment-tier policy](https://developers.google.com/identity/protocols/oauth2/policies#use-separate-projects-for-testing-and-production).
+2. In GitHub Settings → Pages, deploy from `main` → `/docs` after merging the
+   homepage. Connect a custom domain under the owner's DNS control and enforce
+   HTTPS. Check that the homepage, `privacy.html`, `terms.html` and `support.html`
+   open without sign-in. The existing `github.com` policy and terms are publicly
+   readable. Repository control alone does not prove domain ownership.
+3. Verify the owned domain as a Search Console Domain property via DNS TXT with
+   a Google account that is an owner or editor of the production project. Add the
+   verified top private domain to Branding → Authorized domains. Use the same
+   privacy URL on the homepage and consent form. The default Pages hostname can
+   preview the site while the custom domain is configured. See [Google's brand
+   verification guide](https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification)
+   and [domain ownership troubleshooting](https://support.google.com/cloud/answer/13804266).
+4. In Branding enter `stream14`, use the shipped app icon (export a square
+   120 × 120 copy from `Stream14/Assets.xcassets/AppIcon.appiconset/AppIcon.png`),
+   add the verified homepage, privacy and terms URLs, and confirm the owner-approved
+   public support email shown on the consent screen. Keep monitored developer
+   notification addresses in the console. Set the audience to **External** and
+   declare the scopes the iOS flow actually requests in Data Access.
+
+#### Scope justification for Google
+
+Stream14 requests `https://www.googleapis.com/auth/youtube.force-ssl` as its only
+YouTube scope. It uses `channels.list` with `mine=true` to identify the authorized
+YouTube channel and `liveBroadcasts.list` to show the user's existing scheduled
+events and read their state. It uses `liveStreams.list` to locate the selected
+event's encoder stream and read its ingestion settings and status. When the user
+confirms Go Live for the displayed channel, event and visibility, Stream14 may
+create an encoder stream with `liveStreams.insert` and associate it with the
+existing event with `liveBroadcasts.bind`. It uses `liveBroadcasts.transition` to
+start or end that event as part of the confirmed controls. Read-only access
+cannot perform these writes. The API's write methods accept `youtube.force-ssl`
+and the general `youtube` scope. `youtube.upload` is insufficient for these
+methods. Stream14 uses the grant for its live-event workflow and does not use it
+to delete videos or manage ratings, comments or captions. It has no developer
+backend. See the [stream creation](https://developers.google.com/youtube/data/live/reference/rest/v3/liveStreams/insert),
+[binding](https://developers.google.com/youtube/data/live/reference/rest/v3/liveBroadcasts/bind)
+and [transition](https://developers.google.com/youtube/data/live/reference/rest/v3/liveBroadcasts/transition)
+method authorization tables.
+
+#### Reviewer build, demo and submission
+
+1. Use the production project's iOS client and its matching callback together in
+   `Config/Local.xcconfig`, as described in the F2 setup below. Archive with normal
+   signing. Inspect `CFBundleIdentifier`, `GIDClientID` and `CFBundleURLTypes` in the
+   built app's `Info.plist` and compare them to the selected client. The same
+   ignored override can also supply the testing client on a development checkout.
+   When recording the reviewer demo with an unapproved production client, use an
+   owner-approved demo account and the access mode allowed by the console.
+2. Record an English screen capture of the signed production-client build using a
+   dedicated live-enabled channel and an Unlisted scheduled encoder event. Show
+   the app's privacy and terms links before accepting, tap **Connect YouTube**,
+   show the complete Google sign-in and consent screens with the app name and
+   requested access. Show the public `client_id` in the browser consent URL,
+   with unrelated private URL parameters obscured. Then show the return to
+   Stream14, the authorized channel, scheduled event selection and idle Upload.
+   Use an event that requires stream creation and binding. Show the explicit Go
+   Live confirmation and annotate where Stream14 creates and binds the encoder
+   stream. Show YouTube receiving the Unlisted broadcast, then show the End
+   confirmation and resulting event state. Use a nonprivate camera scene and keep
+   passwords, account identifiers, OAuth tokens, stream keys and private overlay
+   URLs out of the recording. Upload the reviewer
+   video as Unlisted and retain its link for Google.
+3. Verify and publish Branding first. Follow the production project's console
+   prompts to set Audience to **In production** and submit the separate Data Access
+   verification with the justification and video above. Publishing the Audience
+   setting alone can leave access unverified. Confirm **External / In production**,
+   published approved branding and approved YouTube scope access in Verification
+   Center. Follow up through the monitored developer contact. See [Google's
+   sensitive-scope workflow](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification).
+
+#### Release acceptance
+
+Point the in-app privacy and service terms links at the verified public URLs
+when building with the production client. Distribute a normally signed build
+using that exact client and callback.
+Install it as an in-place update so existing recordings remain available. With a
+saved development grant, verify that restore leaves YouTube disconnected and
+that Connect opens consent for the production client. Once connected, relaunch
+and verify that the production grant restores. For the fresh-account check on
+the same build, open the in-app privacy and terms links before agreement. Cancel
+the first sign-in and confirm the app returns to usable local controls. Use an
+eligible consumer Google account that has never been on the OAuth test-user list.
+Grant consent in the system browser, confirm return to the app without a testing
+or unverified-app block, and verify the intended live-enabled channel and its
+scheduled event. Check that upload remains idle through consent and selection.
+Record the signed version/build, public project/client and callback, Google
+approval status, date and results without account identifiers. Record the separate
+saved-data and Studio-resolution check under
+[#27](https://github.com/smith3v/stream14/issues/27).
+
 ## 4. How we will build and test
 
 The root-level Stream14.xcodeproj is an ordinary SwiftUI/Swift 6 project with no
