@@ -518,7 +518,10 @@ requires ending/checking a new session; never claim the recording gap was recove
 Upload recovery remains independent and reports attempts/exhaustion and retry.
 
 The recording screen lists local sessions with date, duration, size, and complete,
-interrupted, or failed status. It supports playback, explicit export through the
+interrupted, or failed status. Available durations for originals and recovery
+copies display whole elapsed seconds as `HH:MM:SS`. VoiceOver reads the duration
+in words, including the truncation warning for recovery copies. The list supports
+playback, explicit export through the
 system share/Files interface, and confirmed deletion. Never delete a local copy
 automatically after export, sign-out, or a failed broadcast.
 
@@ -1187,7 +1190,8 @@ stop; there is no background capture or automatic recording restart.
 
 Zoom uses the existing mixer's public throwing `configuration(video:configuration:)`
 to clamp finite requests to the active physical device's supported zoom range,
-with device locking on the media actor. The standard slider commits when released,
+with a lens-relative ceiling of 10× (issue #79). The slider uses the same capped
+range. Device locking stays on the media actor. The standard slider commits when released,
 so dragging cannot launch a task for every intermediate value. Media operations
 remain serialized; mute/zoom are available in preview/recording and profile/lens
 changes remain locked during recording/finalization. Original export and deliberate

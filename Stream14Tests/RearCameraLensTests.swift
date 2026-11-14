@@ -1,10 +1,56 @@
 import AVFoundation
+import HaishinKit
 import UIKit
 import WebKit
 import Testing
 @testable import Stream14
 
 struct RearCameraLensTests {
+    @Test func zoomClampsToTenOrTheDeviceMaximum() {
+        let capped = CameraZoom.clamped(15, minimum: 1, deviceMaximum: 20)
+        #expect(capped.maximum == 10)
+        #expect(capped.value == 10)
+
+        let deviceLimited = CameraZoom.clamped(15, minimum: 1, deviceMaximum: 5)
+        #expect(deviceLimited.maximum == 5)
+        #expect(deviceLimited.value == 5)
+
+        #expect(CameraZoom.clamped(4, minimum: 1, deviceMaximum: 20).value == 4)
+        let minimumLimited = CameraZoom.clamped(1, minimum: 2, deviceMaximum: 20)
+        #expect(minimumLimited.minimum == 2)
+        #expect(minimumLimited.value == 2)
+        #expect(CameraZoom.clamped(.nan, minimum: 2, deviceMaximum: 20).value == 2)
+        #expect(CameraZoom.clamped(.infinity, minimum: 2, deviceMaximum: 20).value == 2)
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["STREAM14_DEVICE_ZOOM"] == "1"))
+    @MainActor func deviceZoomRespectsLensAndProfileLimits() async throws {
+        let authorized = await AVCaptureDevice.requestAccess(for: .video)
+        try #require(authorized)
+        let mixer = MediaMixer()
+        for profile in SessionProfile.allCases {
+            let lenses = RearCameraLens.available(profile: profile)
+            try #require(lenses.contains(.wide))
+            for lens in [RearCameraLens.wide, .ultraWide] where lenses.contains(lens) {
+                try await mixer.attachRearCamera(lens, profile: profile)
+                let zoom = try await mixer.configureZoom(100)
+                try await mixer.configuration(video: 0) { unit in
+                    let device = try #require(unit.device)
+                    let expectedMaximum = min(10, Double(device.maxAvailableVideoZoomFactor))
+                    #expect(device.deviceType == lens.deviceType)
+                    let size = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
+                    #expect(size.width == profile.width && size.height == profile.height)
+                    #expect(zoom.minimum == Double(device.minAvailableVideoZoomFactor))
+                    #expect(zoom.maximum == expectedMaximum)
+                    #expect(zoom.value == expectedMaximum)
+                    #expect(abs(Double(device.videoZoomFactor) - expectedMaximum) < 0.001)
+                    print("\(lens.rawValue) \(size.width)×\(size.height): device max \(device.maxAvailableVideoZoomFactor)×, applied \(device.videoZoomFactor)×")
+                }
+            }
+        }
+        try await mixer.attachVideo(nil)
+    }
+
     @Test func filtersDimensionsPixelFormatAndFrameRate() {
         let nv12 = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
         #expect(RearCameraLens.supportsProfile(width: 1920, height: 1080, subtype: nv12, frameRates: [24...60]))
