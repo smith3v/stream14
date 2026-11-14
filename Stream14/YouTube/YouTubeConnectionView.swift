@@ -76,12 +76,12 @@ struct YouTubeConnectionView: View {
                     YouTubeBrandLogo()
                     Text(title)
                 }
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(spacing: 0) {
                     YouTubeBrandLogo()
                     Text(title)
                 }
             }
-            .multilineTextAlignment(.leading)
+            .multilineTextAlignment(.center)
         }
         .accessibilityLabel(Text(title))
     }
