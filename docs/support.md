@@ -1,13 +1,9 @@
 # stream14 beta support
 
-The broadcasting beta is distributed through TestFlight and supports optional
-broadcasting to an existing scheduled YouTube encoder event. The historical
-0.2 (3) beta records locally.
-
-Both versions target iOS 27 or later and the iPhone 13 mini. Camera video,
-microphone audio and an optional HTTPS web overlay share the composed preview and
-local H.264/AAC MP4. Long-run qualification remains pending. Keep the app foreground;
-backgrounding or interruptions stop capture and require an explicit restart.
+The TestFlight beta records locally or broadcasts to an existing scheduled
+YouTube encoder event. It requires iOS 27 or later. Keep the app in the foreground
+and the phone unlocked while recording or broadcasting. After an interruption,
+recording and upload require an explicit restart.
 
 ## Report a problem
 
@@ -21,24 +17,24 @@ before submitting. Never send passwords or verification codes.
 For privacy questions or complaints you want to keep private, contact the
 developer through TestFlight feedback. Leave out sensitive attachments.
 
-## Full-app candidate checks
+## Using stream14
 
-- **Preparation** selects profile, connects YouTube and refreshes the actual
-  channel/event. Read and agree to the privacy policy/service terms before Connect
-  or Restore. Google is optional for local rehearsal. Google Testing users and
-  TestFlight testers are separate; Testing authorization can expire after seven days.
-- **Session** opens the camera for preview, local recording and manual overlay
-  hide/reload. Allow camera/microphone in iOS Settings if previously denied.
-  Apply an empty overlay URL to disable an unavailable source deliberately.
-- Selecting a tab/event or opening preview never publishes. **Go Live** shows
-  channel, event, visibility and profile for confirmation. Auto-start events may
-  become Live from first confirmed upload. Check the intended Unlisted test event
-  and its auto-stop setting in Studio before any qualification upload.
+- In **Session**, choose the profile before opening the camera. Tap **Check
+  camera and sound** for preview. Allow camera and microphone in iOS Settings
+  if previously denied. Apply an empty URL in Overlay settings to disable an
+  unavailable source.
+- For streaming, agree to the privacy policy and terms, connect YouTube,
+  and choose an event in the intended channel. Google is optional for local
+  recording. Google OAuth test users and TestFlight testers are separate lists.
+- Selecting an event or opening preview never publishes. **Start recording
+  and streaming** confirms the channel, event, visibility and profile. Disable
+  auto-stop for the event in Studio. Auto-start events can go live as soon as
+  you confirm and upload begins; use an Unlisted event for rehearsal.
 - Recording, Upload and YouTube states are separate. A healthy local file continues
   after upload failure. A backup warning does not establish YouTube failure.
-  **End broadcast** requires confirmation; uncertain End needs Studio/read-only
-  reconciliation. After interruption, reopen camera and explicitly confirm Resume
-  for the same event. Nothing automatically resumes on app launch.
+  **End session** requires confirmation. If YouTube end is unconfirmed, check
+  Studio and reconcile in the app. After interruption, reopen the camera and
+  explicitly confirm **Resume same event** if offered.
 - A source failure hides the overlay after about ten seconds; fresh source/render
   restores it unless manually hidden. Camera/local writing remain independent.
 - **Recordings** retains originals and completion/failure provenance. Play and
@@ -59,11 +55,8 @@ developer through TestFlight feedback. Leave out sensitive attachments.
   requests in Studio and explicitly confirm resolution before publishing again.
   A nonidentifying guard remains until then. Recordings and overlay settings remain.
 
-The old local-only beta uses its historical Overlay/Open camera controls. Its
-[delivery record](https://github.com/smith3v/stream14/blob/main/docs/testflight-delivery.md) remains separate. A routine attended phone
-check has a five-minute total budget including setup; longer qualification needs
-explicit agreement. Beta expiration does not delete recordings: install a verified
-replacement in place and retain/export valuable files.
+Beta expiration does not delete recordings. Install updates in place and
+export valuable files before removing the app.
 
 See the [privacy policy](privacy.md), [service terms](terms.md), [YouTube terms](https://www.youtube.com/t/terms) and the in-app Third-party notices. The
 [BSD-3-Clause source license](https://github.com/smith3v/stream14/blob/main/LICENSE) covers the source; it is not a privacy
