@@ -31,13 +31,19 @@ import UIKit
 
     func restore() async throws -> GoogleAuthorizationAccount {
         guard hasPreviousSignIn else { throw YouTubeAuthorizationError.noPreviousSignIn }
-        return try await withCheckedThrowingContinuation { continuation in
+        let account: GoogleAuthorizationAccount = try await withCheckedThrowingContinuation { continuation in
             sdk.restorePreviousSignIn { user, error in
                 if let error { continuation.resume(throwing: Self.safeError(error)); return }
                 guard let user else { continuation.resume(throwing: YouTubeAuthorizationError.unavailable); return }
                 continuation.resume(returning: Self.account(user))
             }
         }
+        // The SDK can restore a grant saved by an earlier build with a different client.
+        guard sdk.currentUser?.configuration.clientID == configuration.clientID else {
+            sdk.signOut()
+            throw YouTubeAuthorizationError.noPreviousSignIn
+        }
+        return account
     }
 
     func accessToken(accountID: String) async throws -> String {

@@ -1,10 +1,8 @@
 # stream14 beta support
 
-stream14's full-app 0.3 (4) beta is available in the existing internal TestFlight
-group, and the owner confirmed installation. It adds optional broadcasting to an
-existing scheduled YouTube encoder event; current-build regression and physical
-qualification remain pending. The historical 0.2 (3) beta records locally. See the
-[full-app delivery record](2026-11-09-full-app-testflight.md).
+The broadcasting beta is distributed through TestFlight and supports optional
+broadcasting to an existing scheduled YouTube encoder event. The historical
+0.2 (3) beta records locally.
 
 Both versions target iOS 27 or later and the iPhone 13 mini. Camera video,
 microphone audio and an optional HTTPS web overlay share the composed preview and
@@ -19,6 +17,9 @@ that failed and the visible status. Do not post private media, full overlay URLs
 with tokens, device identifiers or signing/account information. TestFlight's
 feedback option is another route for installed beta testers; check attachments
 before submitting. Never send passwords or verification codes.
+
+For privacy questions or complaints you want to keep private, contact the
+developer through TestFlight feedback. Leave out sensitive attachments.
 
 ## Full-app candidate checks
 
@@ -59,11 +60,11 @@ before submitting. Never send passwords or verification codes.
   A nonidentifying guard remains until then. Recordings and overlay settings remain.
 
 The old local-only beta uses its historical Overlay/Open camera controls. Its
-[delivery record](testflight-delivery.md) remains separate. A routine attended phone
+[delivery record](https://github.com/smith3v/stream14/blob/main/docs/testflight-delivery.md) remains separate. A routine attended phone
 check has a five-minute total budget including setup; longer qualification needs
 explicit agreement. Beta expiration does not delete recordings: install a verified
 replacement in place and retain/export valuable files.
 
 See the [privacy policy](privacy.md), [service terms](terms.md), [YouTube terms](https://www.youtube.com/t/terms) and the in-app Third-party notices. The
-[BSD-3-Clause source license](../LICENSE) covers the source; it is not a privacy
+[BSD-3-Clause source license](https://github.com/smith3v/stream14/blob/main/LICENSE) covers the source; it is not a privacy
 policy or a promise of uninterrupted beta availability.

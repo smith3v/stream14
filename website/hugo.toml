@@ -1,0 +1,8 @@
+baseURL = 'https://stream14.app/'
+locale = 'en'
+title = 'stream14'
+disableKinds = ['taxonomy', 'term', 'RSS']
+contentDir = 'website/content'
+layoutDir = 'website/layouts'
+staticDir = 'website/static'
+publishDir = 'website/public'

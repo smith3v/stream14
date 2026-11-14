@@ -1,0 +1,5 @@
+{{ define "main" }}
+  {{ $source := printf "docs/%s.md" .Params.policy }}
+  {{ if not (fileExists $source) }}{{ errorf "Missing policy source %s" $source }}{{ end }}
+  {{ .RenderString (dict "display" "block") (readFile $source) }}
+{{ end }}

@@ -1,12 +1,10 @@
 # stream14 beta privacy
 
-Effective: 2026-11-09. This policy covers the full-app 0.3 (4) beta, including local
+Effective: 2026-11-09. This policy covers the broadcasting beta, including local
 recording, optional Google authorization, and explicitly confirmed YouTube
-broadcasting. It is available through the existing internal TestFlight group, and
-the owner confirmed installation. Current-build regression and physical
-qualification remain pending. The historical 0.2 (3) local-only beta has no
-Google/YouTube features. stream14 uses YouTube API Services;
-see the [service terms](terms.md) and [YouTube Terms of Service](https://www.youtube.com/t/terms).
+broadcasting. The historical 0.2 (3) local-only beta has no Google or YouTube
+features. stream14 uses YouTube API Services. See the [service terms](terms.md)
+and [YouTube Terms of Service](https://www.youtube.com/t/terms).
 
 ## Camera, microphone and local files
 

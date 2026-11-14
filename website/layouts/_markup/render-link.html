@@ -1,0 +1,5 @@
+{{- $href := .Destination -}}
+{{- if in (slice "privacy.md" "terms.md" "support.md") $href -}}
+  {{- $href = printf "%s/" (strings.TrimSuffix ".md" $href) | relURL -}}
+{{- end -}}
+<a href="{{ $href | safeURL }}"{{ with .Title }} title="{{ . }}"{{ end }}>{{ .Text | safeHTML }}</a>
