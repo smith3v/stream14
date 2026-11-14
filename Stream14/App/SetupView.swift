@@ -467,7 +467,13 @@ struct SetupView: View {
                 Text("Choose an eligible scheduled event. Its channel must support streaming and auto-stop must be disabled in Studio.")
                     .font(.footnote)
             }
-            if experiment.broadcastCaptureReady && !experiment.canRecord && !experiment.hasStartedWriting {
+            if experiment.previewNeedsLandscape {
+                Text("Turn your iPhone to landscape to record or stream.")
+                    .font(.footnote).accessibilityIdentifier("landscapeReadiness")
+            } else if experiment.phase == .preview && experiment.previewOrientationSettling {
+                Text("Adjusting camera orientation…")
+                    .font(.footnote).accessibilityIdentifier("landscapeReadiness")
+            } else if experiment.broadcastCaptureReady && !experiment.canRecord && !experiment.hasStartedWriting {
                 Text("Local saving is not ready. Wait for finalization or recording recovery to finish, then retry. Streaming has not started.")
                     .font(.footnote).accessibilityIdentifier("writerReadiness")
             }

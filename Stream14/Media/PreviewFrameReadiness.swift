@@ -2,25 +2,38 @@ import AVFoundation
 import HaishinKit
 import Synchronization
 
-/// Startup evidence only. Holds scalar timing, never a camera frame or media queue.
+/// Preview startup and rotation evidence. Holds scalar timing, never a camera frame or media queue.
 nonisolated final class PreviewFrameReadiness: Sendable {
     private struct State {
         var cameraPTS: CMTime = .invalid
         var advancingCameraFrames = 0
         var ready = false
+        var requiredCameraFrames = 2
+        var expectsPortrait: Bool?
     }
     private let state = Mutex(State())
 
     var isReady: Bool { state.withLock { $0.ready } }
 
+    func waitForRotation(portrait: Bool) {
+        state.withLock {
+            // Allow several fresh inputs and a render tick for the queued
+            // camera image to settle after connection reconfiguration.
+            $0 = State(requiredCameraFrames: 4, expectsPortrait: portrait)
+        }
+    }
+
     func observeCamera(_ sample: CMSampleBuffer) {
         let pts = sample.presentationTimeStamp
-        guard sample.imageBuffer != nil, pts.isValid, pts.isNumeric else { return }
+        guard let image = sample.imageBuffer, pts.isValid, pts.isNumeric else { return }
         state.withLock {
             guard !$0.ready else { return }
+            if let expectsPortrait = $0.expectsPortrait {
+                guard (CVPixelBufferGetWidth(image) < CVPixelBufferGetHeight(image)) == expectsPortrait else { return }
+            }
             if !$0.cameraPTS.isValid || pts > $0.cameraPTS {
                 $0.cameraPTS = pts
-                $0.advancingCameraFrames = min(2, $0.advancingCameraFrames + 1)
+                $0.advancingCameraFrames = min($0.requiredCameraFrames, $0.advancingCameraFrames + 1)
             }
         }
     }
@@ -30,7 +43,7 @@ nonisolated final class PreviewFrameReadiness: Sendable {
         guard sample.imageBuffer != nil, pts.isValid, pts.isNumeric else { return }
         state.withLock {
             // A render tick/old image alone is not evidence that camera input resumed.
-            if $0.advancingCameraFrames == 2 { $0.ready = true }
+            if $0.advancingCameraFrames == $0.requiredCameraFrames { $0.ready = true }
         }
     }
 }

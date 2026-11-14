@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 @testable import HaishinKit
 import Testing
+import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct PreviewForegroundTests {
@@ -27,6 +28,63 @@ import Testing
         media.setCaptureForeground(true)
         await Task.yield()
         #expect(opens == 2)
+        media.requestStop()
+        try await until { media.phase == .idle }
+    }
+
+    @Test func openPreviewFollowsRotationAndActiveCaptureKeepsItsOrientation() async throws {
+        @MainActor final class OrientationSource {
+            var current = UIInterfaceOrientation.landscapeLeft
+            var opens = 0
+            var hasFreshFrames = true
+        }
+        let source = OrientationSource()
+        let media = session(orientation: { source.current })
+        media.installPreviewLifecycleFixture(start: { source.opens += 1 },
+                                             ready: { source.hasFreshFrames })
+
+        await media.openPreview()
+        #expect(media.phase == .preview && media.canRecord)
+        #expect(await media.mixer.videoOrientation == .landscapeLeft)
+
+        source.current = .portrait
+        await media.refreshPreviewOrientation()
+        #expect(media.phase == .preview && media.previewNeedsLandscape && !media.canRecord)
+        #expect(await media.mixer.videoOrientation == .portrait)
+        await media.record()
+        #expect(media.phase == .preview && media.recordingID == nil)
+
+        source.current = .landscapeRight
+        source.hasFreshFrames = false
+        await media.refreshPreviewOrientation()
+        #expect(media.phase == .preview && media.previewOrientationSettling && !media.canRecord)
+        #expect(await media.mixer.videoOrientation == .landscapeRight)
+        source.hasFreshFrames = true
+        await media.refreshPreviewOrientation()
+        #expect(media.canRecord)
+        #expect(source.opens == 1)
+
+        // The phone can turn after the last preview update and before the tap.
+        source.current = .portrait
+        await media.record()
+        #expect(media.phase == .preview && media.recordingID == nil)
+        source.current = .landscapeRight
+
+        // Production phase guards with no native writer or publisher running.
+        await media.holdFileFinalizationFixture {
+            source.current = .portrait
+            await media.refreshPreviewOrientation()
+            #expect(await media.mixer.videoOrientation == .landscapeRight)
+        }
+        source.current = .landscapeLeft
+        await media.refreshPreviewOrientation()
+        #expect(await media.mixer.videoOrientation == .landscapeRight)
+
+        media.requestStop()
+        try await until { media.phase == .idle }
+        await media.openPreview()
+        #expect(await media.mixer.videoOrientation == .landscapeLeft)
+        #expect(source.opens == 2)
         media.requestStop()
         try await until { media.phase == .idle }
     }
@@ -269,6 +327,27 @@ import Testing
         #expect(!PreviewFrameReadiness().isReady)
     }
 
+    @Test func rotationReadinessRequiresNewCameraProgressAndComposition() throws {
+        let readiness = PreviewFrameReadiness()
+        readiness.waitForRotation(portrait: false)
+        for frame in 30..<34 {
+            let sample = try LocalRecorderTests.video(frame, profile: .hd)
+            readiness.observeComposition(sample)
+            readiness.observeCamera(sample)
+            #expect(!readiness.isReady)
+        }
+        readiness.observeComposition(try LocalRecorderTests.video(34, profile: .hd))
+        #expect(readiness.isReady)
+
+        readiness.waitForRotation(portrait: true)
+        for frame in 34..<39 {
+            let landscape = try LocalRecorderTests.video(frame, profile: .hd)
+            readiness.observeCamera(landscape)
+            readiness.observeComposition(landscape)
+        }
+        #expect(!readiness.isReady)
+    }
+
     @Test func pinnedScreenResetRetainsTimingWhileFreshScreenDoesNotStallAfterGap() async throws {
         let result = await Task { @ScreenActor in
             func tick(_ time: Double) -> DisplayLinkTime {
@@ -296,9 +375,10 @@ import Testing
         #expect(result.2 == 120 && (result.3 ?? 0) > 120 && (result.3 ?? 999) < 121)
     }
 
-    private func session(authorize: @escaping @MainActor () async -> Bool = { true }) -> MediaSession {
+    private func session(orientation: @escaping @MainActor () -> UIInterfaceOrientation = { .landscapeRight },
+                         authorize: @escaping @MainActor () async -> Bool = { true }) -> MediaSession {
         MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in }, profile: .hd,
-                     persistProfile: { _ in }, authorizeCapture: authorize)
+                     persistProfile: { _ in }, interfaceOrientation: orientation, authorizeCapture: authorize)
     }
     private func until(_ condition: () -> Bool) async throws {
         for _ in 0..<400 {

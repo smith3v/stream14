@@ -26,6 +26,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         var uploadFailed: Bool
         var pipelineRunning: Bool = true
         var canPrepareNextSession: Bool = true
+        var canConfirmLandscapeStart: Bool = true
     }
     let snapshot: () -> Snapshot
     let record: () async -> Void
@@ -40,7 +41,8 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
                 writerStarted: session.hasStartedWriting, isRecording: session.isRecording,
                 profile: session.profile, overlayURL: session.overlayURL,
                 overlayReady: session.broadcastOverlayReady, uploadFailed: session.uploadState == .failed,
-                pipelineRunning: session.broadcastPipelineRunning, canPrepareNextSession: session.canPrepareNextSession)
+                pipelineRunning: session.broadcastPipelineRunning, canPrepareNextSession: session.canPrepareNextSession,
+                canConfirmLandscapeStart: session.canConfirmLandscapeStart)
         }
         record = { await session.record() }
         startUpload = { try await session.startUpload($0) }
@@ -177,6 +179,9 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     func requestConfirmation(channel: YouTubeChannel?, event: YouTubeBroadcast?) {
         guard canStart, let channel, let event, event.ineligibility(channelID: channel.id) == nil else { return }
         let snapshot = media.snapshot()
+        guard snapshot.canConfirmLandscapeStart else {
+            message = "Turn your iPhone to landscape before Go Live."; return
+        }
         guard snapshot.captureReady, snapshot.canRecord || snapshot.writerStarted else {
             message = "Open the camera and check the preview before Go Live."; return
         }
@@ -192,7 +197,11 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     /// Only the explicit confirmation button invokes this method.
     func confirmStart(_ intent: BroadcastIntent) {
         guard (intent.isResume ? canResume : canStart), confirmation?.id == intent.id else { return }
-        confirmation = nil; activeIntent = intent
+        confirmation = nil
+        guard media.snapshot().canConfirmLandscapeStart else {
+            message = "Turn your iPhone to landscape before starting the stream."; return
+        }
+        activeIntent = intent
         epoch &+= 1
         let request = epoch
         isWorking = true; state = .starting
@@ -352,6 +361,9 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     func requestResumeConfirmation() {
         guard canResume, let context = pendingRemote else { return }
         let snapshot = media.snapshot()
+        guard snapshot.canConfirmLandscapeStart else {
+            message = "Turn your iPhone to landscape before resuming the stream."; return
+        }
         guard snapshot.captureReady, snapshot.canRecord, !snapshot.writerStarted,
               snapshot.overlayReady, snapshot.profile.rawValue == context.profileName else {
             message = "Reopen the camera, restore the original profile and check the overlay before resuming. A new backup file is required."

@@ -4,6 +4,26 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct BroadcastSessionTests {
+    @Test func goLiveRequiresLandscapeEvenWithAnExistingLocalWriter() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.snapshot.canRecord = false
+        h.snapshot.isRecording = true
+        h.snapshot.writerStarted = true
+        h.snapshot.canConfirmLandscapeStart = false
+        h.session.requestConfirmation(channel: h.channel, event: h.server.event)
+        #expect(h.session.confirmation == nil)
+
+        h.snapshot.canConfirmLandscapeStart = true
+        h.session.requestConfirmation(channel: h.channel, event: h.server.event)
+        let intent = try #require(h.session.confirmation)
+        h.snapshot.canConfirmLandscapeStart = false
+        h.session.confirmStart(intent)
+        #expect(h.session.activeIntent == nil && h.session.state == .idle)
+        #expect(h.session.confirmation == nil && h.timeline.isEmpty)
+        #expect(h.snapshot.isRecording && h.snapshot.writerStarted)
+    }
+
     @Test func nextSessionRequiresSettledOutputsAndRemoteState() async throws {
         let h = try await Harness()
         defer { h.cleanup() }

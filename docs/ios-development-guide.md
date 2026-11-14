@@ -1658,11 +1658,22 @@ before opening a new file. The gap is not recovered.
 
 Portrait shows Session / Recordings tabs. Landscape hides the whole native tab bar;
 More → Navigate switches destinations. Rotation preserves selection and outputs.
+
 Normal landscape keeps preview left and scrolling controls right; accessibility
 text stacks them. More offers routine overlay hide/show and reload; overlay failure
 also offers contextual retry/settings. More → Settings contains YouTube account/data
 actions, Overlay draft/apply/disable, About & Legal and Help. Legal pages remain
 reachable before camera/sign-in and consent presents terms before agreement.
+
+For #77, point the iPhone 13 mini at an upright scene and use an overlay with an
+identifiable top edge. Open Check camera and sound, then keep the camera open
+while turning through portrait and both landscape directions. Check that the
+scene stays upright and the overlay stays placed on the 16:9 canvas. In portrait,
+the upright image fits inside the landscape canvas and recording requires turning
+to landscape. In each landscape direction, record a short clip and check playback.
+While recording, rotate the interface and confirm the clip continues with its
+starting orientation. During an unlisted broadcast, repeat the rotation and verify
+that upload continues with the same composition.
 
 Recordings keeps the original MP4, status, date and size, with Play, Export and
 confirmed Delete. Cancel preserves the file. Exported copies remain after deletion;
