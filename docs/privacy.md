@@ -70,7 +70,7 @@ their resolution in the app.
 
 The developer does not run a server that collects your recordings, account data
 or usage analytics. stream14 does not sell personal data or use it for advertising
-or cross-app tracking. Apple may share beta feedback and crash information with
+or cross-app tracking. Apple may share feedback and crash information with
 the developer through TestFlight according to your settings.
 
 For privacy questions, complaints or requests about information you shared with
