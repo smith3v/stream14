@@ -1,8 +1,7 @@
 # stream14 beta service terms
 
-Updated: 2026-11-09. These terms accompany the full-app qualification candidate;
-TestFlight delivery is recorded separately. The BSD-3-Clause source license is
-separate from these service terms.
+Updated: 2026-11-09. These terms apply to the stream14 beta. The BSD-3-Clause
+source license is separate from these service terms.
 
 stream14 uses YouTube API Services. By using stream14's YouTube features, you agree
 to be bound by the [YouTube Terms of Service](https://www.youtube.com/t/terms).

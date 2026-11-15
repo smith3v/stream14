@@ -29,8 +29,8 @@ unlocked while recording or streaming. See [support](docs/support.md) for help.
   architecture, and failure handling.
 - [iOS development and release guide](docs/ios-development-guide.md): Xcode,
   signing, Google OAuth, TestFlight, and the public site.
-- [Device qualification](docs/qualification-report-template.md): runbook,
-  acceptance gates, and the measured endurance baseline.
+- [Device qualification](docs/qualification-report-template.md): runbook
+  and acceptance gates.
 - [Development workflow](AGENTS.md) and [project issues](https://github.com/smith3v/stream14/issues).
 
 [Privacy](docs/privacy.md) · [Service terms](docs/terms.md) · [BSD 3-Clause
