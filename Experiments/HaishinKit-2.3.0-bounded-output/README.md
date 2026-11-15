@@ -1,5 +1,9 @@
 # Local bounded-output patch candidate
 
+This is the historical patch record. See the [application design](../../docs/2026-11-01-stream14-design.md#media-architecture)
+and Package.resolved for the current media architecture and dependency pin.
+Status statements below describe the checkpoints at which they were written.
+
 This is a reviewable **unadopted experiment**, not a fork publication or an app
 dependency change. Apply only to HaishinKit 2.3.0 commit
 `aa2149df822f2e965adf2410a106db959b2e1962`. The app remains pinned to upstream.
@@ -126,7 +130,7 @@ Generic-iOS unsigned build-for-testing passed at
 from the isolated clone for arm64/iphoneos with the library's iOS 15 deployment
 target and Swift 6. A private APFS-copy of the package cache was used; the tracked
 app project and upstream pins remain untouched. Exact reproduction and paths are
-in [the F6 plan](../../docs/2026-11-07-independent-transport-implementation.md#original-manifest-patched-ios-product-build-2026-11-07).
+in [the F6 plan](https://github.com/smith3v/stream14/blob/4024a42577a72f37cd449dbd5d161980a5c6b77b/docs/2026-11-07-independent-transport-implementation.md#original-manifest-patched-ios-product-build-2026-11-07).
 This is compile/link evidence, not physical execution, receiver delivery or
 production dependency adoption. The full-package all-tests manifest attempt remains
 separately documented as stopped; normal Xcode iOS product selection passed.
@@ -167,7 +171,7 @@ flags zero when constructing the AAC sequence header, preserving legacy object-I
 flags. `0004-compressed-video-cts.patch` follows0003 and removes legacy66ms
 compensation only from the explicit compressed video API. Native payload regressions
 and the reduced full-source suite pass40 tests in18 suites. See the
-[actual receiver record](../../docs/2026-11-08-private-rtmps-receiver-validation.md)
+[actual receiver record](https://github.com/smith3v/stream14/blob/4024a42577a72f37cd449dbd5d161980a5c6b77b/docs/2026-11-08-private-rtmps-receiver-validation.md)
 for the original protocol rejection, normal TLS proof, two receiver recordings,
 remaining decoded59–70ms audio lead and exact scope. The focused main-based correction now selects published immutable revision
 `497f742c5f2c04cf3ca085378e660a273e351788` from the existing owned fork. Independent
