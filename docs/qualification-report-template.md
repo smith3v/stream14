@@ -94,22 +94,5 @@ elapsed/checkpoint coverage, frame cadence and drop counts at each measured
 boundary, queue peaks and trend, charged footprint and heat, and separate sync
 measurements for the original and receiver.
 
-## Evidence baseline
-
-TestFlight **0.4 (5)** on iPhone 13 mini: the owner reported the short 720p30
-local test passed. The finalized 1080p30 original ran **60:36** and decoded
-completely, with a 343 ms largest video PTS gap. The encoder rejected
-2 of 107,941 offered frames (0.0019%) and the writer reported no rejections.
-Output cadence estimated **1.61%** missing intervals overall, **1.31%** in
-the first half hour. Upstream drops and full-run memory/queue growth were
-unmeasured. The **59:45** YouTube replay and three publisher generations did
-not establish one continuous hour at the receiver; receiver sync was not measured
-and the local end-clap offset was inconclusive. A2 and A7 remain open. These are
-exact-build results, not a claim about a later build or a three-hour event.
-
-See [epic #13](https://github.com/smith3v/stream14/issues/13) and
-[qualification issue #27](https://github.com/smith3v/stream14/issues/27) for
-tracking. The [detailed 0.4 (5) run record](https://github.com/smith3v/stream14/blob/4024a42577a72f37cd449dbd5d161980a5c6b77b/docs/2026-11-11-testflight-0.4-qualification.md#first-1080p30-run-results)
-and [gate-by-gate audit](https://github.com/smith3v/stream14/blob/4024a42577a72f37cd449dbd5d161980a5c6b77b/docs/2026-11-07-epic13-progress.md#current-acceptance-audit--2026-11-11)
-record the full evidence and limits. Earlier plans, handoffs and evidence remain in
-[Git history](https://github.com/smith3v/stream14/tree/4024a42577a72f37cd449dbd5d161980a5c6b77b/docs).
+Track release readiness and sanitized results by build in
+[qualification issue #27](https://github.com/smith3v/stream14/issues/27).

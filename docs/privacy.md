@@ -2,8 +2,7 @@
 
 Effective: 2026-11-09. This policy covers the broadcasting beta, including local
 recording, optional Google authorization, and explicitly confirmed YouTube
-broadcasting. The historical 0.2 (3) local-only beta has no Google or YouTube
-features. stream14 uses YouTube API Services. See the [service terms](terms.md)
+broadcasting. stream14 uses YouTube API Services. See the [service terms](terms.md)
 and [YouTube Terms of Service](https://www.youtube.com/t/terms).
 
 ## Camera, microphone and local files
@@ -61,16 +60,13 @@ YouTube terms. Only that nonsecret policy-version choice is saved in app-only
 UserDefaults; local rehearsal does not require YouTube agreement. Without Google setup,
 local recording remains available and no Google authorization request is made.
 
-The 0.3 (4) build distributed through TestFlight on November 9, 2026 restores
-saved sign-in only when you choose **Restore saved connection**. In builds with
-automatic restore, after you have agreed and signed in, the app can try to restore
-your saved Google sign-in once per launch when the app becomes active and YouTube
-is configured. The Google Sign-In SDK may contact Google to refresh authorization
-tokens. After a successful restore, the app may send read-only requests to
-YouTube to check the status of a previously interrupted broadcast session. Event
-selection and starting a broadcast still require your action. If automatic
-restore fails, try **Restore saved connection** or sign in again with
-**Connect YouTube**.
+After you have agreed and signed in, the app can try to restore your saved Google
+sign-in once per launch when the app becomes active and YouTube is configured.
+The Google Sign-In SDK may contact Google to refresh authorization tokens. After
+a successful restore, the app may send read-only requests to YouTube to check
+the status of a previously interrupted broadcast session. Event selection and
+starting a broadcast still require your action. If automatic restore fails, try
+**Restore saved connection** or sign in again with **Connect YouTube**.
 
 The SDK stores its credentials in the iPhone Keychain. stream14 does not copy them
 to preferences, files, an app backend or overlay JavaScript. A fresh access token
