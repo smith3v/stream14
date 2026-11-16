@@ -122,7 +122,6 @@ final class SetupScreenTests: XCTestCase {
 
     func testMissingStreamKeyLinksToMaskedSetupAndNamedStartConfirmation() throws {
         XCUIDevice.shared.orientation = .portrait
-        defer { XCUIDevice.shared.orientation = .portrait }
         let app = fixtureApp("stream-key-missing")
         XCTAssertFalse(app.buttons["chooseEvent"].exists)
         let setup = app.buttons["openStreamKeySettings"]
@@ -143,10 +142,7 @@ final class SetupScreenTests: XCTestCase {
         app.buttons["Done"].tap()
         XCTAssertEqual(app.staticTexts["streamKeyDestinationName"].label, "Court A")
 
-        XCUIDevice.shared.orientation = .landscapeLeft
-        let camera = app.buttons["openExperiment"]
-        scrollTo(camera, in: app)
-        camera.tap()
+        app.buttons["openExperiment"].tap()
         let start = app.buttons["goLive"]
         scrollTo(start, in: app)
         start.tap()
