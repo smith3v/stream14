@@ -29,11 +29,16 @@ for functionality and analytics. See the [Google Privacy Policy](https://policie
 With your consent, stream14 uses your Google account identifier and reads your
 YouTube channel, scheduled events, stream configuration and broadcast status.
 It uses that information to show events, manage the stream you confirm and
-check the status of an interrupted broadcast. The app keeps stream keys in
-memory for upload. It stores channel, event and stream identifiers and request
+check the status of an interrupted broadcast. The app keeps API-provided stream
+keys in memory for upload. It stores channel, event and stream identifiers and request
 status in protected local files excluded from backups to avoid repeating
 unresolved requests. Stored identifiers expire after 30 days and are cleared
 when the app next runs its data check.
+
+For events prepared in YouTube Studio, you can save a reusable stream key and
+display name in the device-only Keychain. Stream14 uses the key to send video
+to YouTube. This option requires no Google sign-in and uses no YouTube event API.
+The key stays out of recording metadata, diagnostics and exports.
 
 When you confirm a broadcast, stream14 sends camera video, microphone audio
 and the visible overlay directly to YouTube over an encrypted connection.
@@ -54,13 +59,15 @@ credentials. Clear the URL in Overlay settings to remove it.
 
 - **Sign out on this iPhone** clears the saved sign-in. The app keeps pending
   request records so it can resolve them safely.
-- **Delete saved YouTube data** signs you out and removes the YouTube data saved
+- **Delete saved YouTube API data** signs you out and removes the API data saved
   by stream14 on your iPhone. This leaves your local recordings, Google grant
   and YouTube content in place. Manage your broadcasts in [YouTube Studio](https://studio.youtube.com/).
 - **Revoke Google access** requests revocation from Google and clears saved
-  YouTube data on your iPhone. You can also revoke access in [Google Account permissions](https://security.google.com/settings/security/permissions).
+  YouTube API data on your iPhone. You can also revoke access in [Google Account permissions](https://security.google.com/settings/security/permissions).
   If you revoke access there, the app clears stored YouTube data when it detects
   that access has been withdrawn.
+- **Remove stream key** in YouTube settings deletes the manually saved credential
+  and display name from this iPhone. Manage or reset the key in YouTube Studio.
 
 After deletion or expiry, the app may retain a marker without account or event
 identifiers until you resolve pending requests in YouTube Studio and confirm

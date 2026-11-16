@@ -4,7 +4,7 @@ import Testing
 
 struct RTMPSUploadAffinityTests {
     @Test func readinessBypassRequiresExactlyTheAdmittedContext() throws {
-        let original = try prepared()
+        let original = try #require(RTMPSUploadContext(prepared()))
         var affinity = RTMPSUploadAffinity()
         #expect(!affinity.hasAdmittedTransport)
         let admittedOriginal = affinity.admit(original)
@@ -17,15 +17,16 @@ struct RTMPSUploadAffinityTests {
             prepared(generation: 2), prepared(endpoint: "rtmps://rtmps.youtube.com:443/other-path")
         ]
         for candidate in changed {
-            #expect(!affinity.permits(candidate))
-            let admittedChanged = affinity.admit(candidate)
+            let context = try #require(RTMPSUploadContext(candidate))
+            #expect(!affinity.permits(context))
+            let admittedChanged = affinity.admit(context)
             #expect(!admittedChanged)
             #expect(affinity.permits(original))
         }
     }
     @Test func fileOnlyRestartKeepsAffinityAndNewSessionCanResetIt() throws {
-        let original = try prepared()
-        let other = try prepared(event: "other-event")
+        let original = try #require(RTMPSUploadContext(prepared()))
+        let other = try #require(RTMPSUploadContext(prepared(event: "other-event")))
         var affinity = RTMPSUploadAffinity()
         let admittedOriginal = affinity.admit(original)
         #expect(admittedOriginal)

@@ -68,7 +68,7 @@ struct SharedMediaIntegrationTests {
             streamID: "fixture", profile: .hd, generation: 1,
             destination: try YouTubeIngestionDestination(address: "rtmps://rtmps.youtube.com:443/live2", streamName: "fixture-not-a-key"))
         await #expect(throws: RTMPSPublisher.StartupFailure.self) {
-            _ = try await RTMPSPublisher.connected(to: prepared,
+            _ = try await RTMPSPublisher.connected(to: try #require(RTMPSUpload(prepared)),
                 canPublish: { recorder.hasStarted }, failed: { _ in })
         }
         await #expect(throws: LocalRecorder.Failure.self) { try await recorder.finish() }

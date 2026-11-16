@@ -15,6 +15,7 @@ struct SetupView: View {
     @State private var showingSettings = false
     @State private var showingEvents = false
     @State private var showingConnection = false
+    @State private var showingStreamKeySettings = false
     @State private var sessionHasRun = false
     @State private var showingLensChoices = false
     @State private var showingProfileChoices = false
@@ -81,12 +82,13 @@ struct SetupView: View {
             }
             .sheet(isPresented: $showingConnection) {
                 NavigationStack {
-                    ScrollView {
-                        YouTubeConnectionView(authorization: authorization, broadcast: broadcast,
-                            broadcastActive: broadcast.requiresEndFirst).padding()
-                    }
-                    .navigationTitle("YouTube")
-                    .toolbar { Button("Done") { showingConnection = false } }
+                    youTubeSettings().toolbar { Button("Done") { showingConnection = false } }
+                }
+            }
+            .sheet(isPresented: $showingStreamKeySettings) {
+                NavigationStack {
+                    youTubeSettings(showStreamKey: true)
+                        .toolbar { Button("Done") { showingStreamKeySettings = false } }
                 }
             }
             .sheet(isPresented: $showingOverlayTest) {
@@ -111,6 +113,9 @@ struct SetupView: View {
                 if phase == .starting || phase == .recording { sessionHasRun = true }
             }
             .onChange(of: experiment.cameraZoom.value) { _, value in zoomDraft = value }
+            .onChange(of: usesStreamKey) {
+                if !usesStreamKey && scenePhase == .active && !runsIsolatedMediaHarness { activateYouTube() }
+            }
             .onChange(of: authorization.isAuthorized) { _, isAuthorized in
                 if isAuthorized && scenePhase == .active && !runsIsolatedMediaHarness {
                     broadcast.foregroundReturned()
@@ -130,12 +135,16 @@ struct SetupView: View {
             }
     }
 
+    private var usesStreamKey: Bool { broadcast.streamKeySettings.choice == .streamKey }
+
     private func activateYouTube() {
+        broadcast.streamKeySettings.retryReadIfNeeded()
         broadcast.foregroundReturned()
+        guard !usesStreamKey else { return }
         // Let the SDK finish across brief inactive transitions. The authorization
         // owner serializes the one launch attempt and rejects stale callbacks.
         Task {
-            guard UIApplication.shared.applicationState == .active else { return }
+            guard UIApplication.shared.applicationState == .active, !usesStreamKey else { return }
             await authorization.restoreOnLaunchIfAvailable(broadcastActive: broadcast.requiresEndFirst)
         }
     }
@@ -222,11 +231,7 @@ struct SetupView: View {
         NavigationStack {
             Form {
                 NavigationLink("YouTube") {
-                    ScrollView {
-                        YouTubeConnectionView(authorization: authorization, broadcast: broadcast,
-                            broadcastActive: broadcast.requiresEndFirst).padding()
-                    }.navigationTitle("YouTube")
-                        .toolbar { Button("Done") { showingSettings = false } }
+                    youTubeSettings().toolbar { Button("Done") { showingSettings = false } }
                 }
                 NavigationLink("Overlay") {
                     overlaySettingsForm.navigationTitle("Overlay")
@@ -252,6 +257,25 @@ struct SetupView: View {
             .navigationTitle("Settings")
             .toolbar { Button("Done") { showingSettings = false } }
         }
+    }
+
+    private func youTubeSettings(showStreamKey: Bool = false) -> some View {
+        ScrollViewReader { scroll in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    YouTubeConnectionView(authorization: authorization, broadcast: broadcast,
+                        broadcastActive: broadcast.requiresEndFirst)
+                    Divider()
+                    YouTubeStreamKeyView(broadcast: broadcast).id("streamKeySettings")
+                }
+                .padding()
+            }
+            .onAppear {
+                broadcast.streamKeySettings.retryReadIfNeeded()
+                if showStreamKey { scroll.scrollTo("streamKeySettings", anchor: .top) }
+            }
+        }
+        .navigationTitle("YouTube")
     }
 
     private func openOverlaySettings() {
@@ -340,7 +364,7 @@ struct SetupView: View {
     }
 
     private var finished: Bool {
-        broadcast.state == .ended || (sessionHasRun && !broadcast.locksSelection &&
+        broadcast.state == .ended || broadcast.state == .uploadStopped || (sessionHasRun && !broadcast.locksSelection &&
             (experiment.phase == .idle || experiment.phase == .preview))
     }
 
@@ -348,7 +372,8 @@ struct SetupView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(finished ? "Session finished" : (sessionHasRun || broadcast.locksSelection ? "Active session" : "Next session"))
                 .font(.headline).accessibilityIdentifier("setupStatus")
-            if !authorization.isAuthorized {
+            destinationPicker
+            if !usesStreamKey && !authorization.isAuthorized {
                 Text(authorization.isConfigured ? authorization.message :
                     "YouTube connection is unavailable in this build. Record only is available; open Settings → Help for setup guidance.")
                     .font(.footnote)
@@ -357,7 +382,11 @@ struct SetupView: View {
                         .frame(minHeight: 44).accessibilityIdentifier("fixYouTube")
                 }
             }
-            eventSummary
+            if usesStreamKey {
+                streamKeySummary
+            } else {
+                eventSummary
+            }
             outputStatuses
             overlayRecovery
             backupFailureWarning
@@ -376,7 +405,7 @@ struct SetupView: View {
                 Button("Check camera and sound", systemImage: "camera") { Task { await experiment.openPreview() } }
                     .frame(minHeight: 44).accessibilityIdentifier("openExperiment")
             } else if experiment.phase == .preview && !experiment.hasUpload &&
-                        !broadcast.requiresEndFirst && broadcast.confirmation == nil {
+                        !broadcast.requiresEndFirst && broadcast.confirmation == nil && broadcast.streamKeyConfirmation == nil {
                 Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
                     .frame(minHeight: 44)
                     .disabled(!experiment.canAdjustMedia)
@@ -393,6 +422,38 @@ struct SetupView: View {
             mediaControls
         }
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var destinationPicker: some View {
+        Picker("Broadcast destination", selection: Binding(
+            get: { broadcast.streamKeySettings.choice },
+            set: { broadcast.selectDestination($0) })) {
+            ForEach(YouTubeDestinationChoice.allCases, id: \.self) { choice in
+                Text(choice.title).tag(choice)
+            }
+        }
+        .pickerStyle(.menu)
+        .frame(minHeight: 44)
+        .disabled(broadcast.locksSelection)
+        .accessibilityIdentifier("broadcastDestination")
+    }
+
+    private var streamKeySummary: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let name = broadcast.activeStreamKey?.name ?? broadcast.streamKeySettings.saved?.name {
+                Text(name).font(.headline).accessibilityIdentifier("streamKeyDestinationName")
+                Text("Assign this key to the event in YouTube Studio. Enable Auto-start and Auto-stop.")
+                    .font(.footnote)
+            } else {
+                Text("No stream key saved").font(.headline)
+                Button("Set up stream key") { showingStreamKeySettings = true }
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("openStreamKeySettings")
+            }
+            if !authorization.policyAccepted && broadcast.streamKeySettings.saved != nil {
+                Button("Review YouTube terms") { showingConnection = true }.frame(minHeight: 44)
+            }
+        }
     }
 
     private var eventSummary: some View {
@@ -434,6 +495,9 @@ struct SetupView: View {
     }
 
     private var uploadStatus: String {
+        if usesStreamKey && broadcast.streamKeyUploadFailed && !broadcast.isWorking {
+            return "Failed to send video. Check the event in YouTube Studio."
+        }
         switch broadcast.reconnectStatus {
         case .waiting: return "Reconnecting · attempt \(broadcast.reconnectAttempts)/12. " + experiment.uploadMessage
         case .connecting: return "Reconnecting · connecting to the same event"
@@ -469,7 +533,7 @@ struct SetupView: View {
                 Text(broadcast.message).font(.footnote)
                 Button("Resolve YouTube setup") { showingConnection = true }.frame(minHeight: 44)
             }
-            if youtubeEvents.selected == nil && authorization.isAuthorized && !broadcast.locksSelection {
+            if !usesStreamKey && youtubeEvents.selected == nil && authorization.isAuthorized && !broadcast.locksSelection {
                 Text("Choose an eligible scheduled event. Its channel must support streaming and auto-stop must be disabled in Studio.")
                     .font(.footnote)
             }
@@ -484,7 +548,8 @@ struct SetupView: View {
                     .font(.footnote).accessibilityIdentifier("writerReadiness")
             }
             if experiment.broadcastCaptureReady && experiment.broadcastOverlayReady &&
-                (experiment.canRecord || experiment.hasStartedWriting) && youtubeEvents.selected != nil && broadcast.canStart {
+                (experiment.canRecord || experiment.hasStartedWriting) &&
+                (usesStreamKey ? broadcast.canStartStreamKey : youtubeEvents.selected != nil && broadcast.canStart) {
                 Text("Ready to confirm recording and streaming").font(.subheadline)
                     .accessibilityIdentifier("sessionReady")
             }
@@ -492,7 +557,7 @@ struct SetupView: View {
     }
 
     @ViewBuilder private var localActions: some View {
-        if experiment.isRecording && broadcast.activeIntent == nil && broadcast.pendingRemote == nil && !broadcast.isWorking {
+        if experiment.isRecording && broadcast.activeStreamKey == nil && broadcast.activeIntent == nil && broadcast.pendingRemote == nil && !broadcast.isWorking {
             Button("End session", role: .destructive) { confirmingLocalEnd = true }
                 .buttonStyle(SessionActionButtonStyle.stop)
                 .confirmationDialog("End local session?", isPresented: $confirmingLocalEnd, titleVisibility: .visible) {

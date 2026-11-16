@@ -40,8 +40,11 @@ import Foundation
             lockConfiguration: { media.broadcastConfigurationLocked = $0 })
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("interface-fixture-" + UUID().uuidString)
         let store = PendingRemoteBroadcastStore(url: directory.appendingPathComponent("remote.json"))
+        let streamKeySettings = YouTubeStreamKeySettings(
+            choice: name == "stream-key-missing" ? .streamKey : .connectedEvent)
         let broadcast = BroadcastSession(authorization: authorization, client: client,
-            binding: YouTubeBinding(client: client, store: PendingBroadcastIntentStore(directory: directory.appendingPathComponent("binding"))), media: boundary, store: store)
+            binding: YouTubeBinding(client: client, store: PendingBroadcastIntentStore(directory: directory.appendingPathComponent("binding"))), media: boundary, store: store,
+            streamKeySettings: streamKeySettings)
         broadcast.installInterfaceFixture(name, intent: BroadcastIntent(id: UUID(), generation: authorization.generation,
             channel: channel, event: event, profile: .fullHD, overlayURL: ""))
         return (authorization, media, broadcast, events)

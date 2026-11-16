@@ -33,17 +33,17 @@ nonisolated final class SharedMediaDestinations: Sendable {
 extension RTMPSPublisher {
     enum StartupFailure: Error { case recordingNotReady, cancelled, connection, contextChanged }
 
-    /// F7 alone invokes this after explicit operator confirmation. Selection,
+    /// The broadcast coordinator invokes this after explicit confirmation. Selection,
     /// preview and local recording never call it. The writer must already have
     /// started unless this is a retry of a previously admitted transport session.
-    @MainActor static func connected(to prepared: PreparedYouTubeIngestion,
+    @MainActor static func connected(to upload: RTMPSUpload,
         canPublish: @escaping @Sendable () -> Bool,
         diagnostics: QualificationTransportCounter? = nil,
         failed: @escaping @Sendable (Failure) -> Void) async throws -> RTMPSPublisher {
         guard canPublish() else { throw StartupFailure.recordingNotReady }
         let sender = RTMPSConnection()
         do {
-            try await sender.connect(prepared.destination, profile: prepared.profile, canPublish: canPublish)
+            try await sender.connect(upload.destination, profile: upload.profile, canPublish: canPublish)
             guard !Task.isCancelled, canPublish() else {
                 await sender.close(); throw StartupFailure.cancelled
             }

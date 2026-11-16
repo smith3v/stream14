@@ -120,6 +120,47 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["No scheduled event selected"].exists)
     }
 
+    func testMissingStreamKeyLinksToMaskedSetupAndNamedStartConfirmation() throws {
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = fixtureApp("stream-key-missing")
+        XCTAssertFalse(app.buttons["chooseEvent"].exists)
+        let setup = app.buttons["openStreamKeySettings"]
+        scrollTo(setup, in: app)
+        setup.tap()
+
+        let key = app.secureTextFields["streamKeyField"]
+        XCTAssertTrue(key.waitForExistence(timeout: 5))
+        scrollTo(key, in: app)
+        let name = app.textFields["streamKeyName"]
+        name.tap()
+        name.typeText("Court A")
+        key.tap()
+        key.typeText("fake-key-for-testing")
+        let save = app.buttons["saveStreamKey"]
+        scrollTo(save, in: app)
+        save.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["savedStreamKey"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(key.exists)
+        app.buttons["Done"].tap()
+        XCTAssertEqual(app.staticTexts["streamKeyDestinationName"].label, "Court A")
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let camera = app.buttons["openExperiment"]
+        scrollTo(camera, in: app)
+        camera.tap()
+        let start = app.buttons["goLive"]
+        scrollTo(start, in: app)
+        start.tap()
+        XCTAssertTrue(app.buttons["Start upload"].waitForExistence(timeout: 5))
+        let confirmation = app.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " ")
+        XCTAssertTrue(confirmation.contains("Destination: Court A"))
+        XCTAssertTrue(confirmation.contains("can start the event assigned to this key"))
+        XCTAssertFalse(confirmation.contains("fake-key-for-testing"))
+        dismissConfirmation(in: app)
+        XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Not started")
+    }
+
     func testMoreMenuRemainsUsableDuringSessionUpdates() throws {
         defer { XCUIDevice.shared.orientation = .portrait }
         for orientation in [UIDeviceOrientation.portrait, .landscapeLeft, .landscapeRight] {

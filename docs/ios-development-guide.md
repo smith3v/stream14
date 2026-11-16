@@ -126,6 +126,32 @@ revoke, local data deletion and the Studio-resolution guard separately; see the
 [design](2026-11-01-stream14-design.md#youtube-authorization-and-broadcast-lifecycle).
 Track verification and fresh-account results in [issue #80](https://github.com/smith3v/stream14/issues/80).
 
+## Verify a saved YouTube stream key on iPhone
+
+Use a Studio Manager account and two disposable Unlisted encoder events. In
+Live Control Room, create one reusable stream key for the iPhone. Assign it to
+one upcoming event at a time. Enable Auto-start and Auto-stop.
+
+1. In **Settings → YouTube → Stream key**, paste and save the key with a display
+   name. Relaunch and confirm the saved name. Test replacement and confirmed
+   removal with a disposable key. Restore the test event’s key for publishing.
+2. In **Session**, choose the saved stream-key destination. Check VoiceOver,
+   larger text and both landscape orientations on iPhone 13 mini. Confirm that
+   preview sends no video. Check that switching to a connected event restores
+   its channel, event picker and controls. Saving or replacing a key must leave
+   the chosen destination in place. Check **Record only** in both modes.
+3. Keep Studio open on another device. Confirm Start names the saved destination
+   and enables upload and local saving. Verify Live in Studio. End from Stream14
+   and verify that local footage finalizes and Studio ends the event via Auto-stop.
+   Prepare the next session. Repeat with the second event using the same key
+   without revisiting Settings.
+4. In an agreed outage test, interrupt the iPhone’s network while Stream14 is in
+   the foreground. Verify upload failure and continued local saving. Check Studio
+   before confirming a retry. A short outage may allow the same event to continue.
+   Around a minute without ingest can end the event via Auto-stop. A retry then
+   may fail or start another prepared event assigned to the key. Record what
+   Studio shows and whether the original recording remains playable.
+
 ## TestFlight
 
 1. Start from reviewed changes on `main`. Use a new minor version for a release

@@ -4,6 +4,119 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct BroadcastSessionTests {
+    @Test func streamKeyStartAndEndBypassGoogleAndReuseSavedKeyForNextMatch() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.authorization.signOut()
+        h.session.accountChanged()
+        #expect(h.session.saveStreamKey(name: "Court one", key: "fake-key-for-testing"))
+        #expect(h.session.streamKeySettings.choice == .connectedEvent)
+        h.session.selectDestination(.streamKey)
+        h.session.requestConfirmation(channel: h.channel, event: h.server.event)
+        #expect(h.session.confirmation == nil)
+        h.session.requestStreamKeyConfirmation()
+        let first = try #require(h.session.streamKeyConfirmation)
+        #expect(first.name == "Court one")
+        #expect(h.timeline.isEmpty && h.server.requests.isEmpty)
+        #expect(!h.session.removeStreamKey())
+        h.session.selectDestination(.connectedEvent)
+        #expect(h.session.streamKeySettings.choice == .streamKey)
+
+        h.session.confirmStreamKeyStart(first)
+        await h.session.waitForOperation()
+        #expect(h.timeline == ["lock", "record", "writer", "upload"])
+        #expect(h.session.state == .uploading && h.uploaded)
+        #expect(h.session.pendingRemote == nil)
+        #expect(!h.session.saveStreamKey(name: "Other court", key: "fake-other-key"))
+
+        h.session.confirmEnd()
+        await h.session.waitForOperation()
+        #expect(h.session.state == .uploadStopped && !h.uploaded)
+        #expect(!h.snapshot.isRecording)
+        #expect(h.session.prepareNextSession())
+        #expect(h.session.streamKeySettings.choice == .streamKey)
+        h.snapshot.canRecord = true
+        h.session.requestStreamKeyConfirmation()
+        let second = try #require(h.session.streamKeyConfirmation)
+        #expect(second.name == first.name)
+        #expect(second.id != first.id)
+        h.session.confirmStreamKeyStart(second)
+        await h.session.waitForOperation()
+        #expect(h.session.state == .uploading)
+        h.session.confirmEnd()
+        await h.session.waitForOperation()
+        #expect(h.server.requests.isEmpty)
+    }
+
+    @Test func streamKeyTransportFailureKeepsWriterAndRequiresExplicitRetry() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        #expect(h.session.saveStreamKey(name: "", key: "fake-key-for-testing"))
+        h.session.selectDestination(.streamKey)
+        h.rejectUpload = true
+        h.session.requestStreamKeyConfirmation()
+        let intent = try #require(h.session.streamKeyConfirmation)
+        h.session.confirmStreamKeyStart(intent)
+        await h.session.waitForOperation()
+        #expect(h.session.streamKeyUploadFailed && h.session.canRetryStreamKeyUpload)
+        #expect(h.snapshot.writerStarted && !h.uploaded)
+
+        h.rejectUpload = false
+        h.session.confirmStreamKeyRetry()
+        await h.session.waitForOperation()
+        #expect(h.uploaded && !h.session.streamKeyUploadFailed)
+        h.uploaded = false
+        h.snapshot.uploadFailed = true
+        await Task.yield()
+        #expect(h.session.streamKeyUploadFailed && h.session.canRetryStreamKeyUpload)
+        #expect(h.timeline.filter { $0 == "upload" }.count == 2)
+
+        h.session.confirmStreamKeyRetry()
+        await h.session.waitForOperation()
+        #expect(h.uploaded && h.snapshot.writerStarted)
+        #expect(h.timeline == ["lock", "record", "writer", "upload", "upload", "upload"])
+        #expect(h.uploadContexts == Array(repeating: intent.upload.context, count: 3))
+        #expect(h.server.requests.isEmpty)
+        h.session.confirmEnd()
+        await h.session.waitForOperation()
+    }
+
+    @Test func streamKeyBackupFailureOrOrientationChangePreventsPublishing() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        #expect(h.session.saveStreamKey(name: "", key: "fake-key-for-testing"))
+        h.session.selectDestination(.streamKey)
+        h.session.requestStreamKeyConfirmation()
+        let intent = try #require(h.session.streamKeyConfirmation)
+        h.snapshot.canConfirmLandscapeStart = false
+        h.session.confirmStreamKeyStart(intent)
+        #expect(h.timeline.isEmpty)
+        h.snapshot.canConfirmLandscapeStart = true
+        h.writerMode = "noSamples"
+        h.session.requestStreamKeyConfirmation()
+        h.session.confirmStreamKeyStart(try #require(h.session.streamKeyConfirmation))
+        await h.session.waitForOperation()
+        #expect(!h.timeline.contains("upload"))
+        #expect(h.session.state == .idle && !h.session.streamKeyConfigurationLocked)
+    }
+
+    @Test func endingStreamKeyWhileConnectingRejectsLateTransportResult() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        #expect(h.session.saveStreamKey(name: "", key: "fake-key-for-testing"))
+        h.session.selectDestination(.streamKey)
+        h.hold = "upload"
+        h.session.requestStreamKeyConfirmation()
+        h.session.confirmStreamKeyStart(try #require(h.session.streamKeyConfirmation))
+        try await h.until { h.pending != nil }
+        h.session.confirmEnd()
+        #expect(!h.snapshot.isRecording && h.session.streamKeyConfigurationLocked)
+        h.release()
+        await h.session.waitForOperation()
+        #expect(!h.uploaded && h.session.state == .uploadStopped)
+        #expect(h.server.requests.isEmpty)
+    }
+
     @Test func goLiveRequiresLandscapeEvenWithAnExistingLocalWriter() async throws {
         let h = try await Harness()
         defer { h.cleanup() }
@@ -874,6 +987,7 @@ import UIKit
     var actualMedia: MediaSession?
     var fixturePublisherCloses = 0
     var uploaded = false
+    var uploadContexts: [RTMPSUploadContext] = []
     var rejectUpload = false
     var writerMode = ""
     var hold = ""
@@ -914,7 +1028,8 @@ import UIKit
             if self.writerMode == "init" { return }
             self.snapshot.isRecording = true; self.snapshot.canRecord = false
             if self.writerMode != "noSamples" { self.snapshot.writerStarted = true; self.timeline.append("writer") }
-        }, startUpload: { _ in
+        }, startUpload: { upload in
+            self.uploadContexts.append(upload.context)
             self.timeline.append("upload")
             await self.pause("upload")
             try Task.checkCancellation()
