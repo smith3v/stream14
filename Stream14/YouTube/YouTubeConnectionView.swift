@@ -12,7 +12,7 @@ struct YouTubeConnectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Connect YouTube").font(.headline).accessibilityAddTraits(.isHeader)
-            Text("Connect a Google account that can authorize your YouTube channel. Choose an upcoming event and control it from Stream14.")
+            Text("If you own the channel or can authorize it through Google, connect to choose and control an upcoming event from Stream14.")
                 .font(.footnote)
             Text(authorization.message).fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("youtubeAuthorizationStatus")

@@ -136,10 +136,8 @@ final class SetupScreenTests: XCTestCase {
         name.tap()
         name.typeText("Court A")
         key.tap()
-        key.typeText("fake-key-for-testing")
-        let save = app.buttons["saveStreamKey"]
-        scrollTo(save, in: app)
-        save.tap()
+        key.typeText("fake-key-for-testing\n")
+        app.buttons["saveStreamKey"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["savedStreamKey"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(key.exists)
         app.buttons["Done"].tap()

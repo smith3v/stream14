@@ -6,6 +6,7 @@ struct YouTubeStreamKeyView: View {
     @State private var confirmingRemoval = false
     @State private var draftName = ""
     @State private var draftKey = ""
+    @FocusState private var keyFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -32,6 +33,9 @@ struct YouTubeStreamKeyView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .privacySensitive()
+                    .focused($keyFocused)
+                    .submitLabel(.done)
+                    .onSubmit { keyFocused = false }
                     .accessibilityIdentifier("streamKeyField")
                 Button("Save") {
                     if broadcast.saveStreamKey(name: draftName, key: draftKey) { clearDraft() }
@@ -66,6 +70,7 @@ struct YouTubeStreamKeyView: View {
     }
 
     private func clearDraft() {
+        keyFocused = false
         draftKey = ""
         draftName = ""
         editing = false

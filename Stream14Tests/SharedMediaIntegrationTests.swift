@@ -64,11 +64,14 @@ struct SharedMediaIntegrationTests {
         try recorder.start(url, profile: .hd)
         #expect(!recorder.hasStarted)
         let prepared = PreparedYouTubeIngestion(
-            broadcast: YouTubeBroadcast(id: "fixture", snippet: nil, status: nil, contentDetails: nil),
+            broadcast: YouTubeBroadcast(id: "fixture",
+                snippet: .init(channelId: "fixture-channel", title: nil, scheduledStartTime: nil, isDefaultBroadcast: false),
+                status: nil, contentDetails: nil),
             streamID: "fixture", profile: .hd, generation: 1,
             destination: try YouTubeIngestionDestination(address: "rtmps://rtmps.youtube.com:443/live2", streamName: "fixture-not-a-key"))
+        let upload = try #require(RTMPSUpload(prepared))
         await #expect(throws: RTMPSPublisher.StartupFailure.self) {
-            _ = try await RTMPSPublisher.connected(to: try #require(RTMPSUpload(prepared)),
+            _ = try await RTMPSPublisher.connected(to: upload,
                 canPublish: { recorder.hasStarted }, failed: { _ in })
         }
         await #expect(throws: LocalRecorder.Failure.self) { try await recorder.finish() }

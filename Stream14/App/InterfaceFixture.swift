@@ -10,7 +10,8 @@ import Foundation
             YouTubeAuthorization(driver: nil, configured: true) : YouTubeAuthorization.interfaceFixture()
         let media = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in },
             profile: .fullHD, persistProfile: { _ in }, authorizeCapture: { false })
-        media.installInterfaceFixture(name == "policy-unaccepted" ? "idle" : name)
+        let startsWithCameraClosed = ["policy-unaccepted", "stream-key-missing"].contains(name)
+        media.installInterfaceFixture(startsWithCameraClosed ? "idle" : name)
         if name == "menu-updates" {
             // One finite fixture task, not camera/meter work or a production timer.
             Task { @MainActor in

@@ -248,7 +248,7 @@ struct SetupView: View {
                 }
                 NavigationLink("Help") {
                     Form {
-                        Text("Check camera and sound before starting. Setup sends no camera media. Upload and local saving operate independently. Backgrounding stops capture. A preview-only camera returns on foreground; interrupted recording or upload requires an explicit restart and review of Resume for the same event. Resolve unknown YouTube state before preparing another session.")
+                        Text("Check camera and sound before starting. Setup sends no camera media. Upload and local saving operate independently. Backgrounding stops capture. A preview-only camera returns on foreground. After an interruption, check Studio and reopen the camera. Connected events may offer Resume same event. With a saved key, check the event assigned in Studio before starting again.")
                         Link("Documentation", destination: URL(string: "https://github.com/smith3v/stream14/blob/main/docs/ios-development-guide.md")!)
                     }.navigationTitle("Help")
                         .toolbar { Button("Done") { showingSettings = false } }
@@ -270,6 +270,7 @@ struct SetupView: View {
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
             .onAppear {
                 broadcast.streamKeySettings.retryReadIfNeeded()
                 if showStreamKey { scroll.scrollTo("streamKeySettings", anchor: .top) }
