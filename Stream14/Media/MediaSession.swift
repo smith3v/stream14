@@ -833,14 +833,23 @@ final class MediaSession {
 
     /// Explicit broadcast entry point; no setup/preview action invokes it.
     func startUpload(_ upload: RTMPSUpload) async throws {
+        do {
+            try await attachUpload(upload)
+        } catch let failure as UploadStartupFailure {
+            if failure != .cancelled { qualificationReport?.uploadStartupFailure = failure }
+            throw failure
+        }
+    }
+
+    private func attachUpload(_ upload: RTMPSUpload) async throws {
         guard phase == .recording, !busy, !stopRequested, !pendingUploadCleanup, publisher == nil,
               upload.profile == profile, let sharedEncoder, let mediaDestinations else {
-            throw RTMPSPublisher.StartupFailure.recordingNotReady
+            throw UploadStartupFailure.recordingNotReady
         }
         let recorder = self.recorder
-        guard uploadAffinity.permits(upload.context) else { throw RTMPSPublisher.StartupFailure.contextChanged }
+        guard uploadAffinity.permits(upload.context) else { throw UploadStartupFailure.contextChanged }
         let retry = uploadAffinity.hasAdmittedTransport
-        guard retry || recorder?.hasStarted == true else { throw RTMPSPublisher.StartupFailure.recordingNotReady }
+        guard retry || recorder?.hasStarted == true else { throw UploadStartupFailure.recordingNotReady }
         busy = true
         uploadState = .connecting
         uploadMessage = "Connecting upload"
@@ -860,7 +869,7 @@ final class MediaSession {
             failed: { failure in continuation.yield(failure); continuation.finish() })
         guard !Task.isCancelled, !stopRequested, stopGeneration == uploadStopGeneration, phase == .recording, sample?.id == recordingID else {
             await publisher.stop()
-            throw RTMPSPublisher.StartupFailure.cancelled
+            throw UploadStartupFailure.cancelled
         }
         self.publisher = publisher
         mediaDestinations.attachPublisher(publisher)
@@ -870,13 +879,13 @@ final class MediaSession {
             self.publisher = nil
             await publisher.stop()
             uploadState = .idle
-            throw RTMPSPublisher.StartupFailure.cancelled
+            throw UploadStartupFailure.cancelled
         }
         guard uploadAffinity.admit(upload.context) else {
             mediaDestinations.detachPublisher()
             self.publisher = nil
             await publisher.stop()
-            throw RTMPSPublisher.StartupFailure.contextChanged
+            throw UploadStartupFailure.contextChanged
         }
         uploadState = .connected
         uploadMessage = upload.usesStreamKey ? "Connected to YouTube ingest" :
@@ -1073,6 +1082,7 @@ final class MediaSession {
         let duration = start.duration(to: .now).components
         report.observe(QualificationReport.memory(elapsed: Double(duration.seconds) + Double(duration.attoseconds) / 1e18))
         if let metrics = sharedEncoder?.metrics {
+            report.encoderFailure = metrics.failure
             report.encoder = .init(admittedVideo: metrics.admittedVideoFrames,
                 admittedPCMFrames: metrics.admittedAudioFrames, rejectedVideo: metrics.rejectedVideoFrames,
                 rejectedPCMFrames: metrics.rejectedAudioFrames, highWaterBytes: metrics.highWaterBytes,

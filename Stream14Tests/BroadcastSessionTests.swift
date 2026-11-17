@@ -53,15 +53,16 @@ import UIKit
         defer { h.cleanup() }
         #expect(h.session.saveStreamKey(name: "", key: "fake-key-for-testing"))
         h.session.selectDestination(.streamKey)
-        h.rejectUpload = true
+        h.uploadStartupFailure = .publishTimeout
         h.session.requestStreamKeyConfirmation()
         let intent = try #require(h.session.streamKeyConfirmation)
         h.session.confirmStreamKeyStart(intent)
         await h.session.waitForOperation()
         #expect(h.session.streamKeyUploadFailed && h.session.canRetryStreamKeyUpload)
         #expect(h.snapshot.writerStarted && !h.uploaded)
+        #expect(h.session.streamKeyMessage?.contains("publish request in time") == true)
 
-        h.rejectUpload = false
+        h.uploadStartupFailure = nil
         h.session.confirmStreamKeyRetry()
         await h.session.waitForOperation()
         #expect(h.uploaded && !h.session.streamKeyUploadFailed)
@@ -989,6 +990,7 @@ import UIKit
     var uploaded = false
     var uploadContexts: [RTMPSUploadContext] = []
     var rejectUpload = false
+    var uploadStartupFailure: UploadStartupFailure?
     var writerMode = ""
     var hold = ""
     var pending: CheckedContinuation<Void, Never>?
@@ -1033,6 +1035,7 @@ import UIKit
             self.timeline.append("upload")
             await self.pause("upload")
             try Task.checkCancellation()
+            if let failure = self.uploadStartupFailure { throw failure }
             guard !self.rejectUpload, self.elapsed >= self.rejectUntil else { throw URLError(.cannotConnectToHost) }
             self.uploaded = true; self.snapshot.uploadFailed = false
         }, stopUpload: {

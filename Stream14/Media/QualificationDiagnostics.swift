@@ -64,6 +64,8 @@ nonisolated struct QualificationReport: Codable, Sendable {
     var peakResidentMappingBytes: UInt64?
     var worstThermal = Thermal.unknown
     var encoder = Encoder()
+    var encoderFailure: SharedMediaEncoder.Failure?
+    var uploadStartupFailure: UploadStartupFailure?
     var file = File()
     var transport = Transport()
     var firstObservation: Observation?

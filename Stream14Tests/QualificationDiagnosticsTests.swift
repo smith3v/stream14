@@ -35,11 +35,15 @@ struct QualificationDiagnosticsTests {
         let id = UUID()
         let checkpoint = QualificationCheckpoint()
         var report = QualificationReport(profile: .hd)
+        report.encoderFailure = .rawOverflow
+        report.uploadStartupFailure = .publishTimeout
         report.observe(.init(elapsedSeconds: 10, chargedFootprintBytes: 123, residentMappingBytes: 456, thermal: .fair))
         try await checkpoint.save(report, id: id, directory: directory)
         let loaded = try await QualificationCheckpoint().load(id: id, directory: directory)
         #expect(loaded.elapsedSeconds == 10)
         #expect(loaded.end == .checkpoint)
+        #expect(loaded.encoderFailure == .rawOverflow)
+        #expect(loaded.uploadStartupFailure == .publishTimeout)
         #expect(try QualificationCheckpoint.url(id: id, directory: directory)
             .resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
 
@@ -49,11 +53,14 @@ struct QualificationDiagnosticsTests {
             "rtmps://private.example/app/stream-key", "/private/tester/name/movie.mp4",
             "channel-private", "event-private", "SDKError(Authorization=secret)"]
         var object = try #require(JSONSerialization.jsonObject(with: report.sanitizedData()) as? [String: Any])
+        object.removeValue(forKey: "encoderFailure")
+        object.removeValue(forKey: "uploadStartupFailure")
         object["rawError"] = secrets.joined(separator: " ")
         object["overlayURL"] = secrets[0]
         let dirty = try JSONSerialization.data(withJSONObject: object)
         try dirty.write(to: QualificationCheckpoint.url(id: id, directory: directory), options: .atomic)
         let safe = try await checkpoint.load(id: id, directory: directory)
+        #expect(safe.encoderFailure == nil && safe.uploadStartupFailure == nil)
         let exported = try safe.sanitizedData()
         let hasSecret = secrets.contains { exported.range(of: Data($0.utf8)) != nil }
         #expect(!hasSecret)

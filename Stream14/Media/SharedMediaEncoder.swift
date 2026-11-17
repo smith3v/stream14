@@ -6,7 +6,7 @@ import VideoToolbox
 /// One codec owner after the existing HaishinKit composed-media boundary.
 /// Currently a draft integration component: MediaSession does not attach it yet.
 actor SharedMediaEncoder: MediaMixerOutput {
-    enum Failure: Error, Sendable { case configuration, codec, timeline, audioFormat, rawOverflow, stopped }
+    enum Failure: String, Error, Codable, Sendable { case configuration, codec, timeline, audioFormat, rawOverflow, stopped }
     struct Limits: Sendable {
         var videoFrames = 2
         var audioFrames = 11_025 // 250 ms at the selected 44.1 kHz mixer rate
@@ -20,6 +20,7 @@ actor SharedMediaEncoder: MediaMixerOutput {
         var highWaterAudioFrames = 0
         var rejectedVideoFrames = 0
         var rejectedAudioFrames = 0
+        var failure: Failure?
     }
     private struct Item {
         let sample: CMSampleBuffer
@@ -143,6 +144,7 @@ actor SharedMediaEncoder: MediaMixerOutput {
     private func fail(_ failure: Failure) {
         terminal = true
         intake.withLock { state in
+            state.metrics.failure = failure
             state.accepting = false
             state.samples.removeAll()
             state.bytes = 0; state.videos = 0; state.audioFrames = 0

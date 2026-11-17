@@ -469,7 +469,8 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
                 if retry || attemptedUpload {
                     state = .uploading
                     streamKeyStartupFailed = true
-                    streamKeyMessage = "Couldn’t connect to YouTube ingest. Healthy local recording continues."
+                    let cause = (error as? UploadStartupFailure)?.message ?? "Upload couldn’t start."
+                    streamKeyMessage = media.snapshot().isRecording ? cause + " Local recording continues." : cause
                 } else {
                     state = .idle
                     activeStreamKey = nil

@@ -238,6 +238,7 @@ copy; export neither deletes nor transcodes the original. Storage estimates and
 proactive space polling are out of scope.
 
 Per-recording diagnostic checkpoints are bounded, backup-excluded and local.
-They contain sanitized numeric measurements and safe categories, never URLs,
+They contain numeric measurements and fixed diagnostic categories, including the
+most recent RTMPS startup failure and the encoder failure when available. They contain no URLs,
 account/event IDs, raw payloads or media. Checkpoint/export success is not
 qualification; see the [measurement procedure](qualification-report-template.md).

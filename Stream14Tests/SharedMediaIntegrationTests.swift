@@ -1,4 +1,6 @@
 import AVFoundation
+import Network
+import RTMPHaishinKit
 import Testing
 @testable import Stream14
 
@@ -16,6 +18,13 @@ private actor IntegrationSink {
 
 @Suite(.serialized)
 struct SharedMediaIntegrationTests {
+    @Test func startupFailureCategoriesIdentifyConnectionAndPublishTimeouts() {
+        #expect(UploadStartupFailure.connecting(RTMPConnection.Error.connectionTimedOut) == .networkTimeout)
+        #expect(UploadStartupFailure.connecting(RTMPConnection.Error.requestTimedOut) == .connectTimeout)
+        #expect(UploadStartupFailure.connecting(RTMPConnection.Error.socketErrorOccurred(NWError.tls(-1))) == .tls)
+        #expect(UploadStartupFailure.publishing(RTMPStream.Error.requestTimedOut) == .publishTimeout)
+    }
+
     @Test func failedWriterDoesNotStopHealthyCompressedUpload() async throws {
         let url = temporaryURL()
         defer { try? FileManager.default.removeItem(at: url) }
@@ -70,7 +79,7 @@ struct SharedMediaIntegrationTests {
             streamID: "fixture", profile: .hd, generation: 1,
             destination: try YouTubeIngestionDestination(address: "rtmps://rtmps.youtube.com:443/live2", streamName: "fixture-not-a-key"))
         let upload = try #require(RTMPSUpload(prepared))
-        await #expect(throws: RTMPSPublisher.StartupFailure.self) {
+        await #expect(throws: UploadStartupFailure.recordingNotReady) {
             _ = try await RTMPSPublisher.connected(to: upload,
                 canPublish: { recorder.hasStarted }, failed: { _ in })
         }
