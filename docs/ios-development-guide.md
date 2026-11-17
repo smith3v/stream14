@@ -126,6 +126,32 @@ revoke, local data deletion and the Studio-resolution guard separately; see the
 [design](2026-11-01-stream14-design.md#youtube-authorization-and-broadcast-lifecycle).
 Track verification and fresh-account results in [issue #80](https://github.com/smith3v/stream14/issues/80).
 
+## Verify a saved YouTube stream key on iPhone
+
+Use a Studio Manager account and two disposable Unlisted encoder events. In
+Live Control Room, create one reusable stream key for the iPhone. Assign it to
+one upcoming event at a time. Enable Auto-start and Auto-stop.
+
+1. In **Settings → YouTube → Stream key**, paste and save the key.
+   Relaunch and confirm the saved status. Test replacement and confirmed
+   removal with a disposable key. Restore the test event’s key for publishing.
+2. After relaunch, let the app check for a saved YouTube account. Check that a
+   connected account takes priority even with a key saved, and that **Session**
+   uses the key automatically when disconnected. Check VoiceOver, larger
+   text, and both landscape orientations on iPhone 13 mini. Verify preview
+   sends no video and **Record only** works in either case.
+3. Keep Studio open on another device. Confirm Start identifies the saved-key destination
+   and enables upload and local saving. Verify Live in Studio. End from Stream14
+   and verify that local footage finalizes and Studio ends the event via Auto-stop.
+   Prepare the next session. Repeat with the second event using the same key
+   without revisiting Settings.
+4. In an agreed outage test, interrupt the iPhone’s network while Stream14 is in
+   the foreground. Verify upload failure and continued local saving. Check Studio
+   before confirming a retry. A short outage may allow the same event to continue.
+   Around a minute without ingest can end the event via Auto-stop. A retry then
+   may fail or start another prepared event assigned to the key. Record what
+   Studio shows and whether the original recording remains playable.
+
 ## TestFlight
 
 1. Start from reviewed changes on `main`. Use a new minor version for a release

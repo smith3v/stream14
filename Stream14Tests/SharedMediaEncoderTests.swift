@@ -95,6 +95,7 @@ struct SharedMediaEncoderTests {
         #expect(encoder.metrics.rejectedAudioFrames == 1470)
         await #expect(throws: SharedMediaEncoder.Failure.self) { try await encoder.finish() }
         #expect(errors.withLock { $0.count } == 1)
+        #expect(encoder.metrics.failure == .rawOverflow)
     }
 
     @Test func persistentEncoderPassthroughFilesPreservePacketsAndDecodedMidpoint() async throws {

@@ -45,8 +45,8 @@ gate is one continuous hour; the target is not a qualification claim. See the
 - **End session** confirms the operation and reports local finalization separately
   from remote completion. An unknown remote result offers reconciliation and
   Studio; a stopped upload is not proof the event ended. **Prepare next session**
-  is blocked by active outputs, finalization or unresolved remote work. It resets
-  selection without starting media.
+  is blocked by active outputs, finalization or unresolved remote work. It clears
+  the selected event and reevaluates destination availability without starting media.
 - **Recordings** shows date, size, status and elapsed `HH:MM:SS` when available,
   with spoken duration and recovery warnings for VoiceOver. Support original
   playback, explicit Files/share export and confirmed deletion. Missing metadata
@@ -143,6 +143,8 @@ local writer to accept media before starting upload. An initial writer failure
 blocks publishing. API/startup failure, lost transport, exhausted retries and a
 remotely ended event do not stop a healthy writer.
 
+For a **Connected YouTube event**, use the following lifecycle.
+
 - Resolve the exact selected event and its binding. Reuse a compatible inactive
   binding, including a default reusable stream key. If unbound, create and bind a
   non-reusable stream only after confirmation. Never silently unbind, change
@@ -179,6 +181,39 @@ remotely ended event do not stop a healthy writer.
   nonidentifying Studio-resolution guard across relaunch; failed erasure blocks
   publishing. The operator must resolve the old operation before clearing it.
 
+### Saved YouTube stream key
+
+Studio Managers and operators with a reusable key can use **Settings → YouTube →
+Stream key** without Google sign-in. Save one key in the device-only,
+nonsynchronizing Keychain. Replacement updates the existing item in place. Removal is separately confirmed. YouTube Settings groups account
+actions and key configuration above the policy and account links.
+
+Session prefers an authorized YouTube account, including one restored at launch.
+After the account check finishes, Session uses the saved key when no YouTube
+account is connected. An authorized account still requires an eligible event.
+An unresolved API session retains its reconciliation controls and blocks a new
+stream. A confirmed or active session keeps its captured destination.
+
+In YouTube Studio, assign the key to one upcoming encoder event with Auto-start
+and Auto-stop enabled. In Session, the Start confirmation identifies the saved-key
+destination and warns that sending video can start the assigned event. The app uses the
+existing writer and RTMPS publisher with YouTube’s primary ingest endpoint
+(`rtmps://a.rtmps.youtube.com:443/live2`). It makes no event API calls or changes
+to the Studio event. End stops upload and local capture and finalizes the file.
+YouTube normally ends an Auto-stop event around a minute after ingest stops.
+The app reports the connection and local saving states. Verify the event itself
+in Studio. See [YouTube’s RTMPS requirements](https://developers.google.com/youtube/data/live/guides/rtmps-ingestion)
+and [Auto-start and Auto-stop](https://developers.google.com/youtube/data/live/life-of-a-broadcast).
+
+After upload loss, a healthy recording continues. An extended outage can trigger
+Auto-stop. Retry requires an explicit confirmation after checking the assignment
+in Studio, preferably from another device while local recording continues.
+The app retries the frozen ingest destination for that session. Studio may have
+ended the intended event or assigned another one to the key. On capture
+interruption, reopen the camera and explicitly start a new session after checking
+Studio. Use the same saved key for the next event by assigning it in Studio and
+choosing **Prepare next session** in the app.
+
 ## Interruptions, files and recovery
 
 Keep the phone awake during recording and restore the previous idle-timer
@@ -188,7 +223,7 @@ file and pending event; an interruption does not send Complete. Preview-only
 intent may restore in foreground using a fresh mixer and moving-frame readiness;
 manual Close cancels it. Never start capture on launch or automatically resume
 recording or upload. Reopen preview and explicitly confirm **Resume same event**
-after rechecking the original compatible inactive binding and absence of
+for a connected event after rechecking the original compatible inactive binding and absence of
 uncertain mutations. Resume creates a new file and timeline.
 
 The writer requests ten-second MP4 fragments and declares completion only after
@@ -206,6 +241,7 @@ copy; export neither deletes nor transcodes the original. Storage estimates and
 proactive space polling are out of scope.
 
 Per-recording diagnostic checkpoints are bounded, backup-excluded and local.
-They contain sanitized numeric measurements and safe categories, never URLs,
+They contain numeric measurements and fixed diagnostic categories, including the
+most recent RTMPS startup failure and the encoder failure when available. They contain no URLs,
 account/event IDs, raw payloads or media. Checkpoint/export success is not
 qualification; see the [measurement procedure](qualification-report-template.md).

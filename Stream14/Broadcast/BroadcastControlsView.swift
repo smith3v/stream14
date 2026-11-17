@@ -7,11 +7,26 @@ struct BroadcastControlsView: View {
     let authorization: YouTubeAuthorization
     var allowStart = true
     @State private var confirmingEnd = false
+    @State private var confirmingRetry = false
+
+    private var usesStreamKey: Bool { broadcast.usesStreamKey }
+    private var readyToStart: Bool {
+        media.broadcastCaptureReady && media.broadcastOverlayReady && (media.canRecord || media.hasStartedWriting)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("YouTube: " + broadcast.message).fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("broadcastStatus")
+            if usesStreamKey {
+                if let message = broadcast.streamKeyMessage {
+                    Text(message).accessibilityIdentifier("broadcastStatus")
+                }
+                if broadcast.streamKeyUploadFailed && !broadcast.isWorking {
+                    streamKeyRecovery
+                }
+            } else {
+                Text("YouTube: " + broadcast.message).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("broadcastStatus")
+            }
             if broadcast.reconnectStatus == .exhausted {
                 Button("Retry upload to same event") { broadcast.retryUpload() }
                     .frame(minHeight: 44)
@@ -25,24 +40,27 @@ struct BroadcastControlsView: View {
                     .frame(minHeight: 44)
                     .accessibilityIdentifier("resumeBroadcast")
             }
-            if allowStart && broadcast.canStart && broadcast.state != .ended {
-                Button("Start recording and streaming", systemImage: "dot.radiowaves.left.and.right") {
-                    broadcast.requestConfirmation(channel: selection.channel, event: selection.selected)
+            if allowStart && broadcast.state != .ended && broadcast.state != .uploadStopped {
+                if usesStreamKey && broadcast.canStartStreamKey {
+                    streamKeyStartButton
+                } else if broadcast.canStart {
+                    Button("Start recording and streaming", systemImage: "dot.radiowaves.left.and.right") {
+                        broadcast.requestConfirmation(channel: selection.channel, event: selection.selected)
+                    }
+                    .buttonStyle(SessionActionButtonStyle.start)
+                    .disabled(selection.selected == nil || !readyToStart)
+                    .accessibilityIdentifier("goLive")
                 }
-                .buttonStyle(SessionActionButtonStyle.start)
-                .disabled(selection.selected == nil || !media.broadcastCaptureReady || !media.broadcastOverlayReady ||
-                          !(media.canRecord || media.hasStartedWriting))
-                .accessibilityIdentifier("goLive")
             }
-            if broadcast.isWorking && broadcast.state != .ending {
+            if broadcast.isWorking && broadcast.state != .ending && broadcast.activeStreamKey == nil {
                 Button("Cancel YouTube startup") { broadcast.cancelStartup() }
                     .frame(minHeight: 44)
                     .accessibilityIdentifier("cancelBroadcastStartup")
             }
-            if broadcast.activeIntent != nil || broadcast.pendingRemote != nil {
+            if broadcast.activeStreamKey != nil || broadcast.activeIntent != nil || broadcast.pendingRemote != nil {
                 Button("End session", role: .destructive) { confirmingEnd = true }
                     .buttonStyle(SessionActionButtonStyle.stop)
-                    .disabled(broadcast.state == .ending)
+                    .disabled(!broadcast.canEnd)
                     .accessibilityIdentifier("endBroadcast")
             }
             if broadcast.state == .needsReconciliation {
@@ -67,7 +85,9 @@ struct BroadcastControlsView: View {
                 Button("End session and local recording", role: .destructive) { broadcast.confirmEnd() }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                if let intent = broadcast.activeIntent {
+                if broadcast.activeStreamKey != nil {
+                    Text("Stop sending video to YouTube and finalize local recording? YouTube handles ending the event using Auto-stop. Check its status in YouTube Studio.")
+                } else if let intent = broadcast.activeIntent {
                     Text("End \(intent.event.title) on \(intent.channel.title) (\(intent.event.visibility))? This ends the YouTube broadcast and stops local recording and capture. Upload and local capture will stop, even if YouTube completion cannot be confirmed.")
                 } else if let pending = broadcast.pendingRemote {
                     Text("End event \(pending.eventID) on channel \(pending.channelID)? YouTube state will be read before any completion request. This ends the YouTube broadcast and stops local recording and capture, even if remote completion cannot be confirmed.")
@@ -75,4 +95,37 @@ struct BroadcastControlsView: View {
             }
     }
 
+    private var streamKeyStartButton: some View {
+        Button("Start recording and streaming", systemImage: "dot.radiowaves.left.and.right") {
+            broadcast.requestStreamKeyConfirmation()
+        }
+        .buttonStyle(SessionActionButtonStyle.start)
+        .disabled(!readyToStart || !media.canConfirmLandscapeStart)
+        .accessibilityIdentifier("goLive")
+        .confirmationDialog("Start recording and streaming?", isPresented: Binding(
+            get: { broadcast.streamKeyConfirmation != nil },
+            set: { if !$0 { broadcast.dismissStreamKeyConfirmation() } }), titleVisibility: .visible,
+            presenting: broadcast.streamKeyConfirmation) { intent in
+                Button("Start upload") { broadcast.confirmStreamKeyStart(intent) }
+                Button("Cancel", role: .cancel) { broadcast.dismissStreamKeyConfirmation() }
+            } message: { intent in
+                Text("Destination: Saved YouTube stream key\nQuality: \(intent.upload.profile.label)\nSending camera and microphone media can start the event assigned to this key in YouTube Studio. Confirm it’s the intended event before starting.")
+            }
+    }
+
+    private var streamKeyRecovery: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Auto-stop may end the event during an outage. Before retrying, use YouTube Studio on another device to check the event assigned to this key while Stream14 keeps recording.")
+                .font(.footnote)
+            Button("Retry upload…") { confirmingRetry = true }
+                .frame(minHeight: 44)
+                .disabled(!broadcast.canRetryStreamKeyUpload)
+                .confirmationDialog("Retry upload?", isPresented: $confirmingRetry, titleVisibility: .visible) {
+                    Button("Retry upload") { broadcast.confirmStreamKeyRetry() }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Check Studio before sending again with the saved key. If Auto-stop ended the event, reconnecting may fail or start another prepared event assigned to this key.")
+                }
+        }
+    }
 }

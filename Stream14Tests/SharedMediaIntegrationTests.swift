@@ -1,4 +1,6 @@
 import AVFoundation
+import Network
+import RTMPHaishinKit
 import Testing
 @testable import Stream14
 
@@ -16,6 +18,13 @@ private actor IntegrationSink {
 
 @Suite(.serialized)
 struct SharedMediaIntegrationTests {
+    @Test func startupFailureCategoriesIdentifyConnectionAndPublishTimeouts() {
+        #expect(UploadStartupFailure.connecting(RTMPConnection.Error.connectionTimedOut) == .networkTimeout)
+        #expect(UploadStartupFailure.connecting(RTMPConnection.Error.requestTimedOut) == .connectTimeout)
+        #expect(UploadStartupFailure.connecting(RTMPConnection.Error.socketErrorOccurred(NWError.tls(-1))) == .tls)
+        #expect(UploadStartupFailure.publishing(RTMPStream.Error.requestTimedOut) == .publishTimeout)
+    }
+
     @Test func failedWriterDoesNotStopHealthyCompressedUpload() async throws {
         let url = temporaryURL()
         defer { try? FileManager.default.removeItem(at: url) }
@@ -64,11 +73,14 @@ struct SharedMediaIntegrationTests {
         try recorder.start(url, profile: .hd)
         #expect(!recorder.hasStarted)
         let prepared = PreparedYouTubeIngestion(
-            broadcast: YouTubeBroadcast(id: "fixture", snippet: nil, status: nil, contentDetails: nil),
+            broadcast: YouTubeBroadcast(id: "fixture",
+                snippet: .init(channelId: "fixture-channel", title: nil, scheduledStartTime: nil, isDefaultBroadcast: false),
+                status: nil, contentDetails: nil),
             streamID: "fixture", profile: .hd, generation: 1,
             destination: try YouTubeIngestionDestination(address: "rtmps://rtmps.youtube.com:443/live2", streamName: "fixture-not-a-key"))
-        await #expect(throws: RTMPSPublisher.StartupFailure.self) {
-            _ = try await RTMPSPublisher.connected(to: prepared,
+        let upload = try #require(RTMPSUpload(prepared))
+        await #expect(throws: UploadStartupFailure.recordingNotReady) {
+            _ = try await RTMPSPublisher.connected(to: upload,
                 canPublish: { recorder.hasStarted }, failed: { _ in })
         }
         await #expect(throws: LocalRecorder.Failure.self) { try await recorder.finish() }

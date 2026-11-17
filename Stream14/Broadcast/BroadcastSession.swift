@@ -12,6 +12,21 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     var customMirror: Mirror { Mirror(self, children: ["eventID": event.id, "overlay": "<redacted>"]) }
 }
 
+nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
+    let id: UUID
+    let upload: RTMPSUpload
+    let overlayURL: String
+
+    var customMirror: Mirror { Mirror(self, children: ["destination": "<redacted>", "overlay": "<redacted>"]) }
+
+    init(key: SavedYouTubeStreamKey, profile: SessionProfile, overlayURL: String) {
+        let id = UUID()
+        self.id = id
+        upload = RTMPSUpload(streamKey: key, profile: profile, sessionID: id)
+        self.overlayURL = overlayURL
+    }
+}
+
 /// A narrow fixture boundary, not another capture implementation. The production
 /// initializer below captures the exact MediaSession also displayed by SetupView.
 @MainActor struct BroadcastMedia {
@@ -30,7 +45,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     }
     let snapshot: () -> Snapshot
     let record: () async -> Void
-    let startUpload: (PreparedYouTubeIngestion) async throws -> Void
+    let startUpload: (RTMPSUpload) async throws -> Void
     let stopUpload: () async -> Void
     let stopAll: () -> Void
     let lockConfiguration: (Bool) -> Void
@@ -52,7 +67,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     }
 
     init(snapshot: @escaping () -> Snapshot, record: @escaping () async -> Void,
-         startUpload: @escaping (PreparedYouTubeIngestion) async throws -> Void,
+         startUpload: @escaping (RTMPSUpload) async throws -> Void,
          stopUpload: @escaping () async -> Void, stopAll: @escaping () -> Void,
          lockConfiguration: @escaping (Bool) -> Void) {
         self.snapshot = snapshot; self.record = record; self.startUpload = startUpload
@@ -61,11 +76,17 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
 }
 
 @MainActor @Observable final class BroadcastSession {
-    enum State: Equatable { case idle, starting, waitingForIngestion, goingLive, live, needsReconciliation, ending, ended }
+    enum State: Equatable { case idle, starting, waitingForIngestion, goingLive, live, uploading, needsReconciliation, ending, ended, uploadStopped }
     private(set) var state: State = .idle
     private(set) var message = "Local rehearsal is available. Go Live requires a selected YouTube event and confirmation."
     private(set) var confirmation: BroadcastIntent?
     private(set) var activeIntent: BroadcastIntent?
+    let streamKeySettings: YouTubeStreamKeySettings
+    private(set) var streamKeyConfirmation: StreamKeyIntent?
+    private(set) var activeStreamKey: StreamKeyIntent?
+    private(set) var streamKeyMessage: String?
+    private var streamKeyUploadAdmitted = false
+    private var streamKeyStartupFailed = false
     private(set) var pendingRemote: PendingRemoteBroadcast?
     private(set) var isWorking = false
     private(set) var journalUnavailable = false
@@ -93,11 +114,13 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
 
     init(authorization: YouTubeAuthorization, client: YouTubeClient, binding: YouTubeBinding,
          media: BroadcastMedia, store: PendingRemoteBroadcastStore = PendingRemoteBroadcastStore(),
+         streamKeySettings: YouTubeStreamKeySettings = YouTubeStreamKeySettings(),
          startupSeconds: Double = 60, endSeconds: Double = 15, pollSeconds: Double = 2, writerSeconds: Double = 5, reconnectClock: ReconnectClock = ReconnectClock()) {
         self.authorization = authorization; self.client = client; self.binding = binding
         self.media = media; self.store = store; self.startupSeconds = startupSeconds
         self.endSeconds = endSeconds; self.pollSeconds = pollSeconds; self.writerSeconds = writerSeconds
         self.reconnectClock = reconnectClock
+        self.streamKeySettings = streamKeySettings
         authorization.onDeleteAPIData = { [weak self] in self?.eraseYouTubeAPIData() ?? false }
         requiresStudioResolution = store.requiresStudioResolution || binding.requiresStudioResolution
         do {
@@ -127,7 +150,8 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
 
     convenience init(authorization: YouTubeAuthorization, media: MediaSession) {
         let client = YouTubeClient(authorization: authorization)
-        self.init(authorization: authorization, client: client, binding: YouTubeBinding(client: client), media: BroadcastMedia(session: media))
+        self.init(authorization: authorization, client: client, binding: YouTubeBinding(client: client),
+            media: BroadcastMedia(session: media), streamKeySettings: .deviceSettings())
         media.onInterruption = { [weak self] reason in self?.interrupted(reason) }
     }
 
@@ -155,15 +179,52 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     }
     #endif
 
-    var locksSelection: Bool { confirmation != nil || isWorking || activeIntent != nil || pendingRemote != nil }
-    var requiresEndFirst: Bool { isWorking || [.starting, .waitingForIngestion, .goingLive, .live, .ending].contains(state) }
+    var locksSelection: Bool {
+        confirmation != nil || streamKeyConfirmation != nil || isWorking ||
+            activeIntent != nil || activeStreamKey != nil || pendingRemote != nil
+    }
+    var requiresEndFirst: Bool {
+        isWorking || [.starting, .waitingForIngestion, .goingLive, .live, .uploading, .ending].contains(state)
+    }
     var canResume: Bool { !isWorking && !hasUnsettledMutation && !journalUnavailable && !requiresStudioResolution && authorization.isAuthorized && pendingRemote?.interrupted == true && pendingRemote?.transition == nil && pendingRemote?.streamID != nil }
-    var canStart: Bool { !isWorking && activeIntent == nil && pendingRemote == nil && !journalUnavailable && !requiresStudioResolution && authorization.isAuthorized }
+    private var canStartNewBroadcast: Bool {
+        !isWorking && !hasUnsettledMutation && !binding.isPreparing && activeIntent == nil &&
+            activeStreamKey == nil && pendingRemote == nil && !journalUnavailable && !requiresStudioResolution
+    }
+    /// A confirmed or active session keeps its own destination through account changes.
+    var usesStreamKey: Bool {
+        if activeStreamKey != nil || streamKeyConfirmation != nil { return true }
+        guard !requiresStudioResolution, !journalUnavailable, state != .needsReconciliation else { return false }
+        if state == .uploadStopped { return true }
+        return activeIntent == nil && confirmation == nil && pendingRemote == nil && canUseSavedStreamKey
+    }
+
+    private var canUseSavedStreamKey: Bool {
+        !authorization.isAuthorized && !authorization.isWorking && !authorization.hasPendingLaunchRestore &&
+            streamKeySettings.saved != nil
+    }
+
+    var canStart: Bool { canStartNewBroadcast && authorization.isAuthorized }
+    var canStartStreamKey: Bool {
+        canStartNewBroadcast && canUseSavedStreamKey && authorization.policyAccepted
+    }
     var canEnd: Bool { !isWorking || state != .ending }
+
+    var streamKeyConfigurationLocked: Bool { streamKeyConfirmation != nil || activeStreamKey != nil }
+
+    @discardableResult func saveStreamKey(key: String) -> Bool {
+        guard !streamKeyConfigurationLocked else { return false }
+        return streamKeySettings.save(key: key)
+    }
+
+    @discardableResult func removeStreamKey() -> Bool {
+        guard !streamKeyConfigurationLocked else { return false }
+        return streamKeySettings.remove()
+    }
 
     var canPrepareNextSession: Bool {
         !locksSelection && !hasUnsettledMutation && !requiresStudioResolution && !journalUnavailable &&
-        (state == .idle || state == .ended) && !media.snapshot().isRecording && media.snapshot().canPrepareNextSession
+        (state == .idle || state == .ended || state == .uploadStopped) && !media.snapshot().isRecording && media.snapshot().canPrepareNextSession
     }
 
     /// Clears only settled presentation state. The view independently gates writer
@@ -171,13 +232,14 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     @discardableResult func prepareNextSession() -> Bool {
         guard canPrepareNextSession else { return false }
         state = .idle
+        streamKeyMessage = nil
         message = "Choose a new event and check camera and sound. Nothing is being uploaded."
         return true
     }
 
     /// UI calls this before displaying the confirmation. No API/media work here.
     func requestConfirmation(channel: YouTubeChannel?, event: YouTubeBroadcast?) {
-        guard canStart, let channel, let event, event.ineligibility(channelID: channel.id) == nil else { return }
+        guard canStart, !locksSelection, let channel, let event, event.ineligibility(channelID: channel.id) == nil else { return }
         let snapshot = media.snapshot()
         guard snapshot.canConfirmLandscapeStart else {
             message = "Turn your iPhone to landscape before Go Live."; return
@@ -235,18 +297,9 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
 
     private func start(_ intent: BroadcastIntent, request: UInt64) async throws {
         try check(intent, request)
-        if !media.snapshot().writerStarted {
-            guard media.snapshot().canRecord else { throw StartError.writer }
-            await media.record()
-            try check(intent, request)
-            let deadline = ContinuousClock.now.advanced(by: .seconds(writerSeconds))
-            while !media.snapshot().writerStarted {
-                guard media.snapshot().isRecording, ContinuousClock.now < deadline else { throw StartError.writer }
-                try await Task.sleep(for: .milliseconds(50))
-                try check(intent, request)
-            }
+        try await awaitLocalWriter {
+            try self.check(intent, request)
         }
-        guard media.snapshot().writerStarted else { throw StartError.writer }
         let channel = try await client.authorizedChannel(generation: intent.generation)
         try check(intent, request)
         guard channel == intent.channel else { throw StartError.changed }
@@ -280,7 +333,8 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         // crash/relaunch we read state rather than publishing or assuming idle.
         try setPending(PendingRemoteBroadcast(channelID: intent.channel.id, eventID: intent.event.id, interrupted: false, streamID: prepared.streamID, profileName: intent.profile.rawValue))
         message = "Connecting upload; YouTube has not confirmed Live."
-        try await media.startUpload(prepared)
+        guard let upload = RTMPSUpload(prepared) else { throw StartError.changed }
+        try await media.startUpload(upload)
         try check(intent, request)
         admitted = prepared
         state = .waitingForIngestion
@@ -335,10 +389,148 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         }
     }
 
+    private func awaitLocalWriter(check: () throws -> Void) async throws {
+        if !media.snapshot().writerStarted {
+            guard media.snapshot().canRecord else { throw StartError.writer }
+            await media.record()
+            try check()
+            let deadline = ContinuousClock.now.advanced(by: .seconds(writerSeconds))
+            while !media.snapshot().writerStarted {
+                guard media.snapshot().isRecording, ContinuousClock.now < deadline else { throw StartError.writer }
+                try await Task.sleep(for: .milliseconds(50))
+                try check()
+            }
+        }
+        guard media.snapshot().writerStarted else { throw StartError.writer }
+    }
+
+    func requestStreamKeyConfirmation() {
+        guard canStartStreamKey, !locksSelection, let key = streamKeySettings.saved else { return }
+        let snapshot = media.snapshot()
+        guard snapshot.canConfirmLandscapeStart, snapshot.captureReady, snapshot.overlayReady,
+              snapshot.canRecord || snapshot.writerStarted else { return }
+        streamKeyConfirmation = StreamKeyIntent(key: key, profile: snapshot.profile, overlayURL: snapshot.overlayURL)
+    }
+
+    func dismissStreamKeyConfirmation() { streamKeyConfirmation = nil }
+
+    func confirmStreamKeyStart(_ intent: StreamKeyIntent) {
+        guard canStartStreamKey, streamKeyConfirmation?.id == intent.id else { return }
+        streamKeyConfirmation = nil
+        let snapshot = media.snapshot()
+        guard snapshot.canConfirmLandscapeStart, snapshot.captureReady, snapshot.overlayReady else { return }
+
+        activeStreamKey = intent
+        streamKeyUploadAdmitted = false
+        media.lockConfiguration(true)
+        startStreamKeyUpload(intent, retry: false)
+    }
+
+    var streamKeyUploadFailed: Bool {
+        activeStreamKey != nil && (streamKeyStartupFailed || media.snapshot().uploadFailed)
+    }
+
+    var canRetryStreamKeyUpload: Bool {
+        guard state == .uploading, !isWorking, streamKeyUploadFailed,
+              !journalUnavailable, !requiresStudioResolution else { return false }
+        let snapshot = media.snapshot()
+        return snapshot.pipelineRunning && snapshot.canConfirmLandscapeStart &&
+            (streamKeyUploadAdmitted || snapshot.writerStarted)
+    }
+
+    func confirmStreamKeyRetry() {
+        guard canRetryStreamKeyUpload, let intent = activeStreamKey else { return }
+        startStreamKeyUpload(intent, retry: true)
+    }
+
+    private func startStreamKeyUpload(_ intent: StreamKeyIntent, retry: Bool) {
+        epoch &+= 1
+        let request = epoch
+        streamKeyStartupFailed = false
+        state = .starting
+        isWorking = true
+        streamKeyMessage = retry ? "Reconnecting to YouTube ingest…" : "Starting local saving before upload…"
+        operation = Task {
+            var attemptedUpload = false
+            do {
+                try checkStreamKeyMedia(intent, request: request, retry: retry)
+                if !retry {
+                    try await awaitLocalWriter {
+                        try self.checkStreamKeyMedia(intent, request: request, retry: false)
+                    }
+                }
+                streamKeyMessage = "Connecting to YouTube ingest…"
+                attemptedUpload = true
+                try await media.startUpload(intent.upload)
+                guard request == epoch, !Task.isCancelled else { return }
+                streamKeyUploadAdmitted = true
+                state = .uploading
+                streamKeyMessage = "Check the event in YouTube Studio. YouTube handles start and end using the event’s settings."
+            } catch {
+                guard request == epoch else { return }
+                if retry || attemptedUpload {
+                    state = .uploading
+                    streamKeyStartupFailed = true
+                    let cause = (error as? UploadStartupFailure)?.message ?? "Upload couldn’t start."
+                    streamKeyMessage = media.snapshot().isRecording ? cause + " Local recording continues." : cause
+                } else {
+                    state = .idle
+                    activeStreamKey = nil
+                    media.lockConfiguration(false)
+                    streamKeyMessage = "Upload didn’t start. Check camera, overlay and local saving, then try again."
+                }
+            }
+            if request == epoch { isWorking = false; operation = nil }
+        }
+    }
+
+    private func checkStreamKeyMedia(_ intent: StreamKeyIntent, request: UInt64, retry: Bool) throws {
+        try Task.checkCancellation()
+        let snapshot = media.snapshot()
+        guard request == epoch, snapshot.profile == intent.upload.profile, snapshot.overlayURL == intent.overlayURL,
+              snapshot.canConfirmLandscapeStart else { throw StartError.changed }
+        if retry {
+            guard snapshot.pipelineRunning else { throw StartError.changed }
+        } else {
+            guard snapshot.captureReady, snapshot.overlayReady else { throw StartError.changed }
+        }
+    }
+
+    private func stopStreamKeySession(interruption: SessionInterruption? = nil) {
+        guard state != .ending else { return }
+        epoch &+= 1
+        let request = epoch
+        let previous = operation
+        previous?.cancel()
+        // On interruption MediaSession is already responsible for tearing down capture.
+        if interruption == nil { media.stopAll() }
+        state = .ending
+        isWorking = true
+        streamKeyMessage = "Stopping upload and finalizing local saving…"
+        operation = Task {
+            await previous?.value
+            guard request == epoch else { return }
+            state = .uploadStopped
+            streamKeyMessage = (interruption.map { $0.message + " " } ?? "") +
+                "Upload stopped. Check YouTube Studio for the event’s status."
+            activeStreamKey = nil
+            streamKeyUploadAdmitted = false
+            streamKeyStartupFailed = false
+            media.lockConfiguration(false)
+            isWorking = false
+            operation = nil
+        }
+    }
+
     /// Called synchronously before MediaSession closes. Never asks YouTube to
     /// complete: iOS can suspend us and the remote event may remain live.
     func interrupted(_ reason: SessionInterruption) {
         confirmation = nil
+        streamKeyConfirmation = nil
+        if activeStreamKey != nil {
+            stopStreamKeySession(interruption: reason)
+            return
+        }
         guard activeIntent != nil || pendingRemote != nil || isWorking else { return }
         cancelSupervision()
         epoch &+= 1
@@ -418,7 +610,12 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     /// Invoked only by the confirmation dialog naming the frozen/pending event.
     /// Whole-session stop is dispatched before remote work and never awaits it.
     func confirmEnd() {
-        guard state != .ending, let context = pendingRemote ?? activeIntent.map({ PendingRemoteBroadcast(channelID: $0.channel.id, eventID: $0.event.id) }) else { return }
+        guard state != .ending else { return }
+        if activeStreamKey != nil {
+            stopStreamKeySession()
+            return
+        }
+        guard let context = pendingRemote ?? activeIntent.map({ PendingRemoteBroadcast(channelID: $0.channel.id, eventID: $0.event.id) }) else { return }
         cancelSupervision()
         epoch &+= 1
         let request = epoch
@@ -544,6 +741,11 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
         var erased = true
         do { try store.eraseAPIData(requiringStudioResolution: needsGuard) } catch { erased = false }
         do { try binding.eraseAPIData(requiringStudioResolution: needsGuard) } catch { erased = false }
+        // Expiring unrelated API data must not cut off a saved-key upload.
+        if activeStreamKey != nil {
+            journalUnavailable = !erased
+            return erased
+        }
         cancelSupervision(); epoch &+= 1; operation?.cancel()
         confirmation = nil; activeIntent = nil; pendingRemote = nil; admitted = nil
         isWorking = true; state = needsGuard ? .needsReconciliation : .idle
@@ -562,7 +764,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
     /// This explicit owner acknowledgement is the only way to remove the erased
     /// context's guard. Never inferred from reconnecting, selecting, or relaunch.
     func confirmDeletedDataResolvedInStudio() {
-        guard requiresStudioResolution, !journalUnavailable, !isWorking,
+        guard requiresStudioResolution, !journalUnavailable, !isWorking, activeStreamKey == nil,
               !hasUnsettledMutation, !binding.isPreparing else { return }
         do {
             try store.confirmStudioResolution()
@@ -592,6 +794,7 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
 
     func accountChanged() {
         confirmation = nil
+        streamKeyConfirmation = nil
         guard let intent = activeIntent, intent.generation != authorization.generation else { return }
         cancelSupervision()
         epoch &+= 1
@@ -680,7 +883,8 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
                     if failed {
                         guard reconnectClock.now() - outageStart! < 180 else { continue }
                         reconnectStatus = .connecting
-                        try await media.startUpload(prepared)
+                        guard let upload = RTMPSUpload(prepared) else { throw StartError.changed }
+                        try await media.startUpload(upload)
                         try checkGeneration(request, intent.generation)
                         outageStart = nil; reconnectAttempts = 0
                         message = "Upload reconnected to the same event. YouTube status was read separately; check the receiver."

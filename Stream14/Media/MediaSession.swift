@@ -781,7 +781,7 @@ final class MediaSession {
             self.publisher = nil
             publisherErrorTask?.cancel(); publisherErrorTask = nil
             uploadState = .idle
-            uploadMessage = "Upload stopped after session interruption; YouTube end is unconfirmed"
+            uploadMessage = interruption ? "Upload stopped after an interruption" : "Upload stopped"
             interruptedUploadClosing = Task { await publisher.stop() }
         }
         if !busy { Task { await close() } }
@@ -831,33 +831,45 @@ final class MediaSession {
         } else { requestStop() }
     }
 
-    /// Explicit F7 integration entry point; no setup/preview action invokes it.
-    func startUpload(_ prepared: PreparedYouTubeIngestion) async throws {
+    /// Explicit broadcast entry point; no setup/preview action invokes it.
+    func startUpload(_ upload: RTMPSUpload) async throws {
+        do {
+            try await attachUpload(upload)
+        } catch let failure as UploadStartupFailure {
+            if failure != .cancelled { qualificationReport?.uploadStartupFailure = failure }
+            throw failure
+        }
+    }
+
+    private func attachUpload(_ upload: RTMPSUpload) async throws {
         guard phase == .recording, !busy, !stopRequested, !pendingUploadCleanup, publisher == nil,
-              prepared.profile == profile, let sharedEncoder, let mediaDestinations else {
-            throw RTMPSPublisher.StartupFailure.recordingNotReady
+              upload.profile == profile, let sharedEncoder, let mediaDestinations else {
+            throw UploadStartupFailure.recordingNotReady
         }
         let recorder = self.recorder
-        guard uploadAffinity.permits(prepared) else { throw RTMPSPublisher.StartupFailure.contextChanged }
+        guard uploadAffinity.permits(upload.context) else { throw UploadStartupFailure.contextChanged }
         let retry = uploadAffinity.hasAdmittedTransport
-        guard retry || recorder?.hasStarted == true else { throw RTMPSPublisher.StartupFailure.recordingNotReady }
+        guard retry || recorder?.hasStarted == true else { throw UploadStartupFailure.recordingNotReady }
         busy = true
         uploadState = .connecting
         uploadMessage = "Connecting upload"
         defer {
-            if publisher == nil, uploadState == .connecting { uploadState = Task.isCancelled ? .idle : .failed }
+            if publisher == nil, uploadState == .connecting {
+                uploadState = Task.isCancelled ? .idle : .failed
+                uploadMessage = Task.isCancelled ? "Upload stopped" : "Couldn’t connect to YouTube ingest"
+            }
             finishOperation()
         }
         let stopGeneration = uploadStopGeneration
         let recordingID = sample?.id
         let (failures, continuation) = AsyncStream<RTMPSPublisher.Failure>.makeStream(bufferingPolicy: .bufferingNewest(1))
-        let publisher = try await RTMPSPublisher.connected(to: prepared,
+        let publisher = try await RTMPSPublisher.connected(to: upload,
             canPublish: { retry || recorder?.hasStarted == true },
             diagnostics: qualificationTransport,
             failed: { failure in continuation.yield(failure); continuation.finish() })
         guard !Task.isCancelled, !stopRequested, stopGeneration == uploadStopGeneration, phase == .recording, sample?.id == recordingID else {
             await publisher.stop()
-            throw RTMPSPublisher.StartupFailure.cancelled
+            throw UploadStartupFailure.cancelled
         }
         self.publisher = publisher
         mediaDestinations.attachPublisher(publisher)
@@ -867,27 +879,26 @@ final class MediaSession {
             self.publisher = nil
             await publisher.stop()
             uploadState = .idle
-            throw RTMPSPublisher.StartupFailure.cancelled
+            throw UploadStartupFailure.cancelled
         }
-        guard uploadAffinity.admit(prepared) else {
+        guard uploadAffinity.admit(upload.context) else {
             mediaDestinations.detachPublisher()
             self.publisher = nil
             await publisher.stop()
-            throw RTMPSPublisher.StartupFailure.contextChanged
+            throw UploadStartupFailure.contextChanged
         }
         uploadState = .connected
-        uploadMessage = "Upload connected; waiting for YouTube confirmation"
+        uploadMessage = upload.usesStreamKey ? "Connected to YouTube ingest" :
+            "Upload connected; waiting for YouTube confirmation"
         publisherErrorTask = Task { [weak self, weak publisher] in
             for await _ in failures {
                 guard !Task.isCancelled, let self, let publisher, self.publisher === publisher else { return }
                 self.mediaDestinations?.detachPublisher()
                 self.publisher = nil
                 self.uploadState = .failed
-                self.uploadMessage = "Upload failed. Local recording continues while healthy."
+                self.uploadMessage = self.recorder == nil ? "Upload failed; backup unavailable." :
+                    "Upload failed. Local recording continues while healthy."
                 await publisher.stop()
-                if self.recorder == nil {
-                    self.uploadMessage = "Upload failed; backup unavailable. Retry the same event or end."
-                }
             }
         }
     }
@@ -1071,6 +1082,7 @@ final class MediaSession {
         let duration = start.duration(to: .now).components
         report.observe(QualificationReport.memory(elapsed: Double(duration.seconds) + Double(duration.attoseconds) / 1e18))
         if let metrics = sharedEncoder?.metrics {
+            report.encoderFailure = metrics.failure
             report.encoder = .init(admittedVideo: metrics.admittedVideoFrames,
                 admittedPCMFrames: metrics.admittedAudioFrames, rejectedVideo: metrics.rejectedVideoFrames,
                 rejectedPCMFrames: metrics.rejectedAudioFrames, highWaterBytes: metrics.highWaterBytes,
@@ -1161,6 +1173,7 @@ final class MediaSession {
         interruptedUploadClosing = nil
         await finishQualification()
         uploadAffinity.endCaptureSession()
+        if uploadState != .idle { uploadMessage = "Upload stopped" }
         uploadState = .idle
         phase = .idle
         if interrupted && !failure { message = "Capture stopped after an interruption. Open the camera explicitly to resume." }

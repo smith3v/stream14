@@ -1,7 +1,61 @@
 import AVFoundation
 import HaishinKit
 import Logboard
+import Network
 import RTMPHaishinKit
+
+/// Only these fixed categories may leave the connection boundary. An SDK error
+/// or server response can include the stream key.
+nonisolated enum UploadStartupFailure: String, Error, Codable, Sendable {
+    case recordingNotReady, contextChanged, cancelled, configuration
+    case networkTimeout, dns, tls, connectTimeout, connectRejected, connectFailed
+    case publishTimeout, publishRejected, publishFailed
+
+    var message: String {
+        switch self {
+        case .recordingNotReady: "Local recording wasn’t ready for upload."
+        case .contextChanged: "The recording session changed before upload could start."
+        case .cancelled: "Upload startup was interrupted."
+        case .configuration: "The RTMPS stream couldn’t be configured."
+        case .networkTimeout: "The network connection to YouTube ingest timed out."
+        case .dns: "The iPhone couldn’t resolve the YouTube ingest hostname."
+        case .tls: "The secure connection to YouTube ingest failed."
+        case .connectTimeout: "YouTube ingest didn’t answer the RTMP connection request in time."
+        case .connectRejected: "YouTube ingest rejected the RTMP connection."
+        case .connectFailed: "The RTMPS connection to YouTube ingest failed."
+        case .publishTimeout: "YouTube ingest didn’t answer the publish request in time."
+        case .publishRejected: "YouTube ingest rejected the publish request. Check the stream key and assignment in Studio."
+        case .publishFailed: "The RTMPS publish request failed."
+        }
+    }
+
+    static func connecting(_ error: any Error) -> Self {
+        guard let error = error as? RTMPConnection.Error else { return .connectFailed }
+        switch error {
+        case .connectionTimedOut: return .networkTimeout
+        case .requestTimedOut: return .connectTimeout
+        case .requestFailed(let response):
+            return response.status?.code == RTMPConnection.Code.connectRejected.rawValue ? .connectRejected : .connectFailed
+        case .socketErrorOccurred(let error):
+            switch error as? NWError {
+            case .dns: return .dns
+            case .tls: return .tls
+            default: return .connectFailed
+            }
+        default: return .connectFailed
+        }
+    }
+
+    static func publishing(_ error: any Error) -> Self {
+        guard let error = error as? RTMPStream.Error else { return .publishFailed }
+        switch error {
+        case .requestTimedOut: return .publishTimeout
+        case .requestFailed(let response):
+            return response.status?.code == RTMPStream.Code.publishBadName.rawValue ? .publishRejected : .publishFailed
+        default: return .publishFailed
+        }
+    }
+}
 
 /// Library-specific sender for one independently owned transport generation.
 /// Only compressed append APIs are used: never attach this stream to the mixer.
@@ -28,7 +82,7 @@ actor RTMPSConnection {
 
     private func connect(endpoint: URL, streamName: String, profile: SessionProfile,
                          canPublish: @Sendable () -> Bool) async throws {
-        guard !closed, stream == nil else { throw Failure.cancelled }
+        guard !closed, stream == nil else { throw UploadStartupFailure.cancelled }
         let stream = RTMPStream(connection: connection)
         self.stream = stream
         do {
@@ -41,16 +95,17 @@ actor RTMPSConnection {
                 allowFrameReordering: false, expectedFrameRate: profile.frameRate))
             try await stream.setAudioSettings(AudioCodecSettings(bitRate: profile.audioBitRate,
                 downmix: false, sampleRate: profile.audioSampleRate))
-            guard !closed, !Task.isCancelled, canPublish() else { throw Failure.cancelled }
-            _ = try await connection.connect(endpoint.absoluteString)
-            guard !closed, !Task.isCancelled, canPublish() else { throw Failure.cancelled }
-            _ = try await stream.publish(streamName)
-            guard !closed, !Task.isCancelled else { throw Failure.cancelled }
+            guard !closed, !Task.isCancelled, canPublish() else { throw UploadStartupFailure.cancelled }
+            do { _ = try await connection.connect(endpoint.absoluteString) }
+            catch { throw UploadStartupFailure.connecting(error) }
+            guard !closed, !Task.isCancelled, canPublish() else { throw UploadStartupFailure.cancelled }
+            do { _ = try await stream.publish(streamName) }
+            catch { throw UploadStartupFailure.publishing(error) }
+            guard !closed, !Task.isCancelled else { throw UploadStartupFailure.cancelled }
         } catch {
             await close()
-            // Never propagate SDK errors/status strings: server responses can
-            // contain the stream name or complete destination.
-            throw closed && Task.isCancelled ? Failure.cancelled : Failure.connection
+            throw Task.isCancelled ? UploadStartupFailure.cancelled :
+                ((error as? UploadStartupFailure) ?? .configuration)
         }
     }
 

@@ -102,7 +102,7 @@ final class SetupScreenTests: XCTestCase {
         let agree = app.buttons["acceptYouTubePolicy"]
         scrollTo(agree, in: app)
         XCTAssertTrue(app.links["Privacy policy"].exists)
-        XCTAssertFalse(app.buttons["Connect YouTube"].exists)
+        XCTAssertFalse(app.buttons["Connect YouTube"].isEnabled)
         agree.tap()
         let authorize = app.buttons["Connect YouTube"]
         XCTAssertTrue(authorize.waitForExistence(timeout: 5))
@@ -118,6 +118,64 @@ final class SetupScreenTests: XCTestCase {
         next.tap()
         XCTAssertEqual(app.staticTexts["setupStatus"].label, "Next session")
         XCTAssertTrue(app.staticTexts["No scheduled event selected"].exists)
+    }
+
+    func testSavedKeyAutomaticallyOffersMaskedSetupAndStartConfirmation() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = fixtureApp("stream-key-missing")
+        XCTAssertFalse(app.buttons["chooseEvent"].exists)
+        let setup = app.buttons["openStreamKeySettings"]
+        scrollTo(setup, in: app)
+        setup.tap()
+
+        let key = app.secureTextFields["streamKeyField"]
+        XCTAssertTrue(key.waitForExistence(timeout: 5))
+        scrollTo(key, in: app)
+        XCTAssertFalse(app.textFields["streamKeyName"].exists)
+        key.tap()
+        key.typeText("fake-key-for-testing\n")
+        app.buttons["saveStreamKey"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["savedStreamKey"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(key.exists)
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.staticTexts["streamKeyDestination"].exists)
+        XCTAssertFalse(app.buttons["broadcastDestination"].exists)
+
+        app.buttons["openExperiment"].tap()
+        let start = app.buttons["goLive"]
+        scrollTo(start, in: app)
+        start.tap()
+        XCTAssertTrue(app.buttons["Start upload"].waitForExistence(timeout: 5))
+        let confirmation = app.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " ")
+        XCTAssertTrue(confirmation.contains("Destination: Saved YouTube stream key"))
+        XCTAssertTrue(confirmation.contains("can start the event assigned to this key"))
+        XCTAssertFalse(confirmation.contains("fake-key-for-testing"))
+        dismissConfirmation(in: app)
+        XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Not started")
+    }
+
+    func testConnectedAccountTakesPriorityAndSettingsLinksFollowBothGroups() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = fixtureApp("account-and-key")
+        XCTAssertTrue(app.buttons["chooseEvent"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["streamKeyDestination"].exists)
+        XCTAssertFalse(app.buttons["broadcastDestination"].exists)
+
+        openSettings(app)
+        app.buttons["YouTube"].tap()
+        let accountHeading = app.staticTexts["YouTube account"]
+        let saved = app.descendants(matching: .any)["savedStreamKey"].firstMatch
+        let privacyPolicy = app.links["Privacy policy"]
+        XCTAssertTrue(accountHeading.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Switch Google account"].exists)
+        XCTAssertTrue(app.buttons["Delete saved YouTube API data"].exists)
+        XCTAssertTrue(saved.exists)
+        XCTAssertTrue(app.buttons["Replace stream key"].exists)
+        XCTAssertTrue(app.buttons["Remove stream key"].exists)
+        XCTAssertTrue(privacyPolicy.exists)
+        XCTAssertLessThan(accountHeading.frame.minY, saved.frame.minY)
+        XCTAssertLessThan(app.buttons["Remove stream key"].frame.maxY, privacyPolicy.frame.minY)
+        XCTAssertFalse(app.textFields["streamKeyName"].exists)
     }
 
     func testMoreMenuRemainsUsableDuringSessionUpdates() throws {

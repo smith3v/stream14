@@ -53,7 +53,7 @@ enum YouTubeAuthorizationError: Error, Equatable {
     private func clearAPIData() -> Bool { onDeleteAPIData?() ?? true }
     let isConfigured: Bool
     @ObservationIgnored private let driver: (any GoogleAuthorizationDriving)?
-    @ObservationIgnored private var handledLaunchRestore = false
+    private var handledLaunchRestore = false
 
     init(driver: (any GoogleAuthorizationDriving)?, configured: Bool, policyAccepted: Bool = false,
          savePolicyAcceptance: @escaping (Bool) -> Void = { _ in }) {
@@ -82,6 +82,9 @@ enum YouTubeAuthorizationError: Error, Equatable {
     }
 
     var isAuthorized: Bool { policyAccepted && account != nil && !isWorking }
+    var hasPendingLaunchRestore: Bool {
+        !handledLaunchRestore && isConfigured && policyAccepted && account == nil && driver?.hasPreviousSignIn == true
+    }
 
     func acceptYouTubePolicy() {
         policyAccepted = true
