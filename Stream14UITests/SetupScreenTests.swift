@@ -155,6 +155,37 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Not started")
     }
 
+    func testBroadcastDestinationMenuRemainsUsableDuringSessionUpdates() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft, .landscapeRight] {
+            XCUIDevice.shared.orientation = orientation
+            let app = fixtureApp("menu-updates")
+            let picker = app.buttons["broadcastDestination"]
+            let status = app.staticTexts["mediaStatus"]
+            XCTAssertTrue(picker.waitForExistence(timeout: 5))
+            picker.tap()
+            let streamKey = app.buttons["Use a stream key"]
+            XCTAssertTrue(streamKey.waitForExistence(timeout: 3))
+
+            let before = status.label
+            let deadline = Date().addingTimeInterval(3)
+            repeat {
+                XCTAssertTrue(streamKey.exists && streamKey.isHittable,
+                    "The destination menu must remain open while session status changes")
+                RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            } while Date() < deadline
+            XCTAssertNotEqual(status.label, before, "The fixture must update under the open menu")
+            streamKey.tap()
+            XCTAssertTrue(app.buttons["openStreamKeySettings"].waitForExistence(timeout: 3))
+
+            picker.tap()
+            app.buttons["Connected YouTube event"].tap()
+            XCTAssertTrue(app.buttons["chooseEvent"].waitForExistence(timeout: 3))
+            XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Not started")
+            app.terminate()
+        }
+    }
+
     func testMoreMenuRemainsUsableDuringSessionUpdates() throws {
         defer { XCUIDevice.shared.orientation = .portrait }
         for orientation in [UIDeviceOrientation.portrait, .landscapeLeft, .landscapeRight] {

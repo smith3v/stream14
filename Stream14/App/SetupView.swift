@@ -373,7 +373,8 @@ struct SetupView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(finished ? "Session finished" : (sessionHasRun || broadcast.locksSelection ? "Active session" : "Next session"))
                 .font(.headline).accessibilityIdentifier("setupStatus")
-            destinationPicker
+            BroadcastDestinationPicker(choice: broadcast.streamKeySettings.choice,
+                isLocked: broadcast.locksSelection, broadcast: broadcast)
             if !usesStreamKey && !authorization.isAuthorized {
                 Text(authorization.isConfigured ? authorization.message :
                     "YouTube connection is unavailable in this build. Record only is available; open Settings → Help for setup guidance.")
@@ -425,18 +426,25 @@ struct SetupView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var destinationPicker: some View {
-        Picker("Broadcast destination", selection: Binding(
-            get: { broadcast.streamKeySettings.choice },
-            set: { broadcast.selectDestination($0) })) {
-            ForEach(YouTubeDestinationChoice.allCases, id: \.self) { choice in
-                Text(choice.title).tag(choice)
+    /// Keep the presented system menu stable while the session meter and status update.
+    private struct BroadcastDestinationPicker: View {
+        let choice: YouTubeDestinationChoice
+        let isLocked: Bool
+        let broadcast: BroadcastSession
+
+        var body: some View {
+            Picker("Broadcast destination", selection: Binding(
+                get: { choice },
+                set: { broadcast.selectDestination($0) })) {
+                ForEach(YouTubeDestinationChoice.allCases, id: \.self) { option in
+                    Text(option.title).tag(option)
+                }
             }
+            .pickerStyle(.menu)
+            .frame(minHeight: 44)
+            .disabled(isLocked)
+            .accessibilityIdentifier("broadcastDestination")
         }
-        .pickerStyle(.menu)
-        .frame(minHeight: 44)
-        .disabled(broadcast.locksSelection)
-        .accessibilityIdentifier("broadcastDestination")
     }
 
     private var streamKeySummary: some View {
