@@ -4,41 +4,57 @@ import UIKit
 @testable import Stream14
 
 @MainActor @Suite(.serialized, .timeLimit(.minutes(1))) struct BroadcastSessionTests {
-    @Test func streamKeyStartAndEndBypassGoogleAndReuseSavedKeyForNextMatch() async throws {
-        let h = try await Harness()
+    @Test func restoredYouTubeConnectionTakesPriorityOverTheSavedKey() async throws {
+        let h = try await Harness(restoreAuthorization: false)
         defer { h.cleanup() }
+        #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
+        #expect(h.authorization.hasPendingLaunchRestore)
+        #expect(!h.session.canStart && !h.session.canStartStreamKey)
+        h.session.requestStreamKeyConfirmation()
+        #expect(h.session.streamKeyConfirmation == nil)
+
+        await h.authorization.restoreOnLaunchIfAvailable(broadcastActive: false)
+        #expect(h.session.canStart && !h.session.usesStreamKey && !h.session.canStartStreamKey)
+        #expect(h.session.saveStreamKey(key: "fake-replacement-key"))
+        #expect(h.session.canStart && !h.session.usesStreamKey)
+
         h.authorization.signOut()
         h.session.accountChanged()
-        #expect(h.session.saveStreamKey(name: "Court one", key: "fake-key-for-testing"))
-        #expect(h.session.streamKeySettings.choice == .connectedEvent)
-        h.session.selectDestination(.streamKey)
+        #expect(h.session.usesStreamKey && h.session.canStartStreamKey)
+        #expect(h.session.removeStreamKey())
+        #expect(!h.session.usesStreamKey && !h.session.canStartStreamKey)
+        #expect(h.timeline.isEmpty && h.server.requests.isEmpty)
+    }
+
+    @Test func streamKeyStartAndEndBypassGoogleAndReuseSavedKeyForNextMatch() async throws {
+        let h = try await Harness(authorizationDriver: nil)
+        defer { h.cleanup() }
+        #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
+        #expect(h.session.usesStreamKey && h.session.canStartStreamKey)
         h.session.requestConfirmation(channel: h.channel, event: h.server.event)
         #expect(h.session.confirmation == nil)
         h.session.requestStreamKeyConfirmation()
         let first = try #require(h.session.streamKeyConfirmation)
-        #expect(first.name == "Court one")
         #expect(h.timeline.isEmpty && h.server.requests.isEmpty)
         #expect(!h.session.removeStreamKey())
-        h.session.selectDestination(.connectedEvent)
-        #expect(h.session.streamKeySettings.choice == .streamKey)
+        #expect(h.session.usesStreamKey)
 
         h.session.confirmStreamKeyStart(first)
         await h.session.waitForOperation()
         #expect(h.timeline == ["lock", "record", "writer", "upload"])
         #expect(h.session.state == .uploading && h.uploaded)
         #expect(h.session.pendingRemote == nil)
-        #expect(!h.session.saveStreamKey(name: "Other court", key: "fake-other-key"))
+        #expect(!h.session.saveStreamKey(key: "fake-other-key"))
 
         h.session.confirmEnd()
         await h.session.waitForOperation()
         #expect(h.session.state == .uploadStopped && !h.uploaded)
         #expect(!h.snapshot.isRecording)
         #expect(h.session.prepareNextSession())
-        #expect(h.session.streamKeySettings.choice == .streamKey)
+        #expect(h.session.usesStreamKey)
         h.snapshot.canRecord = true
         h.session.requestStreamKeyConfirmation()
         let second = try #require(h.session.streamKeyConfirmation)
-        #expect(second.name == first.name)
         #expect(second.id != first.id)
         h.session.confirmStreamKeyStart(second)
         await h.session.waitForOperation()
@@ -49,10 +65,9 @@ import UIKit
     }
 
     @Test func streamKeyTransportFailureKeepsWriterAndRequiresExplicitRetry() async throws {
-        let h = try await Harness(fastClock: true)
+        let h = try await Harness(fastClock: true, authorizationDriver: nil)
         defer { h.cleanup() }
-        #expect(h.session.saveStreamKey(name: "", key: "fake-key-for-testing"))
-        h.session.selectDestination(.streamKey)
+        #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
         h.uploadStartupFailure = .publishTimeout
         h.session.requestStreamKeyConfirmation()
         let intent = try #require(h.session.streamKeyConfirmation)
@@ -83,10 +98,9 @@ import UIKit
     }
 
     @Test func streamKeyBackupFailureOrOrientationChangePreventsPublishing() async throws {
-        let h = try await Harness()
+        let h = try await Harness(authorizationDriver: nil)
         defer { h.cleanup() }
-        #expect(h.session.saveStreamKey(name: "", key: "fake-key-for-testing"))
-        h.session.selectDestination(.streamKey)
+        #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
         h.session.requestStreamKeyConfirmation()
         let intent = try #require(h.session.streamKeyConfirmation)
         h.snapshot.canConfirmLandscapeStart = false
@@ -102,10 +116,9 @@ import UIKit
     }
 
     @Test func endingStreamKeyWhileConnectingRejectsLateTransportResult() async throws {
-        let h = try await Harness()
+        let h = try await Harness(authorizationDriver: nil)
         defer { h.cleanup() }
-        #expect(h.session.saveStreamKey(name: "", key: "fake-key-for-testing"))
-        h.session.selectDestination(.streamKey)
+        #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
         h.hold = "upload"
         h.session.requestStreamKeyConfirmation()
         h.session.confirmStreamKeyStart(try #require(h.session.streamKeyConfirmation))
@@ -205,6 +218,7 @@ import UIKit
     @Test func dataDeletionRemovesIdentifiersRetainsFileAndRequiresExplicitStudioResolutionAfterRelaunch() async throws {
         let h = try await Harness()
         defer { h.cleanup() }
+        #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
         h.start(); await h.session.waitForOperation()
         // Detected external access loss may happen during Live. Stop only upload.
         h.authorization.accessWasDenied()
@@ -213,6 +227,7 @@ import UIKit
         #expect(!h.timeline.contains("stopAll"))
         #expect(h.session.activeIntent == nil && h.session.pendingRemote == nil)
         #expect(h.session.requiresStudioResolution && !h.session.canStart)
+        #expect(!h.session.usesStreamKey && !h.session.canStartStreamKey)
         #expect(!FileManager.default.fileExists(atPath: h.directory.appendingPathComponent("remote.json").path))
         #expect(!FileManager.default.fileExists(atPath: h.directory.appendingPathComponent("bindings/binding-intent.json").path))
         let lateStore = PendingRemoteBroadcastStore(url: h.directory.appendingPathComponent("remote.json"))
@@ -1006,13 +1021,15 @@ import UIKit
     let end: Double
     let channel = YouTubeChannel(id: "channel", snippet: .init(title: "Fixture channel"))
 
-    init(auto: Bool = false, startup: Double = 0.7, end: Double = 0.3, fastClock: Bool = false) async throws {
+    init(auto: Bool = false, startup: Double = 0.7, end: Double = 0.3, fastClock: Bool = false,
+         authorizationDriver: (any GoogleAuthorizationDriving)? = BroadcastAuthDriver(),
+         restoreAuthorization: Bool = true) async throws {
         self.fastClock = fastClock
         self.startup = startup; self.end = end
         directory = FileManager.default.temporaryDirectory.appendingPathComponent("broadcast-fixture-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        authorization = YouTubeAuthorization(driver: BroadcastAuthDriver(), configured: true, policyAccepted: true)
-        await authorization.restore()
+        authorization = YouTubeAuthorization(driver: authorizationDriver, configured: true, policyAccepted: true)
+        if restoreAuthorization { await authorization.restore() }
         server = BroadcastFixtureServer(auto: auto)
         server.harness = self
         client = YouTubeClient(token: { _ in "fixture-token" }, current: { [authorization] in $0 == authorization.generation && authorization.isAuthorized },

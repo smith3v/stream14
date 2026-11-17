@@ -9,7 +9,7 @@ struct BroadcastControlsView: View {
     @State private var confirmingEnd = false
     @State private var confirmingRetry = false
 
-    private var usesStreamKey: Bool { broadcast.streamKeySettings.choice == .streamKey }
+    private var usesStreamKey: Bool { broadcast.usesStreamKey }
     private var readyToStart: Bool {
         media.broadcastCaptureReady && media.broadcastOverlayReady && (media.canRecord || media.hasStartedWriting)
     }
@@ -85,8 +85,8 @@ struct BroadcastControlsView: View {
                 Button("End session and local recording", role: .destructive) { broadcast.confirmEnd() }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                if let key = broadcast.activeStreamKey {
-                    Text("Stop sending video to \(key.name) and finalize local recording? YouTube handles ending the event using Auto-stop. Check its status in YouTube Studio.")
+                if broadcast.activeStreamKey != nil {
+                    Text("Stop sending video to YouTube and finalize local recording? YouTube handles ending the event using Auto-stop. Check its status in YouTube Studio.")
                 } else if let intent = broadcast.activeIntent {
                     Text("End \(intent.event.title) on \(intent.channel.title) (\(intent.event.visibility))? This ends the YouTube broadcast and stops local recording and capture. Upload and local capture will stop, even if YouTube completion cannot be confirmed.")
                 } else if let pending = broadcast.pendingRemote {
@@ -109,7 +109,7 @@ struct BroadcastControlsView: View {
                 Button("Start upload") { broadcast.confirmStreamKeyStart(intent) }
                 Button("Cancel", role: .cancel) { broadcast.dismissStreamKeyConfirmation() }
             } message: { intent in
-                Text("Destination: \(intent.name)\nQuality: \(intent.upload.profile.label)\nSending camera and microphone media can start the event assigned to this key in YouTube Studio. Confirm it’s the intended event before starting.")
+                Text("Destination: Saved YouTube stream key\nQuality: \(intent.upload.profile.label)\nSending camera and microphone media can start the event assigned to this key in YouTube Studio. Confirm it’s the intended event before starting.")
             }
     }
 
@@ -124,9 +124,7 @@ struct BroadcastControlsView: View {
                     Button("Retry upload") { broadcast.confirmStreamKeyRetry() }
                     Button("Cancel", role: .cancel) {}
                 } message: {
-                    if let key = broadcast.activeStreamKey {
-                        Text("Check Studio before sending again to \(key.name). If Auto-stop ended the event, reconnecting may fail or start another prepared event assigned to this key.")
-                    }
+                    Text("Check Studio before sending again with the saved key. If Auto-stop ended the event, reconnecting may fail or start another prepared event assigned to this key.")
                 }
         }
     }

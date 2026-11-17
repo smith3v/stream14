@@ -132,15 +132,15 @@ Use a Studio Manager account and two disposable Unlisted encoder events. In
 Live Control Room, create one reusable stream key for the iPhone. Assign it to
 one upcoming event at a time. Enable Auto-start and Auto-stop.
 
-1. In **Settings → YouTube → Stream key**, paste and save the key with a display
-   name. Relaunch and confirm the saved name. Test replacement and confirmed
+1. In **Settings → YouTube → Stream key**, paste and save the key.
+   Relaunch and confirm the saved status. Test replacement and confirmed
    removal with a disposable key. Restore the test event’s key for publishing.
-2. In **Session**, choose the saved stream-key destination. Check VoiceOver,
-   larger text and both landscape orientations on iPhone 13 mini. Confirm that
-   preview sends no video. Check that switching to a connected event restores
-   its channel, event picker and controls. Saving or replacing a key must leave
-   the chosen destination in place. Check **Record only** in both modes.
-3. Keep Studio open on another device. Confirm Start names the saved destination
+2. After relaunch, let the app check for a saved YouTube account. Check that a
+   connected account takes priority even with a key saved, and that **Session**
+   uses the key automatically when disconnected. Check VoiceOver, larger
+   text, and both landscape orientations on iPhone 13 mini. Verify preview
+   sends no video and **Record only** works in either case.
+3. Keep Studio open on another device. Confirm Start identifies the saved-key destination
    and enables upload and local saving. Verify Live in Studio. End from Stream14
    and verify that local footage finalizes and Studio ends the event via Auto-stop.
    Prepare the next session. Repeat with the second event using the same key

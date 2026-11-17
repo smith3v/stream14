@@ -35,8 +35,8 @@ status in protected local files excluded from backups to avoid repeating
 unresolved requests. Stored identifiers expire after 30 days and are cleared
 when the app next runs its data check.
 
-For events prepared in YouTube Studio, you can save a reusable stream key and
-display name in the device-only Keychain. Stream14 uses the key to send video
+For events prepared in YouTube Studio, you can save a reusable stream key
+in the device-only Keychain. Stream14 uses the key to send video
 to YouTube. This option requires no Google sign-in and uses no YouTube event API.
 The key stays out of recording metadata, diagnostics and exports.
 
@@ -67,7 +67,7 @@ credentials. Clear the URL in Overlay settings to remove it.
   If you revoke access there, the app clears stored YouTube data when it detects
   that access has been withdrawn.
 - **Remove stream key** in YouTube settings deletes the manually saved credential
-  and display name from this iPhone. Manage or reset the key in YouTube Studio.
+  from this iPhone. Manage or reset the key in YouTube Studio.
 
 After deletion or expiry, the app may retain a marker without account or event
 identifiers until you resolve pending requests in YouTube Studio and confirm

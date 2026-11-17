@@ -46,7 +46,7 @@ gate is one continuous hour; the target is not a qualification claim. See the
   from remote completion. An unknown remote result offers reconciliation and
   Studio; a stopped upload is not proof the event ended. **Prepare next session**
   is blocked by active outputs, finalization or unresolved remote work. It clears
-  the selected event and retains the explicit destination choice without starting media.
+  the selected event and reevaluates destination availability without starting media.
 - **Recordings** shows date, size, status and elapsed `HH:MM:SS` when available,
   with spoken duration and recovery warnings for VoiceOver. Support original
   playback, explicit Files/share export and confirmed deletion. Missing metadata
@@ -184,16 +184,19 @@ For a **Connected YouTube event**, use the following lifecycle.
 ### Saved YouTube stream key
 
 Studio Managers and operators with a reusable key can use **Settings → YouTube →
-Stream key** without Google sign-in. Save one key and its optional display name
-as a single device-only, nonsynchronizing Keychain item. Replacement updates the
-existing item in place. Removal is separately confirmed. Session remembers the
-operator’s explicit choice of destination. Saving, replacing or removing a key
-does not change that choice. The stream-key destination is locked from Start
-confirmation through the end of the session.
+Stream key** without Google sign-in. Save one key in the device-only,
+nonsynchronizing Keychain. Replacement updates the existing item in place. Removal is separately confirmed. YouTube Settings groups account
+actions and key configuration above the policy and account links.
+
+Session prefers an authorized YouTube account, including one restored at launch.
+After the account check finishes, Session uses the saved key when no YouTube
+account is connected. An authorized account still requires an eligible event.
+An unresolved API session retains its reconciliation controls and blocks a new
+stream. A confirmed or active session keeps its captured destination.
 
 In YouTube Studio, assign the key to one upcoming encoder event with Auto-start
-and Auto-stop enabled. In Session, the Start confirmation names the destination
-and warns that sending video can start the assigned event. The app uses the
+and Auto-stop enabled. In Session, the Start confirmation identifies the saved-key
+destination and warns that sending video can start the assigned event. The app uses the
 existing writer and RTMPS publisher with YouTube’s primary ingest endpoint
 (`rtmps://a.rtmps.youtube.com:443/live2`). It makes no event API calls or changes
 to the Studio event. End stops upload and local capture and finalizes the file.

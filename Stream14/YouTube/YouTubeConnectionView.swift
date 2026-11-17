@@ -11,40 +11,28 @@ struct YouTubeConnectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Connect YouTube").font(.headline).accessibilityAddTraits(.isHeader)
+            Text("YouTube account").font(.headline).accessibilityAddTraits(.isHeader)
             Text("If you own the channel or can authorize it through Google, connect to choose and control an upcoming event from Stream14.")
                 .font(.footnote)
             Text(authorization.message).fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("youtubeAuthorizationStatus")
-            Group {
-                Link("Privacy policy", destination: URL(string: "https://stream14.app/privacy/")!)
-                Link("stream14 service terms", destination: URL(string: "https://stream14.app/terms/")!)
-                Link("YouTube Terms of Service", destination: URL(string: "https://www.youtube.com/t/terms")!)
-                Link("Google Account access settings", destination: URL(string: "https://security.google.com/settings/security/permissions")!)
-            }.frame(minHeight: 44, alignment: .leading)
-            if !authorization.policyAccepted {
-                Text("Read the privacy policy and service terms before connecting or streaming with a saved key. Using YouTube features means agreeing to the YouTube Terms of Service.")
-                Button("Agree to privacy policy and YouTube terms") { authorization.acceptYouTubePolicy() }
-                    .frame(minHeight: 44)
-                    .accessibilityIdentifier("acceptYouTubePolicy")
-            }
             if broadcastActive { Text("End the broadcast before changing YouTube accounts.").font(.caption) }
             Group {
-                if authorization.isConfigured && authorization.policyAccepted {
-                    if authorization.isAuthorized {
-                        authorizationButton("Switch Google account")
-                        Button("Sign out on this iPhone") { authorization.signOut(broadcastActive: broadcastActive) }
-                        Button("Revoke Google access", role: .destructive) { confirmingRevoke = true }
-                    } else {
+                if authorization.isAuthorized {
+                    authorizationButton("Switch Google account")
+                    Button("Sign out on this iPhone") { authorization.signOut(broadcastActive: broadcastActive) }
+                    Button("Revoke Google access", role: .destructive) { confirmingRevoke = true }
+                } else {
+                    Group {
                         authorizationButton("Connect YouTube")
                         Button("Restore saved connection") { Task { await authorization.restore(broadcastActive: broadcastActive) } }
                     }
+                    .disabled(!authorization.isConfigured || !authorization.policyAccepted)
                 }
                 Button("Delete saved YouTube API data", role: .destructive) { confirmingDeletion = true }
                     .disabled(!broadcast.canDeleteYouTubeData)
                 if broadcast.requiresStudioResolution {
                     Text("Saved YouTube identifiers were removed. Previous requests may still exist in Studio; publishing stays blocked until you resolve them there.")
-                    Link("Open YouTube Studio", destination: URL(string: "https://studio.youtube.com/")!)
                     Button("I resolved previous requests in Studio…") { confirmingStudioResolution = true }
                         .disabled(broadcast.journalUnavailable || broadcast.hasUnsettledMutation)
                 }
@@ -52,6 +40,12 @@ struct YouTubeConnectionView: View {
             .buttonStyle(.bordered)
             .frame(minHeight: 44)
             .disabled(authorization.isWorking || broadcastActive)
+            if !authorization.policyAccepted {
+                Text("Read the privacy policy and service terms below before connecting or streaming with a saved key. Using YouTube features means agreeing to the YouTube Terms of Service.")
+                Button("Agree to privacy policy and YouTube terms") { authorization.acceptYouTubePolicy() }
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("acceptYouTubePolicy")
+            }
         }
         .confirmationDialog("Revoke stream14’s Google access?", isPresented: $confirmingRevoke,
                             titleVisibility: .visible) {

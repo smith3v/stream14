@@ -6,8 +6,10 @@ import Foundation
 @MainActor enum InterfaceFixture {
     static func make(_ name: String) -> (authorization: YouTubeAuthorization, media: MediaSession,
                                        broadcast: BroadcastSession, events: YouTubeEventSelection) {
-        let authorization = name == "policy-unaccepted" ?
-            YouTubeAuthorization(driver: nil, configured: true) : YouTubeAuthorization.interfaceFixture()
+        let disconnected = ["policy-unaccepted", "stream-key-missing"].contains(name)
+        let authorization = disconnected ?
+            YouTubeAuthorization(driver: nil, configured: true, policyAccepted: name != "policy-unaccepted") :
+            YouTubeAuthorization.interfaceFixture()
         let media = MediaSession(readOverlayURL: { "" }, saveOverlayURL: { _ in },
             profile: .fullHD, persistProfile: { _ in }, authorizeCapture: { false })
         let startsWithCameraClosed = ["policy-unaccepted", "stream-key-missing"].contains(name)
@@ -41,8 +43,8 @@ import Foundation
             lockConfiguration: { media.broadcastConfigurationLocked = $0 })
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("interface-fixture-" + UUID().uuidString)
         let store = PendingRemoteBroadcastStore(url: directory.appendingPathComponent("remote.json"))
-        let streamKeySettings = YouTubeStreamKeySettings(
-            choice: name == "stream-key-missing" ? .streamKey : .connectedEvent)
+        let streamKeySettings = YouTubeStreamKeySettings()
+        if name == "account-and-key" { streamKeySettings.save(key: "fixture-stream-key") }
         let broadcast = BroadcastSession(authorization: authorization, client: client,
             binding: YouTubeBinding(client: client, store: PendingBroadcastIntentStore(directory: directory.appendingPathComponent("binding"))), media: boundary, store: store,
             streamKeySettings: streamKeySettings)

@@ -4,30 +4,22 @@ struct YouTubeStreamKeyView: View {
     let broadcast: BroadcastSession
     @State private var editing = false
     @State private var confirmingRemoval = false
-    @State private var draftName = ""
     @State private var draftKey = ""
     @FocusState private var keyFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Stream key").font(.headline).accessibilityAddTraits(.isHeader)
-            Text("Use a stream key if you manage the channel in YouTube Studio or have a key for a prepared event. Google sign-in is optional.")
+            Text("Stream14 uses the saved key when no YouTube account is connected.")
             Text("In YouTube Studio, choose Create → Go live. In Live Control Room, open Stream settings → Stream key and create a reusable key for this iPhone. Assign it to one upcoming encoder event with Auto-start and Auto-stop enabled.")
                 .font(.footnote)
-            if let key = broadcast.streamKeySettings.saved {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(key.name).font(.subheadline)
-                    Label("Saved on this iPhone", systemImage: "lock.fill")
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("savedStreamKey")
+            if broadcast.streamKeySettings.saved != nil {
+                Label("Saved on this iPhone", systemImage: "lock.fill")
+                    .accessibilityIdentifier("savedStreamKey")
             }
             if broadcast.streamKeyConfigurationLocked {
                 Text("Finish or dismiss the current stream-key session to change the key.").font(.footnote)
             } else if editing || broadcast.streamKeySettings.saved == nil {
-                TextField("Display name (optional)", text: $draftName)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("streamKeyName")
                 SecureField("Stream key", text: $draftKey)
                     .textFieldStyle(.roundedBorder)
                     .textInputAutocapitalization(.never)
@@ -38,16 +30,13 @@ struct YouTubeStreamKeyView: View {
                     .onSubmit { keyFocused = false }
                     .accessibilityIdentifier("streamKeyField")
                 Button("Save") {
-                    if broadcast.saveStreamKey(name: draftName, key: draftKey) { clearDraft() }
+                    if broadcast.saveStreamKey(key: draftKey) { clearDraft() }
                 }
                 .disabled(draftKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .accessibilityIdentifier("saveStreamKey")
                 if editing { Button("Cancel replacement") { clearDraft() } }
             } else {
-                Button("Replace stream key") {
-                    draftName = broadcast.streamKeySettings.saved?.name ?? ""
-                    editing = true
-                }
+                Button("Replace stream key") { editing = true }
                 Button("Remove stream key", role: .destructive) { confirmingRemoval = true }
                     .accessibilityIdentifier("removeStreamKey")
             }
@@ -72,7 +61,6 @@ struct YouTubeStreamKeyView: View {
     private func clearDraft() {
         keyFocused = false
         draftKey = ""
-        draftName = ""
         editing = false
     }
 }

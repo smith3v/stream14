@@ -14,7 +14,6 @@ nonisolated struct BroadcastIntent: Equatable, Sendable, Identifiable, CustomRef
 
 nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
     let id: UUID
-    let name: String
     let upload: RTMPSUpload
     let overlayURL: String
 
@@ -23,7 +22,6 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
     init(key: SavedYouTubeStreamKey, profile: SessionProfile, overlayURL: String) {
         let id = UUID()
         self.id = id
-        name = key.name
         upload = RTMPSUpload(streamKey: key, profile: profile, sessionID: id)
         self.overlayURL = overlayURL
     }
@@ -193,26 +191,30 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
         !isWorking && !hasUnsettledMutation && !binding.isPreparing && activeIntent == nil &&
             activeStreamKey == nil && pendingRemote == nil && !journalUnavailable && !requiresStudioResolution
     }
-    var canStart: Bool {
-        canStartNewBroadcast && streamKeySettings.choice == .connectedEvent && authorization.isAuthorized
+    /// A confirmed or active session keeps its own destination through account changes.
+    var usesStreamKey: Bool {
+        if activeStreamKey != nil || streamKeyConfirmation != nil { return true }
+        guard !requiresStudioResolution, !journalUnavailable, state != .needsReconciliation else { return false }
+        if state == .uploadStopped { return true }
+        return activeIntent == nil && confirmation == nil && pendingRemote == nil && canUseSavedStreamKey
     }
+
+    private var canUseSavedStreamKey: Bool {
+        !authorization.isAuthorized && !authorization.isWorking && !authorization.hasPendingLaunchRestore &&
+            streamKeySettings.saved != nil
+    }
+
+    var canStart: Bool { canStartNewBroadcast && authorization.isAuthorized }
     var canStartStreamKey: Bool {
-        canStartNewBroadcast && streamKeySettings.choice == .streamKey && authorization.policyAccepted &&
-            streamKeySettings.saved != nil && !authorization.isWorking
+        canStartNewBroadcast && canUseSavedStreamKey && authorization.policyAccepted
     }
     var canEnd: Bool { !isWorking || state != .ending }
 
     var streamKeyConfigurationLocked: Bool { streamKeyConfirmation != nil || activeStreamKey != nil }
 
-    func selectDestination(_ choice: YouTubeDestinationChoice) {
-        guard !locksSelection else { return }
-        streamKeySettings.select(choice)
-        streamKeyMessage = nil
-    }
-
-    @discardableResult func saveStreamKey(name: String, key: String) -> Bool {
+    @discardableResult func saveStreamKey(key: String) -> Bool {
         guard !streamKeyConfigurationLocked else { return false }
-        return streamKeySettings.save(name: name, key: key)
+        return streamKeySettings.save(key: key)
     }
 
     @discardableResult func removeStreamKey() -> Bool {
@@ -792,6 +794,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
 
     func accountChanged() {
         confirmation = nil
+        streamKeyConfirmation = nil
         guard let intent = activeIntent, intent.generation != authorization.generation else { return }
         cancelSupervision()
         epoch &+= 1
