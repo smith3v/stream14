@@ -162,12 +162,17 @@ one upcoming event at a time. Enable Auto-start and Auto-stop.
    Store Connect record, and distribution signing. Set the intended OAuth
    configuration, then use **Product → Archive** on the shared scheme with a
    generic iOS device destination. Verify archive identity, version/build,
-   signing, OAuth client/callback and third-party notices.
+   signing, OAuth client/callback and third-party notices. Check that the app
+   bundle's `Info.plist` contains the Boolean `ITSAppUsesNonExemptEncryption`
+   set to `false`.
 3. Recheck the current [Apple submission requirements](https://developer.apple.com/app-store/submitting/)
    and [privacy details](https://developer.apple.com/app-store/app-privacy-details/)
    against app and SDK behavior, including required reasons, manifests, privacy
-   and support links, and encryption classification. Reassess encryption if
-   the dependency/transport boundary changed. A successful build does not
+   and support links, and encryption classification. The app declares exempt
+   encryption because its linked code uses Apple's system cryptography for
+   HTTPS, RTMPS and authentication. Reassess the
+   [export compliance declaration](https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption)
+   when transport or linked dependencies change. A successful build does not
    establish platform review or submission compliance.
 4. In Organizer, validate and distribute to App Store Connect. Wait for
    processing, resolve any **Missing Compliance** state, set release-specific
