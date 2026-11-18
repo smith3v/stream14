@@ -38,13 +38,20 @@ import Foundation
             BroadcastMedia.Snapshot(captureReady: media.broadcastCaptureReady, canRecord: media.canRecord,
                 writerStarted: false, isRecording: media.isRecording, profile: media.profile, overlayURL: "",
                 overlayReady: media.broadcastOverlayReady, uploadFailed: false,
-                canPrepareNextSession: media.canPrepareNextSession)
-        }, record: {}, startUpload: { _ in throw CancellationError() }, stopUpload: {}, stopAll: {},
+                canPrepareNextSession: media.canPrepareNextSession, hasUpload: media.hasUpload)
+        }, record: {}, stopRecording: { await media.stopRecording() },
+            startUpload: { _ in throw CancellationError() }, stopUpload: { await media.stopUpload() },
+            stopAll: { media.requestStop() },
             lockConfiguration: { media.broadcastConfigurationLocked = $0 })
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("interface-fixture-" + UUID().uuidString)
         let store = PendingRemoteBroadcastStore(url: directory.appendingPathComponent("remote.json"))
         let streamKeySettings = YouTubeStreamKeySettings()
         if name == "account-and-key" { streamKeySettings.save(key: "fixture-stream-key") }
+        if name == "stream-key-uploading" {
+            authorization.signOut()
+            streamKeySettings.save(key: "fixture-stream-key")
+            media.installInterfaceFixture("upload-recovered")
+        }
         let broadcast = BroadcastSession(authorization: authorization, client: client,
             binding: YouTubeBinding(client: client, store: PendingBroadcastIntentStore(directory: directory.appendingPathComponent("binding"))), media: boundary, store: store,
             streamKeySettings: streamKeySettings)

@@ -23,7 +23,7 @@ nonisolated enum SessionInterruption: CaseIterable {
 final class MediaSession {
     enum Phase { case idle, preparing, preview, starting, recording, stopping }
     private(set) var phase: Phase = .idle
-    private(set) var message = "Open the camera to prepare a local recording."
+    private(set) var message = ""
     private(set) var sampleURL: URL?
     private(set) var startedAt: Date?
     private(set) var availableLenses: [RearCameraLens] = []
@@ -41,10 +41,15 @@ final class MediaSession {
     private let interfaceOrientation: @MainActor () -> UIInterfaceOrientation
     private var previewOrientation: UIInterfaceOrientation = .unknown
     private(set) var previewOrientationSettling = false
-    var previewNeedsLandscape: Bool { phase == .preview && !previewOrientation.isLandscape }
+    var previewNeedsLandscape: Bool {
+        #if DEBUG
+        if interfaceFixtureMode { return phase == .preview && !canConfirmLandscapeStart }
+        #endif
+        return phase == .preview && !previewOrientation.isLandscape
+    }
     var canConfirmLandscapeStart: Bool {
         #if DEBUG
-        if interfaceFixtureMode { return true }
+        if interfaceFixtureMode { return interfaceFixtureName != "portrait-preview" }
         #endif
         return interfaceOrientation().isLandscape
     }
@@ -53,6 +58,7 @@ final class MediaSession {
     private(set) var microphoneLevel = 0.0
     private(set) var audioRoute = "Microphone not active"
     private(set) var cameraZoom = CameraZoom()
+    private(set) var isAdjustingCameraZoom = false
     var canAdjustMedia: Bool { !busy && !stopRequested && (phase == .preview || phase == .recording) }
     private let microphoneMeter = MicrophoneMeter()
     private var routeTask: Task<Void, Never>?
@@ -86,7 +92,15 @@ final class MediaSession {
     enum UploadState { case idle, connecting, connected, failed }
     private(set) var uploadState: UploadState = .idle
     private(set) var uploadMessage = "Upload not started"
-    var hasUpload: Bool { publisher != nil }
+    var hasUpload: Bool {
+        #if DEBUG
+        if interfaceFixtureMode { return uploadState == .connected }
+        #endif
+        return publisher != nil
+    }
+    private var uploadNeedsEncoder: Bool {
+        publisher != nil || (uploadAffinity.hasAdmittedTransport && (uploadState == .connecting || uploadState == .failed))
+    }
     private var overlay: WebOverlayLayer?
     private var overlayTask: Task<Void, Never>?
     private var errorTask: Task<Void, Never>?
@@ -121,16 +135,19 @@ final class MediaSession {
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     var canSelectLens: Bool { !broadcastConfigurationLocked && !busy && !stopRequested && (phase == .idle || phase == .preview) }
-    var canRecord: Bool {
+    var canRecord: Bool { preparedRecordingPreview && !busy }
+    var canShowRecordStart: Bool { preparedRecordingPreview && (!busy || isAdjustingCameraZoom) }
+
+    private var preparedRecordingPreview: Bool {
         #if DEBUG
         if interfaceFixtureName == "writer-pending" { return false }
         #endif
         #if DEBUG
-        let landscape = interfaceFixtureMode || previewOrientation.isLandscape
+        let landscape = interfaceFixtureMode ? canConfirmLandscapeStart : previewOrientation.isLandscape
         #else
         let landscape = previewOrientation.isLandscape
         #endif
-        return phase == .preview && landscape && !previewOrientationSettling && !busy && !stopRequested &&
+        return phase == .preview && landscape && !previewOrientationSettling && !stopRequested &&
             recoveringSampleID == nil && fileFinalization.recordingID == nil
     }
     var canDeleteSamples: Bool { !busy && recoveringSampleID == nil && fileFinalization.recordingID == nil && (phase == .idle || phase == .preview) }
@@ -138,7 +155,7 @@ final class MediaSession {
     var recordingMetrics: LocalRecorder.Metrics? { recorder?.metrics }
     var isRecording: Bool {
         #if DEBUG
-        if interfaceFixtureMode { return phase == .recording && !recordingFailed }
+        if interfaceFixtureMode { return phase == .recording && !recordingFailed && sample?.status != .completed }
         #endif
         return phase == .recording && recorder != nil && !recordingFailed
     }
@@ -146,18 +163,21 @@ final class MediaSession {
     /// AVAssetWriter.startWriting/startSession must have accepted actual media;
     /// record() returning by itself is not the backup-admission signal.
     var hasStartedWriting: Bool { isRecording && recorder?.hasStarted == true }
-    var broadcastCaptureReady: Bool {
+    var broadcastCaptureReady: Bool { preparedBroadcastCapture && !busy }
+    var broadcastCaptureReadyForDisplay: Bool { preparedBroadcastCapture && (!busy || isAdjustingCameraZoom) }
+
+    private var preparedBroadcastCapture: Bool {
         #if DEBUG
-        if interfaceFixtureMode { return phase == .preview || phase == .recording }
+        if interfaceFixtureMode { return (phase == .preview || phase == .recording) && !stopRequested }
         #endif
-        return (phase == .preview || phase == .recording) && !busy && !stopRequested &&
+        return (phase == .preview || phase == .recording) && !stopRequested &&
         AVCaptureDevice.authorizationStatus(for: .video) == .authorized &&
         AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     }
     var broadcastPipelineRunning: Bool { sharedEncoder != nil && !stopRequested }
     var broadcastOverlayReady: Bool {
         #if DEBUG
-        if interfaceFixtureMode { return !["overlay-unavailable", "active-overlay-unavailable"].contains(interfaceFixtureName) }
+        if interfaceFixtureMode { return !["overlay-unavailable", "active-overlay-unavailable", "overlay-loading"].contains(interfaceFixtureName) }
         #endif
         return overlayURL.isEmpty || (renderer.healthy && renderer.image != nil)
     }
@@ -186,8 +206,7 @@ final class MediaSession {
         startedAt = nil
         uploadState = .idle
         uploadMessage = "Upload not started"
-        message = phase == .preview ? "Check the picture and sound before starting the next session." :
-            "Check camera and sound to prepare the next session."
+        message = ""
         return true
     }
 
@@ -243,8 +262,20 @@ final class MediaSession {
 
     func setCameraZoom(_ value: Double) async {
         guard canAdjustMedia else { return }
+        isAdjustingCameraZoom = true
         busy = true
-        defer { finishOperation() }
+        defer {
+            isAdjustingCameraZoom = false
+            finishOperation()
+        }
+        #if DEBUG
+        if interfaceFixtureMode {
+            // Give the interface a real asynchronous adjustment without capture.
+            do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+            cameraZoom = CameraZoom.clamped(value, minimum: cameraZoom.minimum, deviceMaximum: cameraZoom.maximum)
+            return
+        }
+        #endif
         do { cameraZoom = try await mixer.configureZoom(value) }
         catch { message = "Camera zoom could not change. Capture continues with the current zoom." }
     }
@@ -396,7 +427,7 @@ final class MediaSession {
         guard phase == .idle, !busy, captureForeground else { return }
         #if DEBUG
         if interfaceFixtureMode {
-            phase = .preview; message = "Fixture camera ready; no capture is running."
+            phase = .preview; message = ""
             availableLenses = [.wide]
             return
         }
@@ -424,7 +455,7 @@ final class MediaSession {
             // received during it must never publish a usable preview or recorder.
             guard !stopRequested, captureForeground, captureGeneration == generation else { return }
             phase = .preview
-            message = "Preview ready · landscape \(profile.rawValue). Check the picture and overlay before recording."
+            message = ""
         } catch {
             clearPreviewIntent()
             failure = true
@@ -624,7 +655,7 @@ final class MediaSession {
             }
             if injection == .interruption { requestStop(interruption: true) }
             selectedLens = lens
-            message = "Preview ready · \(lens.label) · landscape \(profile.rawValue)."
+            message = ""
         } catch {
             do {
                 if injection == .restoration { throw RearCameraLens.ConfigurationError.unavailable }
@@ -791,18 +822,19 @@ final class MediaSession {
         #if DEBUG
         if interfaceFixtureMode {
             guard isRecording else { return }
-            phase = .preview; sample = ExperimentSample(status: .completed)
+            phase = hasUpload ? .recording : .preview
+            sample = ExperimentSample(status: .completed)
             message = "Fixture saved result; no file was created."
             return
         }
         #endif
-        guard phase == .recording, !busy, recorder != nil else { return }
+        guard phase == .recording, !busy, !stopRequested, recorder != nil else { return }
         busy = true
         phase = .stopping
-        if publisher != nil {
+        if uploadNeedsEncoder {
             await finishRecording(keepEncoding: true)
             phase = .recording
-            message = "Local recording stopped. Upload continues."
+            if !recordingFailed { message = "Local recording stopped." }
         } else {
             await finishRecording()
             phase = .preview
@@ -820,7 +852,7 @@ final class MediaSession {
         failure = true
         recordingFailed = true
         message = "Recording failed. The file is retained as incomplete."
-        if publisher != nil || uploadAffinity.hasAdmittedTransport {
+        if uploadNeedsEncoder {
             guard !busy else { pendingWriterFailure = true; return }
             busy = true
             // A failed file consumer never gains ownership of a healthy upload.
@@ -904,6 +936,15 @@ final class MediaSession {
     }
 
     func stopUpload() async {
+        #if DEBUG
+        if interfaceFixtureMode {
+            let wasRecording = isRecording
+            uploadState = .idle
+            uploadMessage = "Upload stopped"
+            if phase == .recording && !wasRecording { phase = .preview }
+            return
+        }
+        #endif
         // Admission/detachment never waits behind a writer or camera-control
         // await. A stopped remote event must not keep receiving media while busy.
         uploadStopGeneration &+= 1
@@ -931,10 +972,11 @@ final class MediaSession {
 #if DEBUG
     /// Deterministic no-capture fixture for busy-control/finalization races. The
     /// supplied encoder has no media input and the publisher uses fixture I/O.
-    func installBroadcastFixture(encoder: SharedMediaEncoder, publisher: RTMPSPublisher) {
+    func installBroadcastFixture(encoder: SharedMediaEncoder, publisher: RTMPSPublisher, context: RTMPSUploadContext? = nil) {
         precondition(sharedEncoder == nil && self.publisher == nil && !busy)
         sharedEncoder = encoder
         self.publisher = publisher
+        if let context { uploadAffinity.admit(context) }
         phase = .recording
         uploadState = .connected
     }
@@ -1207,9 +1249,13 @@ final class MediaSession {
     func installInterfaceFixture(_ state: String) {
         interfaceFixtureMode = true
         interfaceFixtureName = state
+        uploadState = ["upload-recovered", "active-overlay-unavailable", "backup-failed"].contains(state) ? .connected : .idle
+        if ["overlay-unavailable", "active-overlay-unavailable"].contains(state) {
+            renderer.installUnavailableInterfaceFixture()
+        }
+        if state == "overlay-loading" { renderer.load("https://127.0.0.1:1/overlay") }
         guard state != "idle" && state != "permission-denied" else { return }
         phase = .preview
-        message = "Fixture camera ready; no capture is running."
         audioRoute = "Fixture microphone"
         cameraZoom = CameraZoom(value: 1, minimum: 1, maximum: 3)
         availableLenses = [.wide]

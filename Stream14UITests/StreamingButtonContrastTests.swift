@@ -2,18 +2,16 @@ import XCTest
 
 @MainActor
 final class StreamingButtonContrastTests: XCTestCase {
-    func testDarkEnabledStreamingButtonContrast() throws { try checkStart(style: "Dark", fixture: "preview", enabled: true) }
-    func testDarkUnavailableStreamingButtonContrast() throws { try checkStart(style: "Dark", fixture: "no-event", enabled: false) }
-    func testLightEnabledStreamingButtonContrast() throws { try checkStart(style: "Light", fixture: "preview", enabled: true) }
-    func testLightUnavailableStreamingButtonContrast() throws { try checkStart(style: "Light", fixture: "no-event", enabled: false) }
+    func testDarkEnabledStreamingButtonContrast() throws { try checkStart(style: "Dark") }
+    func testLightEnabledStreamingButtonContrast() throws { try checkStart(style: "Light") }
 
     func testDarkRecordingAndEndingButtonContrast() throws { try checkStopActions(style: "Dark") }
     func testLightRecordingAndEndingButtonContrast() throws { try checkStopActions(style: "Light") }
 
     private enum Fill: String { case green, red, neutral }
 
-    private func checkStart(style: String, fixture: String, enabled: Bool) throws {
-        let app = launch(style: style, fixture: fixture)
+    private func checkStart(style: String) throws {
+        let app = launch(style: style, fixture: "preview")
         defer { app.terminate() }
         let screenImage = try XCTUnwrap(app.screenshot().image.cgImage)
         let page = try XCTUnwrap(screenImage.cropping(to: CGRect(x: 1, y: screenImage.height / 2, width: 2, height: 2)))
@@ -23,7 +21,7 @@ final class StreamingButtonContrastTests: XCTestCase {
 
         let button = app.buttons["goLive"]
         try check(button, in: app, label: "Start recording and streaming", style: style,
-                  enabled: enabled, fill: enabled ? .green : .neutral, pageLuminance: pageLuminance)
+                  fill: .green, pageLuminance: pageLuminance)
         XCTAssertEqual(app.buttons["recordSample"].label, "Record only")
         XCTAssertFalse(app.buttons["endBroadcast"].exists)
     }
@@ -31,26 +29,25 @@ final class StreamingButtonContrastTests: XCTestCase {
     private func checkStopActions(style: String) throws {
         let local = launch(style: style, fixture: "no-event")
         let record = local.buttons["recordSample"]
-        try check(record, in: local, label: "Record only", style: style, enabled: true, fill: .neutral)
+        XCTAssertFalse(local.buttons["goLive"].exists)
+        try check(record, in: local, label: "Record only", style: style, fill: .neutral)
         record.tap()
-        let localEnd = local.buttons["End session"]
-        try check(localEnd, in: local, label: "End session", style: style, enabled: true, fill: .red)
-        localEnd.tap()
-        XCTAssertTrue(local.buttons["Stop local recording and capture"].waitForExistence(timeout: 5))
-        dismissConfirmation(in: local)
-        try check(record, in: local, label: "Stop recording", style: style, enabled: true, fill: .red)
+        XCTAssertFalse(local.buttons["End session"].exists)
+        try check(record, in: local, label: "Stop recording only", style: style, fill: .red)
         record.tap()
+        local.buttons["Finalize local recording"].tap()
         XCTAssertTrue(local.buttons["prepareNextSession"].waitForExistence(timeout: 5))
         local.terminate()
 
         let broadcast = launch(style: style, fixture: "upload-recovered")
         defer { broadcast.terminate() }
         let broadcastEnd = broadcast.buttons["endBroadcast"]
-        try check(broadcastEnd, in: broadcast, label: "End session", style: style, enabled: true, fill: .red)
+        try check(broadcastEnd, in: broadcast, label: "End session", style: style, fill: .red)
         broadcastEnd.tap()
         XCTAssertTrue(broadcast.buttons["End session and local recording"].waitForExistence(timeout: 5))
         dismissConfirmation(in: broadcast)
         XCTAssertEqual(broadcast.staticTexts["localSavingStatus"].label, "Local saving: Recording")
+        try check(broadcast.buttons["stopStreaming"], in: broadcast, label: "Stop streaming only", style: style, fill: .red)
     }
 
     private func dismissConfirmation(in app: XCUIApplication) {
@@ -68,7 +65,7 @@ final class StreamingButtonContrastTests: XCTestCase {
     }
 
     private func check(_ button: XCUIElement, in app: XCUIApplication, label: String,
-                       style: String, enabled: Bool, fill: Fill, pageLuminance: Double? = nil) throws {
+                       style: String, fill: Fill, pageLuminance: Double? = nil) throws {
         XCTAssertTrue(button.waitForExistence(timeout: 5))
         let scroll = app.scrollViews.firstMatch
         for _ in 0..<12 {
@@ -77,13 +74,13 @@ final class StreamingButtonContrastTests: XCTestCase {
             scroll.swipeUp()
         }
         XCTAssertTrue(button.isHittable)
-        XCTAssertEqual(button.isEnabled, enabled)
+        XCTAssertTrue(button.isEnabled)
         XCTAssertEqual(button.label, label)
         XCTAssertGreaterThanOrEqual(button.frame.height, 44)
         XCTAssertGreaterThanOrEqual(button.frame.width, 44)
         let screenshot = button.screenshot()
         let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = "\(label) \(style) \(enabled ? "enabled" : "unavailable")"
+        attachment.name = "\(label) \(style)"
         attachment.lifetime = .keepAlways
         add(attachment)
         let image = try XCTUnwrap(screenshot.image.cgImage)
@@ -103,11 +100,8 @@ final class StreamingButtonContrastTests: XCTestCase {
         let dark = luminances[Int(Double(luminances.count - 1) * 0.03)]
         let light = luminances[Int(Double(luminances.count - 1) * 0.97)]
         let ratio = (light + 0.05) / (dark + 0.05)
-        print("\(label) rendered contrast: \(style), enabled=\(enabled), ratio=\(ratio)")
-        // Inactive controls are exempt from WCAG's text contrast minimum.
-        // The inactive 1.5 floor is only a raster visibility-regression heuristic
-        // for the blank-pill defect; screenshots still require visual review.
-        XCTAssertGreaterThanOrEqual(ratio, enabled ? 4.5 : 1.5,
+        print("\(label) rendered contrast: \(style), ratio=\(ratio)")
+        XCTAssertGreaterThanOrEqual(ratio, 4.5,
             "The actual rendered label must remain visible against its fill")
         if fill == .green, let pageLuminance {
             let edgeRatio = (max(light, pageLuminance) + 0.05) / (min(light, pageLuminance) + 0.05)

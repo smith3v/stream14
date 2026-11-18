@@ -16,12 +16,15 @@ gate is one continuous hour; the target is not a qualification claim. See the
   **Recordings** stays a separate tab. In landscape the preview is on the left,
   the controls scroll on the right, and **More → Navigate** replaces the hidden
   tab bar. Navigation and rotation don't start or stop media outputs.
-- **Check camera and sound** opens the composed preview and requests camera and
-  microphone permission in context. A denial points to Settings. Quality and
-  compatible rear-lens selection are available in preparation. Wide is the
+- **Camera preview** opens the composed preview and requests camera and
+  microphone permission in context. A denial points to Settings. Choose quality
+  before opening the camera. The preview puts compatible rear-lens selection
+  next to microphone mute. Wide is the
   default; Ultra Wide and Telephoto are shown when supported. Zoom is relative
   to the selected lens and limited by the device and the 10× app cap. Use the
   system-selected microphone route, with input label, meter and mute.
+  Zoom adjustments retain the start controls in place, disabled while the camera
+  is applying the change, to preserve the control panel's scroll position.
 - The preview follows window orientation in portrait and both landscapes. The
   mixer rotates camera input before composition; portrait fits inside the fixed
   16:9 canvas. Start in landscape. Freeze the profile from camera open and the
@@ -39,14 +42,27 @@ gate is one continuous hour; the target is not a qualification claim. See the
   reconnecting, uncertain remote state, and backup failure have distinct text.
   Settings changes apply to the next session. App controls and warnings stay out
   of the picture, and warnings don't play into the microphone.
-- Use a high-contrast **Start recording and streaming** action (green when
-  available), a neutral **Record only**, and destructive styling for Stop and
-  End. Keep unavailable actions neutral and accessible.
+- Show **Start recording and streaming** in green when the selected destination,
+  landscape preview, overlay and local writer are ready. **Record only** is
+  neutral and appears when local recording can start. The landscape prompt
+  appears by the start actions in bold headline text with a rotate-phone icon and
+  Dynamic Type support. Use consistent button heights that accommodate
+  Dynamic Type and matching destructive styling for the three stop actions.
+- **Stop recording only** confirms file finalization and preserves an active
+  upload. **Stop streaming only** confirms detaching the upload and cancelling
+  reconnect attempts, preserving local recording and the session destination.
+  Show **End session** while both outputs are active. After either stops, use the
+  remaining output's stop action. Stopping the final output closes capture and
+  finishes the session, including remote completion for a connected event as
+  explained in its confirmation. Pending remote completion keeps **Finish YouTube
+  event**, reconciliation and Studio controls available. A saved-key event can
+  end by Auto-stop after ingest stops.
 - **End session** confirms the operation and reports local finalization separately
   from remote completion. An unknown remote result offers reconciliation and
   Studio; a stopped upload is not proof the event ended. **Prepare next session**
   is blocked by active outputs, finalization or unresolved remote work. It clears
   the selected event and reevaluates destination availability without starting media.
+  The completed workspace hides **Camera preview** until the next session is prepared.
 - **Recordings** shows date, size, status and elapsed `HH:MM:SS` when available,
   with spoken duration and recovery warnings for VoiceOver. Support original
   playback, explicit Files/share export and confirmed deletion. Missing metadata
@@ -106,6 +122,9 @@ explicitly apply it while idle or in preview. Invalid input or storage failure
 leaves the active source unchanged. Clearing the URL explicitly disables the
 overlay; an example URL is opt-in. A configured overlay must be ready before
 Go Live. The operator can reload it or hide/show it manually.
+Keep the overlay status current while allowing 10 seconds of continuous
+unavailability before showing the recovery warning, **Retry overlay** and
+**Overlay settings**. A new profile or explicit reload restarts this delay.
 
 [WebOverlayRenderer](../Stream14/Media/WebOverlayRenderer.swift) uses an attached
 WKWebView at the selected canvas dimensions in CSS pixels and normalizes the

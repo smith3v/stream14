@@ -14,6 +14,8 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
     private(set) var image: CGImage?
     private(set) var visible = false
     private(set) var healthy = false
+    private(set) var showsRecoveryActions = false
+    private var unavailableSince: TimeInterval?
     private(set) var status = "Overlay disabled · apply an HTTPS URL to enable it."
     private(set) var captureMilliseconds: Double = 0
     private(set) var viewport = "No render yet"
@@ -24,6 +26,7 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
     enum CaptureInjection { case none, stalled, unusable }
     var captureInjection: CaptureInjection = .none
     func interruptTickerForTesting() { ticker?.invalidate() }
+    func installUnavailableInterfaceFixture() { showsRecoveryActions = true }
     #endif
     private var ticker: Timer?
     private var nextCapture: TimeInterval = 0
@@ -145,6 +148,8 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func reload() {
         guard active else { return }
+        unavailableSince = now
+        showsRecoveryActions = false
         if let requestedURL { loadRequest(requestedURL) }
         else if fixture {
             beginNavigation()
@@ -160,6 +165,8 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
     /// Foreground intent is owned by MediaSession, so this is suspension, not disable.
     func stop() {
         active = false
+        unavailableSince = nil
+        showsRecoveryActions = false
         ticker?.invalidate()
         ticker = nil
         replaceBrowser()
@@ -214,6 +221,8 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
     private func start() {
         active = true
         sessionStarted = now
+        unavailableSince = now
+        showsRecoveryActions = false
         renderAttemptStarted = now
         status = "Loading overlay…"
         installTicker()
@@ -277,6 +286,13 @@ final class WebOverlayRenderer: NSObject, WKNavigationDelegate, WKUIDelegate {
         health.expire(at: now)
         healthy = health.isHealthy(at: now) && health.recovered
         visible = health.isVisible(at: now)
+        if healthy && image != nil {
+            unavailableSince = nil
+            showsRecoveryActions = false
+        } else {
+            if unavailableSince == nil { unavailableSince = now }
+            showsRecoveryActions = now - (unavailableSince ?? now) >= 10
+        }
         if health.manuallyHidden { status = "Overlay manually hidden" }
         else if healthy { status = "Overlay healthy" }
         else if failed || image != nil || now - sessionStarted >= 10 { status = "Overlay unavailable · waiting for source access and a fresh render" }

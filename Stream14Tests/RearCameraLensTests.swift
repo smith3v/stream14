@@ -73,6 +73,25 @@ struct RearCameraLensTests {
         #expect(remainsWideAndIdle)
     }
 
+    @Test @MainActor func zoomRetainsStartControlsWhileMediaAdmissionStaysBlocked() async throws {
+        let models = InterfaceFixture.make("ready")
+        let session = models.media
+        #expect(session.canRecord && session.broadcastCaptureReady)
+        let adjustment = Task { await session.setCameraZoom(2) }
+        for _ in 0..<100 {
+            if session.isAdjustingCameraZoom { break }
+            await Task.yield()
+        }
+        try #require(session.isAdjustingCameraZoom)
+        #expect(session.canShowRecordStart && session.broadcastCaptureReadyForDisplay)
+        #expect(!session.canRecord && !session.broadcastCaptureReady && !session.canAdjustMedia)
+        models.broadcast.requestConfirmation(channel: models.events.channel, event: models.events.selected)
+        #expect(models.broadcast.confirmation == nil)
+        await adjustment.value
+        #expect(session.cameraZoom.value == 2)
+        #expect(session.canRecord && session.broadcastCaptureReady)
+    }
+
     /// Authorized, short private camera/microphone samples; never deletes originals.
     @Test(.enabled(if: ProcessInfo.processInfo.environment["STREAM14_DEVICE_LENSES"] == "1"))
     @MainActor func deviceLensSelectionAndRecording() async throws {

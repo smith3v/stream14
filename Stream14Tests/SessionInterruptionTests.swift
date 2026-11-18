@@ -79,6 +79,34 @@ import UIKit
         }
     }
 
+    @Test func writerFailureAfterUploadStopClosesUnusedPipelineAndRetainsFile() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let media = session()
+        let publisher = RTMPSPublisher(send: { _, _ in }, close: {}, failed: { _ in })
+        publisher.activate()
+        let encoder = try SharedMediaEncoder(profile: .hd, output: { _ in }, failed: { _ in })
+        let context = RTMPSUploadContext(identity: .streamKey(sessionID: UUID()), profile: .hd,
+            endpoint: URL(string: "rtmps://example.invalid/live")!)
+        media.installBroadcastFixture(encoder: encoder, publisher: publisher, context: context)
+        let sample = ExperimentSample()
+        try sample.save(in: directory)
+        let writer = try await recorder(sample: sample, directory: directory, injection: .none)
+        media.installWriterFixture(writer, sample: sample, directory: directory)
+
+        await media.stopUpload()
+        #expect(media.hasStartedWriting && media.broadcastPipelineRunning && !media.hasUpload)
+        await media.failWriterFixture()
+        try await until { media.phase == .idle }
+
+        #expect(media.recordingFailed && !media.broadcastPipelineRunning)
+        let retained = try JSONDecoder().decode(ExperimentSample.self,
+            from: Data(contentsOf: directory.appendingPathComponent(sample.id.uuidString + ".json")))
+        #expect(retained.status == .failed)
+        #expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent(sample.fileName).path))
+    }
+
     @Test func backgroundExpiryPersistsIncompleteAndRestoresPriorIdleTimerBeforeLateFinish() async throws {
         for previous in [false, true] {
             let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
