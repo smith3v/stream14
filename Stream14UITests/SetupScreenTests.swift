@@ -369,7 +369,7 @@ final class SetupScreenTests: XCTestCase {
         assertCameraCloseIsAbsent(in: app)
 
         XCTAssertFalse(end.exists)
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "Streaming remains after file stop, landscape left"
         screenshot.lifetime = .keepAlways
         add(screenshot)
@@ -405,7 +405,7 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertFalse(app.buttons["endBroadcast"].exists)
         XCTAssertTrue(app.buttons["recordSample"].exists)
         XCTAssertFalse(streaming.exists)
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = "Recording remains after upload stop, landscape right"
         screenshot.lifetime = .keepAlways
         add(screenshot)
