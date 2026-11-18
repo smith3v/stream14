@@ -555,7 +555,7 @@ struct SetupView: View {
         if experiment.isRecording && broadcast.activeStreamKey == nil && broadcast.activeIntent == nil && broadcast.pendingRemote == nil && !broadcast.isWorking {
             Button("End session", systemImage: "stop.circle", role: .destructive) { confirmingLocalEnd = true }
                 .buttonStyle(SessionActionButtonStyle.stop)
-                .confirmationDialog("End local session?", isPresented: $confirmingLocalEnd, titleVisibility: .visible) {
+                .alert("End local session?", isPresented: $confirmingLocalEnd) {
                     Button("Stop local recording and capture", role: .destructive) { experiment.requestStop() }
                     Button("Cancel", role: .cancel) {}
                 } message: {
@@ -568,7 +568,7 @@ struct SetupView: View {
                 .buttonStyle(SessionActionButtonStyle.stop)
                 .disabled(!canStopRecording)
                 .accessibilityIdentifier("recordSample")
-                .confirmationDialog("Stop recording only?", isPresented: $confirmingRecordingStop, titleVisibility: .visible) {
+                .alert("Stop recording only?", isPresented: $confirmingRecordingStop) {
                     Button("Finalize local recording", role: .destructive) { Task { await experiment.stopRecording() } }
                         .disabled(!canStopRecording)
                     Button("Cancel", role: .cancel) {}

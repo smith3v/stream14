@@ -76,7 +76,7 @@ struct BroadcastControlsView: View {
                 Button("Stop streaming only", systemImage: "stop.circle", role: .destructive) { confirmingStreamingStop = true }
                     .buttonStyle(SessionActionButtonStyle.stop)
                     .accessibilityIdentifier("stopStreaming")
-                    .confirmationDialog("Stop streaming only?", isPresented: $confirmingStreamingStop, titleVisibility: .visible) {
+                    .alert("Stop streaming only?", isPresented: $confirmingStreamingStop) {
                         Button("Stop upload", role: .destructive) { broadcast.confirmStopStreaming() }
                         Button("Cancel", role: .cancel) {}
                     } message: {
@@ -97,7 +97,7 @@ struct BroadcastControlsView: View {
                 } message: { intent in
                     Text("Channel: \(intent.channel.title) (\(intent.channel.id))\nEvent: \(intent.event.title)\nVisibility: \(intent.event.visibility)\nProfile: \(intent.profile.label)\nThis starts local recording and uploads camera and microphone media to this event.")
                 }
-            .confirmationDialog("End session?", isPresented: $confirmingEnd, titleVisibility: .visible) {
+            .alert("End session?", isPresented: $confirmingEnd) {
                 Button("End session and local recording", role: .destructive) { broadcast.confirmEnd() }
                 Button("Cancel", role: .cancel) {}
             } message: {

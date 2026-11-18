@@ -111,10 +111,12 @@ final class SetupScreenTests: XCTestCase {
         scrollTo(record, in: app)
         XCTAssertEqual(record.label, "Stop recording only")
         record.tap()
-        app.buttons["Finalize local recording"].tap()
-        XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Saved")
+        let finalize = app.alerts.buttons["Finalize local recording"]
+        XCTAssertTrue(finalize.waitForExistence(timeout: 5))
+        finalize.tap()
         let next = app.buttons["prepareNextSession"]
         scrollTo(next, in: app)
+        XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Saved")
         XCTAssertTrue(next.isEnabled)
         next.tap()
         XCTAssertEqual(app.staticTexts["setupStatus"].label, "Next session")
