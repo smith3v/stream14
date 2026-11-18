@@ -16,9 +16,10 @@ gate is one continuous hour; the target is not a qualification claim. See the
   **Recordings** stays a separate tab. In landscape the preview is on the left,
   the controls scroll on the right, and **More → Navigate** replaces the hidden
   tab bar. Navigation and rotation don't start or stop media outputs.
-- **Check camera and sound** opens the composed preview and requests camera and
-  microphone permission in context. A denial points to Settings. Quality and
-  compatible rear-lens selection are available in preparation. Wide is the
+- **Camera preview** opens the composed preview and requests camera and
+  microphone permission in context. A denial points to Settings. Choose quality
+  before opening the camera. The preview puts compatible rear-lens selection
+  next to microphone mute. Wide is the
   default; Ultra Wide and Telephoto are shown when supported. Zoom is relative
   to the selected lens and limited by the device and the 10× app cap. Use the
   system-selected microphone route, with input label, meter and mute.
@@ -39,14 +40,22 @@ gate is one continuous hour; the target is not a qualification claim. See the
   reconnecting, uncertain remote state, and backup failure have distinct text.
   Settings changes apply to the next session. App controls and warnings stay out
   of the picture, and warnings don't play into the microphone.
-- Use a high-contrast **Start recording and streaming** action (green when
-  available), a neutral **Record only**, and destructive styling for Stop and
-  End. Keep unavailable actions neutral and accessible.
+- Show **Start recording and streaming** in green when the selected destination,
+  landscape preview, overlay and local writer are ready. **Record only** is
+  neutral and appears when local recording can start. The landscape prompt
+  appears by the start actions. Use consistent button heights that accommodate
+  Dynamic Type and matching destructive styling for the three stop actions.
+- **Stop recording only** confirms file finalization and preserves an active
+  upload. **Stop streaming only** confirms detaching the upload and cancelling
+  reconnect attempts, preserving local recording and the session destination.
+  A connected event still needs **End session** for remote completion. A saved-key
+  event can end by Auto-stop after ingest stops.
 - **End session** confirms the operation and reports local finalization separately
   from remote completion. An unknown remote result offers reconciliation and
   Studio; a stopped upload is not proof the event ended. **Prepare next session**
   is blocked by active outputs, finalization or unresolved remote work. It clears
   the selected event and reevaluates destination availability without starting media.
+  The completed workspace hides **Camera preview** until the next session is prepared.
 - **Recordings** shows date, size, status and elapsed `HH:MM:SS` when available,
   with spoken duration and recovery warnings for VoiceOver. Support original
   playback, explicit Files/share export and confirmed deletion. Missing metadata

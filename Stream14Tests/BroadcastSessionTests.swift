@@ -97,6 +97,56 @@ import UIKit
         await h.session.waitForOperation()
     }
 
+    @Test func stoppingSavedKeyUploadKeepsRecordingAndDisallowsRetryUntilEnd() async throws {
+        let h = try await Harness(authorizationDriver: nil)
+        defer { h.cleanup() }
+        #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
+        h.session.requestStreamKeyConfirmation()
+        h.session.confirmStreamKeyStart(try #require(h.session.streamKeyConfirmation))
+        await h.session.waitForOperation()
+        let active = try #require(h.session.activeStreamKey)
+
+        #expect(h.session.canStopStreaming)
+        h.session.confirmStopStreaming()
+        await h.session.waitForOperation()
+
+        #expect(!h.uploaded && h.snapshot.writerStarted && h.snapshot.isRecording)
+        #expect(h.session.activeStreamKey?.id == active.id && h.session.streamKeyConfigurationLocked)
+        #expect(!h.session.canStopStreaming && !h.session.canStartStreamKey && !h.session.canPrepareNextSession)
+        h.snapshot.uploadFailed = true
+        h.session.confirmStreamKeyRetry()
+        #expect(h.timeline == ["lock", "record", "writer", "upload", "stopUpload"])
+
+        h.session.confirmEnd()
+        await h.session.waitForOperation()
+        #expect(h.session.state == .uploadStopped && !h.snapshot.isRecording)
+        #expect(h.session.canPrepareNextSession && h.server.requests.isEmpty)
+    }
+
+    @Test func stoppingSavedKeyRetryRejectsHeldConnectAndPreservesRecording() async throws {
+        let h = try await Harness(authorizationDriver: nil)
+        defer { h.cleanup() }
+        #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
+        h.session.requestStreamKeyConfirmation()
+        h.session.confirmStreamKeyStart(try #require(h.session.streamKeyConfirmation))
+        await h.session.waitForOperation()
+        h.snapshot.uploadFailed = true
+        h.uploaded = false
+        h.hold = "upload"
+        h.session.confirmStreamKeyRetry()
+        try await h.until { h.pending != nil }
+
+        #expect(h.session.canStopStreaming)
+        h.session.confirmStopStreaming()
+        try await h.until { h.timeline.contains("stopUpload") }
+        h.release()
+        await h.session.waitForOperation()
+
+        #expect(h.session.state == .streamingStopped && !h.uploaded && h.snapshot.isRecording)
+        #expect(!h.session.canRetryStreamKeyUpload && !h.timeline.contains("stopAll"))
+        #expect(h.server.requests.isEmpty)
+    }
+
     @Test func streamKeyBackupFailureOrOrientationChangePreventsPublishing() async throws {
         let h = try await Harness(authorizationDriver: nil)
         defer { h.cleanup() }
@@ -644,16 +694,67 @@ import UIKit
         #expect(h.snapshot.isRecording)
     }
 
-    @Test func cancelRecoveryRejectsHeldLateReadAndNeverReconnects() async throws {
+    @Test func stopStreamingRejectsHeldRecoveryAndPreservesWriterAndRemoteEnd() async throws {
         let h = try await Harness(fastClock: true)
         defer { h.cleanup() }
         h.start(); await h.session.waitForOperation()
         h.snapshot.uploadFailed = true; h.uploaded = false; h.hold = "channels"
         try await h.until { h.pending != nil }
-        h.session.cancelReconnect(); h.release()
-        try await Task.sleep(for: .milliseconds(10))
+        #expect(h.session.canStopStreaming)
+        h.session.confirmStopStreaming()
+        try await h.until { h.timeline.contains("stopUpload") }
+        h.release()
+        await h.session.waitForOperation()
+        h.session.retryUpload()
         #expect(h.timeline.filter { $0 == "upload" }.count == 1)
         #expect(h.snapshot.isRecording && !h.timeline.contains("stopAll"))
+        #expect(h.session.state == .streamingStopped && !h.session.canPrepareNextSession)
+        #expect(h.session.activeIntent != nil && h.session.pendingRemote != nil)
+        #expect(h.server.transitions == ["live"])
+
+        h.session.confirmEnd()
+        await h.session.waitForOperation()
+        #expect(h.session.state == .ended && !h.snapshot.isRecording)
+        #expect(h.server.transitions == ["live", "complete"])
+    }
+
+    @Test func stopStreamingBeforeLivePreservesPendingTransitionAndRecording() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.hold = "transition"
+        h.start()
+        try await h.until { h.pending != nil }
+        #expect(h.session.state == .goingLive && h.uploaded && h.session.canStopStreaming)
+
+        h.session.confirmStopStreaming()
+        await h.session.waitForOperation()
+        #expect(h.session.state == .needsReconciliation && h.session.pendingRemote?.transition == .live)
+        #expect(!h.uploaded && h.snapshot.isRecording && !h.timeline.contains("stopAll"))
+        h.release()
+        try await h.until { !h.session.hasUnsettledMutation }
+        #expect(h.session.pendingRemote?.transition == .live)
+
+        h.session.confirmEnd()
+        await h.session.waitForOperation()
+        #expect(h.session.state == .ended && h.server.transitions == ["live", "complete"])
+    }
+
+    @Test func fileFinalizationAfterTransportAttachesDoesNotAbortYouTubeStartup() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.hold = "transition"
+        h.start()
+        try await h.until { h.pending != nil }
+        #expect(h.uploaded)
+
+        h.snapshot.captureReady = false  // MediaSession is busy finalizing the file.
+        h.snapshot.writerStarted = false
+        h.snapshot.isRecording = false
+        h.release()
+        await h.session.waitForOperation()
+
+        #expect(h.session.state == .live && h.uploaded)
+        #expect(!h.timeline.contains("stopUpload") && !h.timeline.contains("stopAll"))
     }
 
     @Test func confirmationIsRequiredAndDoesNotStartMediaOrAPI() async throws {
@@ -1039,6 +1140,7 @@ import UIKit
     func makeSession() -> BroadcastSession {
         let media = BroadcastMedia(snapshot: {
             var snapshot = self.snapshot
+            snapshot.hasUpload = self.uploaded
             if let actualMedia = self.actualMedia { snapshot.pipelineRunning = actualMedia.broadcastPipelineRunning }
             return snapshot
         }, record: {
@@ -1099,7 +1201,7 @@ import UIKit
         }
         try #require(condition())
     }
-    func cleanup() { session.cancelReconnect(); release(); try? FileManager.default.removeItem(at: directory) }
+    func cleanup() { session.interrupted(.background); release(); try? FileManager.default.removeItem(at: directory) }
 }
 
 @MainActor private final class BroadcastFixtureServer {

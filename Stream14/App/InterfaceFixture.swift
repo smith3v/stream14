@@ -38,8 +38,9 @@ import Foundation
             BroadcastMedia.Snapshot(captureReady: media.broadcastCaptureReady, canRecord: media.canRecord,
                 writerStarted: false, isRecording: media.isRecording, profile: media.profile, overlayURL: "",
                 overlayReady: media.broadcastOverlayReady, uploadFailed: false,
-                canPrepareNextSession: media.canPrepareNextSession)
-        }, record: {}, startUpload: { _ in throw CancellationError() }, stopUpload: {}, stopAll: {},
+                canPrepareNextSession: media.canPrepareNextSession, hasUpload: media.hasUpload)
+        }, record: {}, startUpload: { _ in throw CancellationError() }, stopUpload: { await media.stopUpload() },
+            stopAll: { media.requestStop() },
             lockConfiguration: { media.broadcastConfigurationLocked = $0 })
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("interface-fixture-" + UUID().uuidString)
         let store = PendingRemoteBroadcastStore(url: directory.appendingPathComponent("remote.json"))

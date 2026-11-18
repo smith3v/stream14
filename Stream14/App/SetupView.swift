@@ -12,6 +12,7 @@ struct SetupView: View {
     @State private var pendingDeletion: ExperimentSample?
     @State private var playback: PlaybackSelection?
     @State private var confirmingLocalEnd = false
+    @State private var confirmingRecordingStop = false
     @State private var showingSettings = false
     @State private var showingEvents = false
     @State private var showingConnection = false
@@ -247,7 +248,7 @@ struct SetupView: View {
                 }
                 NavigationLink("Help") {
                     Form {
-                        Text("Check camera and sound before starting. Setup sends no camera media. Upload and local saving operate independently. Backgrounding stops capture. A preview-only camera returns on foreground. After an interruption, check Studio and reopen the camera. Connected events may offer Resume same event. With a saved key, check the event assigned in Studio before starting again.")
+                        Text("Open Camera preview to check the picture and sound. Setup sends no camera media. Upload and local saving operate independently. Backgrounding stops capture. A preview-only camera returns on foreground. After an interruption, check Studio and reopen the camera. Connected events may offer Resume same event. With a saved key, check the event assigned in Studio before starting again.")
                         Link("Documentation", destination: URL(string: "https://github.com/smith3v/stream14/blob/main/docs/ios-development-guide.md")!)
                     }.navigationTitle("Help")
                         .toolbar { Button("Done") { showingSettings = false } }
@@ -350,7 +351,6 @@ struct SetupView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Camera closed", systemImage: "video.slash")
                         .font(.headline).symbolRenderingMode(.monochrome)
-                    Text("Check camera and sound to rehearse or record. This does not publish to YouTube.")
                 }
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -360,17 +360,16 @@ struct SetupView: View {
     }
 
     @ViewBuilder private var lensControls: some View {
-        if experiment.phase != .idle && !experiment.availableLenses.isEmpty {
+        if !finished && !sessionHasRun && !broadcast.locksSelection &&
+            experiment.phase == .preview && !experiment.availableLenses.isEmpty {
             Button {
                 showingLensChoices = true
             } label: {
                 Label(experiment.selectedLens.buttonLabel, systemImage: "camera")
-                    .frame(minHeight: 44)
             }
-            .controlSize(.small)
             .disabled(!experiment.canSelectLens)
             .accessibilityLabel("Rear camera lens")
-            .accessibilityHint("Choose a rear lens before recording. Selection is locked while recording or finalizing.")
+            .accessibilityHint("Choose a rear lens before recording.")
             .accessibilityValue(experiment.selectedLens.label)
             .accessibilityIdentifier("cameraLensSelector")
             .confirmationDialog("Choose rear camera", isPresented: $showingLensChoices,
@@ -428,27 +427,27 @@ struct SetupView: View {
             } else {
                 readinessControls
             }
-            if experiment.phase == .idle {
-                Button("Check camera and sound", systemImage: "camera") { Task { await experiment.openPreview() } }
-                    .frame(minHeight: 44).accessibilityIdentifier("openExperiment")
+            if !finished && experiment.canSelectProfile {
+                profileControls
+            }
+            if experiment.phase == .idle && !finished {
+                Button("Camera preview", systemImage: "camera") { Task { await experiment.openPreview() } }
+                    .accessibilityIdentifier("openExperiment")
             } else if experiment.phase == .preview && !experiment.hasUpload &&
                         !broadcast.requiresEndFirst && broadcast.confirmation == nil && broadcast.streamKeyConfirmation == nil {
                 Button("Close camera", systemImage: "xmark.circle") { experiment.requestStop() }
-                    .frame(minHeight: 44)
                     .disabled(!experiment.canAdjustMedia)
                     .accessibilityIdentifier("closeCamera")
-            }
-            if !sessionHasRun && !broadcast.locksSelection {
-                profileControls
-                lensControls
-                Text("Quality: \(experiment.profile.label) · Camera: \(experiment.selectedLens.label)")
-                    .font(.caption).accessibilityIdentifier("sessionConfiguration")
+                if !finished && !sessionHasRun && !broadcast.locksSelection {
+                    Text("Close the camera to change the quality").font(.caption)
+                }
             }
             broadcastControls
             localActions
             mediaControls
         }
         .fixedSize(horizontal: false, vertical: true)
+        .buttonStyle(SessionActionButtonStyle.standard)
     }
 
     private var streamKeySummary: some View {
@@ -467,7 +466,6 @@ struct SetupView: View {
             if let intent = broadcast.activeIntent ?? broadcast.confirmation {
                 Text("Channel: " + intent.channel.title)
                 eventDetails(intent.event)
-                Text("Quality: " + intent.profile.label)
             } else if let event = youtubeEvents.selected, let channel = youtubeEvents.channel {
                 Text("Channel: " + channel.title)
                 eventDetails(event)
@@ -494,8 +492,11 @@ struct SetupView: View {
             Text("Upload: " + uploadStatus).accessibilityIdentifier("uploadStatus")
             Text("Local saving: " + experiment.localSavingStatus)
                 .accessibilityIdentifier("localSavingStatus")
-            Text(experiment.message).font(.caption).accessibilityIdentifier("mediaStatus")
-            Text("Overlay: " + (experiment.overlayURL.isEmpty ? "Disabled" : experiment.renderer.status))
+            if !experiment.message.isEmpty {
+                Text(experiment.message).font(.caption).accessibilityIdentifier("mediaStatus")
+            }
+            Text("Overlay: " + (experiment.overlayURL.isEmpty ? "Disabled" :
+                experiment.renderer.status.replacingOccurrences(of: "Overlay ", with: "", options: .anchored)))
                 .font(.caption).accessibilityIdentifier("overlayStatus")
         }
     }
@@ -527,13 +528,9 @@ struct SetupView: View {
 
     @ViewBuilder private var readinessControls: some View {
         if !broadcast.requiresEndFirst {
-            if !experiment.broadcastCaptureReady {
-                Text("Check camera and sound before starting. Allow camera and microphone access when asked.")
-                    .font(.footnote).accessibilityIdentifier("cameraReadiness")
-                if experiment.capturePermissionDenied {
-                    Link("Open iPhone Settings", destination: URL(string: UIApplication.openSettingsURLString)!)
-                        .frame(minHeight: 44)
-                }
+            if !experiment.broadcastCaptureReady && experiment.capturePermissionDenied {
+                Link("Open iPhone Settings", destination: URL(string: UIApplication.openSettingsURLString)!)
+                    .frame(minHeight: 44)
             }
             if broadcast.requiresStudioResolution || broadcast.journalUnavailable {
                 Text(broadcast.message).font(.footnote)
@@ -543,28 +540,20 @@ struct SetupView: View {
                 Text("Choose an eligible scheduled event. Its channel must support streaming and auto-stop must be disabled in Studio.")
                     .font(.footnote)
             }
-            if experiment.previewNeedsLandscape {
-                Text("Turn your iPhone to landscape to record or stream.")
-                    .font(.footnote).accessibilityIdentifier("landscapeReadiness")
-            } else if experiment.phase == .preview && experiment.previewOrientationSettling {
+            if experiment.phase == .preview && experiment.previewOrientationSettling && !experiment.previewNeedsLandscape {
                 Text("Adjusting camera orientation…")
                     .font(.footnote).accessibilityIdentifier("landscapeReadiness")
-            } else if experiment.broadcastCaptureReady && !experiment.canRecord && !experiment.hasStartedWriting {
+            } else if experiment.phase == .preview && experiment.broadcastCaptureReady &&
+                        !experiment.previewNeedsLandscape && !experiment.canRecord {
                 Text("Local saving is not ready. Wait for finalization or recording recovery to finish, then retry. Streaming has not started.")
                     .font(.footnote).accessibilityIdentifier("writerReadiness")
-            }
-            if experiment.broadcastCaptureReady && experiment.broadcastOverlayReady &&
-                (experiment.canRecord || experiment.hasStartedWriting) &&
-                (usesStreamKey ? broadcast.canStartStreamKey : youtubeEvents.selected != nil && broadcast.canStart) {
-                Text("Ready to confirm recording and streaming").font(.subheadline)
-                    .accessibilityIdentifier("sessionReady")
             }
         }
     }
 
     @ViewBuilder private var localActions: some View {
         if experiment.isRecording && broadcast.activeStreamKey == nil && broadcast.activeIntent == nil && broadcast.pendingRemote == nil && !broadcast.isWorking {
-            Button("End session", role: .destructive) { confirmingLocalEnd = true }
+            Button("End session", systemImage: "stop.circle", role: .destructive) { confirmingLocalEnd = true }
                 .buttonStyle(SessionActionButtonStyle.stop)
                 .confirmationDialog("End local session?", isPresented: $confirmingLocalEnd, titleVisibility: .visible) {
                     Button("Stop local recording and capture", role: .destructive) { experiment.requestStop() }
@@ -574,13 +563,21 @@ struct SetupView: View {
                 }
         }
         if experiment.isRecording {
-            Button("Stop recording", systemImage: "stop.circle") { Task { await experiment.stopRecording() } }
+            let canStopRecording = experiment.canAdjustMedia && (!broadcast.isStartingUpload || experiment.hasUpload)
+            Button("Stop recording only", systemImage: "stop.circle", role: .destructive) { confirmingRecordingStop = true }
                 .buttonStyle(SessionActionButtonStyle.stop)
-                .disabled(!experiment.canAdjustMedia)
+                .disabled(!canStopRecording)
                 .accessibilityIdentifier("recordSample")
-        } else if experiment.canRecord && !finished {
+                .confirmationDialog("Stop recording only?", isPresented: $confirmingRecordingStop, titleVisibility: .visible) {
+                    Button("Finalize local recording", role: .destructive) { Task { await experiment.stopRecording() } }
+                        .disabled(!canStopRecording)
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Finalize the local recording. Any active upload continues.")
+                }
+        } else if experiment.canRecord && !finished && !broadcast.requiresEndFirst {
             Button("Record only", systemImage: "record.circle") { Task { await experiment.record() } }
-                .frame(minHeight: 44).accessibilityIdentifier("recordSample")
+                .accessibilityIdentifier("recordSample")
         }
         if experiment.recordingFailed {
             Text("Local saving cannot recover in this session. Saved footage is incomplete; export or review it in Recordings. After outputs stop, prepare the next session and check the camera to start a new file. Upload continues while healthy; the recording gap is not recovered.")
@@ -592,7 +589,7 @@ struct SetupView: View {
         VStack(alignment: .leading, spacing: 8) {
             if let url = experiment.sampleURL {
                 Button("Play", systemImage: "play") { playback = PlaybackSelection(url: url) }.frame(minHeight: 44)
-                ShareLink(item: url) { Label("Export original", systemImage: "square.and.arrow.up").frame(minHeight: 44) }
+                ShareLink(item: url) { Label("Export original", systemImage: "square.and.arrow.up") }
             }
             Button("Prepare next session") {
                 guard experiment.canPrepareNextSession, broadcast.prepareNextSession(), experiment.prepareNextSession() else { return }
@@ -649,58 +646,54 @@ struct SetupView: View {
         }
     }
 
-    @ViewBuilder private var profileControls: some View {
-                    Button { showingProfileChoices = true } label: {
-                        Label(experiment.profile.label, systemImage: "video")
-                            .frame(minHeight: 44)
-                    }
-                    .disabled(!experiment.canSelectProfile)
-                    .accessibilityLabel("Session profile")
-                    .accessibilityValue(experiment.profile.label)
-                    .accessibilityIdentifier("sessionProfile")
-                    .confirmationDialog("Session profile", isPresented: $showingProfileChoices, titleVisibility: .visible) {
-                        ForEach(SessionProfile.allCases) { profile in
-                            Button(profile.label) { experiment.selectProfile(profile) }
-                        }
-                        Button("Cancel", role: .cancel) {}
-                    }
-                    if !experiment.canSelectProfile {
-                        Text("Close the camera to change quality, then check the new picture and sound.").font(.caption)
-                    }
+    private var profileControls: some View {
+        Button(experiment.profile.label, systemImage: "video") { showingProfileChoices = true }
+            .accessibilityLabel("Session profile")
+            .accessibilityValue(experiment.profile.label)
+            .accessibilityIdentifier("sessionProfile")
+            .confirmationDialog("Session profile", isPresented: $showingProfileChoices, titleVisibility: .visible) {
+                ForEach(SessionProfile.allCases) { profile in
+                    Button(profile.label) { experiment.selectProfile(profile) }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
     }
 
     @ViewBuilder private var mediaControls: some View {
-                    if experiment.phase == .preview || experiment.phase == .recording {
-                        Button {
-                            Task { await experiment.setMicrophoneMuted(!experiment.microphoneMuted) }
-                        } label: {
-                            Label(experiment.microphoneMuted ? "Unmute microphone" : "Mute microphone",
-                                  systemImage: experiment.microphoneMuted ? "mic.slash" : "mic")
-                                .frame(minHeight: 44)
-                        }
-                        .disabled(!experiment.canAdjustMedia)
-                        .accessibilityValue(experiment.microphoneMuted ? "Muted" : "On")
-                        .accessibilityIdentifier("microphoneMute")
-                        ProgressView(value: experiment.microphoneLevel) {
-                            Text(experiment.microphoneMuted ? "Microphone muted" : "Microphone level")
-                        }
-                        .accessibilityValue(experiment.microphoneMuted ? "Muted" : "\(Int(experiment.microphoneLevel * 100)) percent")
-                        Text("Input: " + experiment.audioRoute).font(.caption)
-                        if experiment.cameraZoom.maximum > experiment.cameraZoom.minimum {
-                            Slider(value: $zoomDraft,
-                                   in: experiment.cameraZoom.minimum...experiment.cameraZoom.maximum,
-                                   onEditingChanged: { editing in
-                                if !editing { Task { await experiment.setCameraZoom(zoomDraft) } }
-                            }) { Text("Camera zoom") }
-                            .frame(minHeight: 44)
-                            .disabled(!experiment.canAdjustMedia)
-                            .accessibilityIdentifier("cameraZoom")
-                            .accessibilityValue("\(experiment.cameraZoom.value.formatted(.number.precision(.fractionLength(1)))) times")
-                            .accessibilityAdjustableAction(adjustZoom)
-                            Text("Zoom: \(experiment.cameraZoom.value.formatted(.number.precision(.fractionLength(1))))×")
-                                .font(.caption)
-                        }
-                    }
+        if experiment.phase == .recording || (experiment.phase == .preview && !finished) {
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                : AnyLayout(HStackLayout(spacing: 8))
+            layout {
+                lensControls
+                Button(experiment.microphoneMuted ? "Unmute microphone" : "Mute microphone",
+                       systemImage: experiment.microphoneMuted ? "mic.slash" : "mic") {
+                    Task { await experiment.setMicrophoneMuted(!experiment.microphoneMuted) }
+                }
+                .disabled(!experiment.canAdjustMedia)
+                .accessibilityValue(experiment.microphoneMuted ? "Muted" : "On")
+                .accessibilityIdentifier("microphoneMute")
+            }
+            ProgressView(value: experiment.microphoneLevel) {
+                Text(experiment.microphoneMuted ? "Microphone muted" : "Microphone level")
+            }
+            .accessibilityValue(experiment.microphoneMuted ? "Muted" : "\(Int(experiment.microphoneLevel * 100)) percent")
+            Text("Input: " + experiment.audioRoute).font(.caption)
+            if experiment.cameraZoom.maximum > experiment.cameraZoom.minimum {
+                Slider(value: $zoomDraft,
+                       in: experiment.cameraZoom.minimum...experiment.cameraZoom.maximum,
+                       onEditingChanged: { editing in
+                    if !editing { Task { await experiment.setCameraZoom(zoomDraft) } }
+                }) { Text("Camera zoom") }
+                .frame(minHeight: 44)
+                .disabled(!experiment.canAdjustMedia)
+                .accessibilityIdentifier("cameraZoom")
+                .accessibilityValue("\(experiment.cameraZoom.value.formatted(.number.precision(.fractionLength(1)))) times")
+                .accessibilityAdjustableAction(adjustZoom)
+                Text("Zoom: \(experiment.cameraZoom.value.formatted(.number.precision(.fractionLength(1))))×")
+                    .font(.caption)
+            }
+        }
     }
 
     private func adjustZoom(_ direction: AccessibilityAdjustmentDirection) {

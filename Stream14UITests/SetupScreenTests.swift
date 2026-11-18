@@ -109,8 +109,9 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(authorize.frame.height, 44)
         app.buttons["Done"].tap()
         scrollTo(record, in: app)
-        XCTAssertEqual(record.label, "Stop recording")
+        XCTAssertEqual(record.label, "Stop recording only")
         record.tap()
+        app.buttons["Finalize local recording"].tap()
         XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Saved")
         let next = app.buttons["prepareNextSession"]
         scrollTo(next, in: app)
@@ -233,12 +234,20 @@ final class SetupScreenTests: XCTestCase {
 
     func testPreflightBlockersAndExactPublishingConfirmation() throws {
         XCUIDevice.shared.orientation = .portrait
-        for state in ["idle", "overlay-unavailable", "ready"] {
+        for state in ["idle", "overlay-unavailable", "portrait-preview", "ready"] {
             let app = fixtureApp(state)
             let start = app.buttons["goLive"]
-            scrollTo(start, in: app)
             if state == "ready" {
+                scrollTo(start, in: app)
                 XCTAssertTrue(start.isEnabled)
+                XCTAssertFalse(app.buttons["sessionProfile"].exists)
+                XCTAssertFalse(app.staticTexts["sessionConfiguration"].exists)
+                let lens = app.buttons["cameraLensSelector"]
+                let mute = app.buttons["microphoneMute"]
+                scrollTo(mute, in: app)
+                XCTAssertEqual(lens.frame.midY, mute.frame.midY, accuracy: 1)
+                XCTAssertEqual(lens.frame.height, mute.frame.height, accuracy: 1)
+                scrollTo(start, in: app)
                 start.tap()
                 XCTAssertTrue(app.buttons["Go Live — Unlisted"].waitForExistence(timeout: 5))
                 let text = app.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " ")
@@ -249,9 +258,18 @@ final class SetupScreenTests: XCTestCase {
                 XCTAssertFalse(app.buttons["endBroadcast"].exists)
                 XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Not started")
             } else {
-                XCTAssertFalse(start.isEnabled)
-                if state == "idle" { XCTAssertTrue(app.staticTexts["cameraReadiness"].exists) }
-                else {
+                XCTAssertFalse(start.exists)
+                if state == "idle" {
+                    let preview = app.buttons["openExperiment"]
+                    XCTAssertEqual(preview.label, "Camera preview")
+                    let profile = app.buttons["sessionProfile"]
+                    XCTAssertLessThan(profile.frame.minY, preview.frame.minY)
+                    XCTAssertEqual(profile.frame.height, preview.frame.height, accuracy: 1)
+                    XCTAssertFalse(app.staticTexts["cameraReadiness"].exists)
+                } else if state == "portrait-preview" {
+                    XCTAssertTrue(app.staticTexts["landscapeReadiness"].exists)
+                    XCTAssertFalse(app.buttons["recordSample"].exists)
+                } else {
                     scrollTo(app.buttons["Overlay settings"], in: app)
                     app.buttons["Overlay settings"].tap()
                     XCTAssertTrue(app.buttons["applyOverlayURL"].waitForExistence(timeout: 5))
@@ -267,7 +285,7 @@ final class SetupScreenTests: XCTestCase {
         let settings = denied.links["Open iPhone Settings"]
         scrollTo(settings, in: denied)
         XCTAssertTrue(settings.isHittable)
-        XCTAssertFalse(denied.buttons["goLive"].isEnabled)
+        XCTAssertFalse(denied.buttons["goLive"].exists)
         denied.terminate()
         let app = fixtureApp("no-event")
         let choose = app.buttons["chooseEvent"]
@@ -277,16 +295,14 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertTrue(app.buttons["refreshYouTubeEvents"].exists)
         XCTAssertTrue(app.links["youTubeEventAttribution"].isHittable)
         app.buttons["Done"].tap()
-        XCTAssertFalse(app.buttons["goLive"].isEnabled)
+        XCTAssertFalse(app.buttons["goLive"].exists)
     }
 
     func testWriterFinalizationIsActionableBeforeStart() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = fixtureApp("writer-pending")
-        let start = app.buttons["goLive"]
-        scrollTo(start, in: app)
-        XCTAssertFalse(start.isEnabled)
-        XCTAssertFalse(app.staticTexts["sessionReady"].exists)
+        XCTAssertFalse(app.buttons["goLive"].exists)
+        XCTAssertFalse(app.buttons["recordSample"].exists)
         scrollTo(app.staticTexts["writerReadiness"], in: app)
         XCTAssertTrue(app.staticTexts["writerReadiness"].label.contains("finalization"))
     }
@@ -327,26 +343,58 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertEqual(app.staticTexts["uploadStatus"].label, "Upload: Upload stopped")
     }
 
-    func testBroadcastUsesStopRecordingAndConfirmedEndWithoutCameraClose() throws {
+    func testBroadcastStopActionsMatchAndRecordingStopKeepsUpload() throws {
         XCUIDevice.shared.orientation = .portrait
         let app = fixtureApp("upload-recovered")
         let stop = app.buttons["recordSample"]
         scrollTo(stop, in: app)
         assertCameraCloseIsAbsent(in: app)
-        XCTAssertEqual(stop.label, "Stop recording")
+        XCTAssertEqual(stop.label, "Stop recording only")
         XCTAssertTrue(stop.isEnabled)
+        let end = app.buttons["endBroadcast"]
+        let streaming = app.buttons["stopStreaming"]
+        XCTAssertEqual(streaming.label, "Stop streaming only")
+        for other in [end, streaming] {
+            XCTAssertEqual(stop.frame.height, other.frame.height, accuracy: 1)
+            XCTAssertEqual(stop.frame.width, other.frame.width, accuracy: 1)
+        }
         stop.tap()
+        XCTAssertTrue(app.buttons["Finalize local recording"].waitForExistence(timeout: 5))
+        dismissConfirmation(in: app)
+        XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Recording")
+        stop.tap()
+        app.buttons["Finalize local recording"].tap()
         XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Saved")
         XCTAssertEqual(app.staticTexts["uploadStatus"].label, "Upload: Connected to the same event")
         assertCameraCloseIsAbsent(in: app)
 
-        let end = app.buttons["endBroadcast"]
         scrollTo(end, in: app)
         end.tap()
         XCTAssertTrue(app.buttons["End session and local recording"].waitForExistence(timeout: 5))
         dismissConfirmation(in: app)
         XCTAssertTrue(end.exists)
         XCTAssertEqual(app.staticTexts["uploadStatus"].label, "Upload: Connected to the same event")
+    }
+
+    func testStopStreamingConfirmationKeepsRecording() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = fixtureApp("upload-recovered")
+        let streaming = app.buttons["stopStreaming"]
+        scrollTo(streaming, in: app)
+        streaming.tap()
+        let confirm = app.buttons["Stop upload"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        dismissConfirmation(in: app)
+        XCTAssertEqual(app.staticTexts["uploadStatus"].label, "Upload: Connected to the same event")
+        streaming.tap()
+        confirm.tap()
+        let stopped = app.staticTexts.matching(identifier: "uploadStatus")
+            .matching(NSPredicate(format: "label == %@", "Upload: Upload stopped")).firstMatch
+        XCTAssertTrue(stopped.waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Recording")
+        XCTAssertTrue(app.buttons["endBroadcast"].exists)
+        XCTAssertTrue(app.buttons["recordSample"].exists)
+        XCTAssertFalse(streaming.exists)
     }
 
     private func dismissConfirmation(in app: XCUIApplication) {
@@ -387,7 +435,7 @@ final class SetupScreenTests: XCTestCase {
             if state == "reconnecting" {
                 let stop = app.buttons["recordSample"]
                 scrollTo(stop, in: app)
-                XCTAssertEqual(stop.label, "Stop recording")
+                XCTAssertEqual(stop.label, "Stop recording only")
                 XCTAssertTrue(stop.isEnabled)
             }
             if state == "backup-failed" {
@@ -399,6 +447,8 @@ final class SetupScreenTests: XCTestCase {
                 XCTAssertTrue(app.links["Open YouTube Studio"].exists)
             }
             if ["ended", "finalizing"].contains(state) {
+                XCTAssertFalse(app.buttons["openExperiment"].exists)
+                XCTAssertFalse(app.buttons["cameraLensSelector"].exists)
                 let next = app.buttons["prepareNextSession"]
                 scrollTo(next, in: app)
                 XCTAssertEqual(next.isEnabled, state == "ended")
@@ -562,6 +612,7 @@ final class SetupScreenTests: XCTestCase {
         assertCameraCloseIsAbsent(in: app)
         sleep(3)
         record.tap()
+        app.buttons["Finalize local recording"].tap()
         let next = app.buttons["prepareNextSession"]
         reveal(next)
         expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: next)
@@ -626,6 +677,8 @@ final class SetupScreenTests: XCTestCase {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["STREAM14_DEVICE_UI"] == "1",
                           "Opt-in private device camera recording check.")
         let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
         app.launch()
         navigate("Session", in: app)
         let open = app.buttons["openExperiment"]
@@ -652,7 +705,8 @@ final class SetupScreenTests: XCTestCase {
         XCUIDevice.shared.press(.home)
         sleep(3)
         app.activate()
-        XCTAssertTrue(app.buttons["openExperiment"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["prepareNextSession"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["openExperiment"].exists)
         XCTAssertFalse(app.buttons["recordSample"].exists)
         navigate("Recordings", in: app)
         let play = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "playRecording-")).firstMatch
