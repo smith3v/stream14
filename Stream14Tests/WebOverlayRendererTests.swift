@@ -97,6 +97,37 @@ struct WebOverlayRendererTests {
         #expect(renderer.image == nil)
     }
 
+    @Test @MainActor func recoveryActionsWaitTenSecondsAndProfileChangesRestartTheDelay() {
+        var now: TimeInterval = 0
+        let renderer = WebOverlayRenderer(clock: { now })
+        defer { renderer.disable() }
+        renderer.load("https://127.0.0.1:1/overlay")
+        #expect(!renderer.showsRecoveryActions)
+        now = 9.999
+        renderer.supervise()
+        #expect(!renderer.showsRecoveryActions)
+        now = 10
+        renderer.supervise()
+        #expect(renderer.showsRecoveryActions)
+
+        renderer.setProfile(.hd)
+        #expect(!renderer.showsRecoveryActions)
+        now = 19.999
+        renderer.supervise()
+        #expect(!renderer.showsRecoveryActions)
+        now = 20
+        renderer.supervise()
+        #expect(renderer.showsRecoveryActions)
+
+        renderer.reload()
+        #expect(!renderer.showsRecoveryActions)
+        now = 30
+        renderer.supervise()
+        #expect(renderer.showsRecoveryActions)
+        renderer.stop()
+        #expect(!renderer.showsRecoveryActions)
+    }
+
     @Test @MainActor func callbackDeadlinesProcessRecoveryAndDisabledLateCallbacks() async throws {
         var time: TimeInterval = 0
         let renderer = WebOverlayRenderer(clock: { ProcessInfo.processInfo.systemUptime + time })
@@ -161,6 +192,7 @@ struct WebOverlayRendererTests {
         time += 1
         try await waitForFreshRender(renderer, after: beforeUnusable)
         #expect(renderer.visible)
+        #expect(!renderer.showsRecoveryActions)
         let retired = renderer.webView
         let retiredNavigation = retired.loadHTMLString("<html><body>late</body></html>", baseURL: nil)
         renderer.disable()

@@ -11,7 +11,6 @@ struct SetupView: View {
     @State private var destination = Destination.session
     @State private var pendingDeletion: ExperimentSample?
     @State private var playback: PlaybackSelection?
-    @State private var confirmingLocalEnd = false
     @State private var confirmingRecordingStop = false
     @State private var showingSettings = false
     @State private var showingEvents = false
@@ -112,6 +111,9 @@ struct SetupView: View {
             }
             .onChange(of: experiment.phase) { _, phase in
                 if phase == .starting || phase == .recording { sessionHasRun = true }
+            }
+            .onChange(of: experiment.canPrepareNextSession) { _, settled in
+                if settled { broadcast.finishAfterMediaSettles() }
             }
             .onChange(of: experiment.cameraZoom.value) { _, value in zoomDraft = value }
             .onChange(of: authorization.policyAccepted) {
@@ -508,14 +510,14 @@ struct SetupView: View {
         switch broadcast.reconnectStatus {
         case .waiting: return "Reconnecting · attempt \(broadcast.reconnectAttempts)/12. " + experiment.uploadMessage
         case .connecting: return "Reconnecting · connecting to the same event"
-        case .exhausted: return "Failed · recovery exhausted. Retry upload to the same event or End session."
+        case .exhausted: return "Failed · recovery exhausted. Retry upload to the same event or stop streaming."
         case .authorizationRequired: return "Authorization needs attention. " + experiment.uploadMessage
         default: return experiment.uploadMessage
         }
     }
 
     @ViewBuilder private var overlayRecovery: some View {
-        if !experiment.broadcastOverlayReady {
+        if !experiment.broadcastOverlayReady && experiment.renderer.showsRecoveryActions {
             Text(experiment.canEditOverlayURL ?
                 "Configured overlay unavailable. Wait, retry, or open Overlay settings and apply an empty URL to explicitly disable it. Manual hide does not disable it." :
                 "Configured overlay unavailable. Retry while the session continues. To disable its URL, end the session, then open Overlay settings. Manual hide does not disable it.")
@@ -552,16 +554,6 @@ struct SetupView: View {
     }
 
     @ViewBuilder private var localActions: some View {
-        if experiment.isRecording && broadcast.activeStreamKey == nil && broadcast.activeIntent == nil && broadcast.pendingRemote == nil && !broadcast.isWorking {
-            Button("End session", systemImage: "stop.circle", role: .destructive) { confirmingLocalEnd = true }
-                .buttonStyle(SessionActionButtonStyle.stop)
-                .alert("End local session?", isPresented: $confirmingLocalEnd) {
-                    Button("Stop local recording and capture", role: .destructive) { experiment.requestStop() }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("Stop local recording and capture, then finalize the file. YouTube status is shown separately.")
-                }
-        }
         if experiment.isRecording {
             let canStopRecording = experiment.canAdjustMedia && (!broadcast.isStartingUpload || experiment.hasUpload)
             Button("Stop recording only", systemImage: "stop.circle", role: .destructive) { confirmingRecordingStop = true }
@@ -569,11 +561,19 @@ struct SetupView: View {
                 .disabled(!canStopRecording)
                 .accessibilityIdentifier("recordSample")
                 .alert("Stop recording only?", isPresented: $confirmingRecordingStop) {
-                    Button("Finalize local recording", role: .destructive) { Task { await experiment.stopRecording() } }
+                    Button("Finalize local recording", role: .destructive) {
+                        Task { await broadcast.confirmStopRecording() }
+                    }
                         .disabled(!canStopRecording)
                     Button("Cancel", role: .cancel) {}
                 } message: {
-                    Text("Finalize the local recording. Any active upload continues.")
+                    if broadcast.canStopStreaming || broadcast.isStartingUpload {
+                        Text("Finalize the local recording. Any active upload continues.")
+                    } else if broadcast.activeIntent != nil || broadcast.pendingRemote != nil {
+                        Text("Finalize the local recording and close the camera. This finishes the YouTube event. If completion cannot be confirmed, check YouTube Studio and reconcile its status.")
+                    } else {
+                        Text("Finalize the local recording and close the camera to finish this session.")
+                    }
                 }
         } else if experiment.canRecord && !finished && !broadcast.requiresEndFirst {
             Button("Record only", systemImage: "record.circle") { Task { await experiment.record() } }

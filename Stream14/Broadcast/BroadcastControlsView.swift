@@ -58,11 +58,16 @@ struct BroadcastControlsView: View {
                     .frame(minHeight: 44)
                     .accessibilityIdentifier("cancelBroadcastStartup")
             }
-            if broadcast.activeStreamKey != nil || broadcast.activeIntent != nil || broadcast.pendingRemote != nil {
+            if broadcast.showsEndSession {
                 Button("End session", systemImage: "stop.circle", role: .destructive) { confirmingEnd = true }
                     .buttonStyle(SessionActionButtonStyle.stop)
                     .disabled(!broadcast.canEnd)
                     .accessibilityIdentifier("endBroadcast")
+            }
+            if broadcast.hasRemoteEventToFinish {
+                Button("Finish YouTube event", systemImage: "stop.circle", role: .destructive) { confirmingEnd = true }
+                    .buttonStyle(SessionActionButtonStyle.stop)
+                    .accessibilityIdentifier("finishYouTubeEvent")
             }
             if broadcast.state == .needsReconciliation {
                 Button("Reconcile YouTube status") { broadcast.reconcile() }
@@ -82,8 +87,10 @@ struct BroadcastControlsView: View {
                     } message: {
                         if usesStreamKey {
                             Text("Stop sending video to YouTube. Local recording continues if active. An event with Auto-stop can end when upload stops.")
+                        } else if media.isRecording {
+                            Text("Stop sending video to YouTube. Local recording continues. Stopping the recording later will finish the YouTube event.")
                         } else {
-                            Text("Stop sending video to YouTube. Local recording continues if active. Use End session when you’re ready to finish the YouTube event.")
+                            Text("Stop sending video to YouTube and close the camera to finish this session and the YouTube event. If completion cannot be confirmed, check YouTube Studio and reconcile its status.")
                         }
                     }
             }
@@ -97,8 +104,9 @@ struct BroadcastControlsView: View {
                 } message: { intent in
                     Text("Channel: \(intent.channel.title) (\(intent.channel.id))\nEvent: \(intent.event.title)\nVisibility: \(intent.event.visibility)\nProfile: \(intent.profile.label)\nThis starts local recording and uploads camera and microphone media to this event.")
                 }
-            .alert("End session?", isPresented: $confirmingEnd) {
-                Button("End session and local recording", role: .destructive) { broadcast.confirmEnd() }
+            .alert(broadcast.hasRemoteEventToFinish ? "Finish YouTube event?" : "End session?", isPresented: $confirmingEnd) {
+                Button(broadcast.hasRemoteEventToFinish ? "Finish YouTube event" : "End session and local recording",
+                       role: .destructive) { broadcast.confirmEnd() }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 if broadcast.activeStreamKey != nil {

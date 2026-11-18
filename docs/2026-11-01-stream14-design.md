@@ -48,8 +48,12 @@ gate is one continuous hour; the target is not a qualification claim. See the
 - **Stop recording only** confirms file finalization and preserves an active
   upload. **Stop streaming only** confirms detaching the upload and cancelling
   reconnect attempts, preserving local recording and the session destination.
-  A connected event still needs **End session** for remote completion. A saved-key
-  event can end by Auto-stop after ingest stops.
+  Show **End session** while both outputs are active. After either stops, use the
+  remaining output's stop action. Stopping the final output closes capture and
+  finishes the session, including remote completion for a connected event as
+  explained in its confirmation. Pending remote completion keeps **Finish YouTube
+  event**, reconciliation and Studio controls available. A saved-key event can
+  end by Auto-stop after ingest stops.
 - **End session** confirms the operation and reports local finalization separately
   from remote completion. An unknown remote result offers reconciliation and
   Studio; a stopped upload is not proof the event ended. **Prepare next session**
@@ -115,6 +119,9 @@ explicitly apply it while idle or in preview. Invalid input or storage failure
 leaves the active source unchanged. Clearing the URL explicitly disables the
 overlay; an example URL is opt-in. A configured overlay must be ready before
 Go Live. The operator can reload it or hide/show it manually.
+Keep the overlay status current while allowing 10 seconds of continuous
+unavailability before showing the recovery warning, **Retry overlay** and
+**Overlay settings**. A new profile or explicit reload restarts this delay.
 
 [WebOverlayRenderer](../Stream14/Media/WebOverlayRenderer.swift) uses an attached
 WKWebView at the selected canvas dimensions in CSS pixels and normalizes the

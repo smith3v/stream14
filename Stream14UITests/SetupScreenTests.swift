@@ -92,11 +92,7 @@ final class SetupScreenTests: XCTestCase {
         record.tap()
         XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Recording")
         assertCameraCloseIsAbsent(in: app)
-        let end = app.buttons["End session"]
-        scrollTo(end, in: app)
-        end.tap()
-        XCTAssertTrue(app.buttons["Stop local recording and capture"].waitForExistence(timeout: 5))
-        dismissConfirmation(in: app)
+        XCTAssertFalse(app.buttons["endBroadcast"].exists)
         openSettings(app)
         app.buttons["YouTube"].tap()
         let agree = app.buttons["acceptYouTubePolicy"]
@@ -340,14 +336,16 @@ final class SetupScreenTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["openExperiment"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["reconcileBroadcast"].exists)
-        XCTAssertTrue(app.buttons["endBroadcast"].exists)
+        XCTAssertFalse(app.buttons["endBroadcast"].exists)
+        XCTAssertTrue(app.buttons["finishYouTubeEvent"].exists)
         XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Not started")
         XCTAssertEqual(app.staticTexts["uploadStatus"].label, "Upload: Upload stopped")
     }
 
     func testBroadcastStopActionsMatchAndRecordingStopKeepsUpload() throws {
-        XCUIDevice.shared.orientation = .portrait
-        let app = fixtureApp("upload-recovered")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = fixtureApp("stream-key-uploading")
         let stop = app.buttons["recordSample"]
         scrollTo(stop, in: app)
         assertCameraCloseIsAbsent(in: app)
@@ -370,17 +368,27 @@ final class SetupScreenTests: XCTestCase {
         XCTAssertEqual(app.staticTexts["uploadStatus"].label, "Upload: Connected to the same event")
         assertCameraCloseIsAbsent(in: app)
 
-        scrollTo(end, in: app)
-        end.tap()
-        XCTAssertTrue(app.buttons["End session and local recording"].waitForExistence(timeout: 5))
-        dismissConfirmation(in: app)
-        XCTAssertTrue(end.exists)
-        XCTAssertEqual(app.staticTexts["uploadStatus"].label, "Upload: Connected to the same event")
+        XCTAssertFalse(end.exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Streaming remains after file stop, landscape left"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        scrollTo(streaming, in: app)
+        streaming.tap()
+        app.alerts.buttons["Stop upload"].tap()
+        let next = app.buttons["prepareNextSession"]
+        scrollTo(next, in: app)
+        XCTAssertTrue(next.isEnabled)
+        XCTAssertFalse(end.exists)
+        XCTAssertFalse(streaming.exists)
+        next.tap()
+        XCTAssertEqual(app.staticTexts["setupStatus"].label, "Next session")
     }
 
     func testStopStreamingConfirmationKeepsRecording() throws {
-        XCUIDevice.shared.orientation = .portrait
-        let app = fixtureApp("upload-recovered")
+        XCUIDevice.shared.orientation = .landscapeRight
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = fixtureApp("stream-key-uploading")
         let streaming = app.buttons["stopStreaming"]
         scrollTo(streaming, in: app)
         streaming.tap()
@@ -394,9 +402,51 @@ final class SetupScreenTests: XCTestCase {
             .matching(NSPredicate(format: "label == %@", "Upload: Upload stopped")).firstMatch
         XCTAssertTrue(stopped.waitForExistence(timeout: 10))
         XCTAssertEqual(app.staticTexts["localSavingStatus"].label, "Local saving: Recording")
-        XCTAssertTrue(app.buttons["endBroadcast"].exists)
+        XCTAssertFalse(app.buttons["endBroadcast"].exists)
         XCTAssertTrue(app.buttons["recordSample"].exists)
         XCTAssertFalse(streaming.exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Recording remains after upload stop, landscape right"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        let recording = app.buttons["recordSample"]
+        scrollTo(recording, in: app)
+        recording.tap()
+        app.alerts.buttons["Finalize local recording"].tap()
+        let next = app.buttons["prepareNextSession"]
+        scrollTo(next, in: app)
+        XCTAssertTrue(next.isEnabled)
+        XCTAssertFalse(app.buttons["endBroadcast"].exists)
+    }
+
+    func testOverlayRecoveryControlsWaitForPersistentUnavailability() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = fixtureApp("overlay-loading")
+        XCTAssertFalse(app.buttons["retryOverlay"].exists)
+        XCTAssertFalse(app.buttons["Overlay settings"].exists)
+        XCTAssertFalse(app.buttons["goLive"].exists)
+        let retry = app.buttons["retryOverlay"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Overlay settings"].exists)
+    }
+
+    func testConnectedEventRetainsCompletionRecoveryAfterFinalOutputStops() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let app = fixtureApp("upload-recovered")
+        let record = app.buttons["recordSample"]
+        scrollTo(record, in: app)
+        record.tap()
+        app.alerts.buttons["Finalize local recording"].tap()
+        XCTAssertFalse(app.buttons["endBroadcast"].exists)
+        let streaming = app.buttons["stopStreaming"]
+        scrollTo(streaming, in: app)
+        streaming.tap()
+        XCTAssertTrue(app.alerts.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "finish this session and the YouTube event")).firstMatch.exists)
+        app.alerts.buttons["Stop upload"].tap()
+        let finish = app.buttons["finishYouTubeEvent"]
+        XCTAssertTrue(finish.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["endBroadcast"].exists)
+        XCTAssertTrue(app.buttons["reconcileBroadcast"].exists)
     }
 
     private func dismissConfirmation(in app: XCUIApplication) {

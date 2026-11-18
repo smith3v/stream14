@@ -32,11 +32,7 @@ final class StreamingButtonContrastTests: XCTestCase {
         XCTAssertFalse(local.buttons["goLive"].exists)
         try check(record, in: local, label: "Record only", style: style, fill: .neutral)
         record.tap()
-        let localEnd = local.buttons["End session"]
-        try check(localEnd, in: local, label: "End session", style: style, fill: .red)
-        localEnd.tap()
-        XCTAssertTrue(local.buttons["Stop local recording and capture"].waitForExistence(timeout: 5))
-        dismissConfirmation(in: local)
+        XCTAssertFalse(local.buttons["End session"].exists)
         try check(record, in: local, label: "Stop recording only", style: style, fill: .red)
         record.tap()
         local.buttons["Finalize local recording"].tap()

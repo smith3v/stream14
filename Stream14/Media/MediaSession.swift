@@ -170,7 +170,7 @@ final class MediaSession {
     var broadcastPipelineRunning: Bool { sharedEncoder != nil && !stopRequested }
     var broadcastOverlayReady: Bool {
         #if DEBUG
-        if interfaceFixtureMode { return !["overlay-unavailable", "active-overlay-unavailable"].contains(interfaceFixtureName) }
+        if interfaceFixtureMode { return !["overlay-unavailable", "active-overlay-unavailable", "overlay-loading"].contains(interfaceFixtureName) }
         #endif
         return overlayURL.isEmpty || (renderer.healthy && renderer.image != nil)
     }
@@ -1231,6 +1231,10 @@ final class MediaSession {
         interfaceFixtureMode = true
         interfaceFixtureName = state
         uploadState = ["upload-recovered", "active-overlay-unavailable", "backup-failed"].contains(state) ? .connected : .idle
+        if ["overlay-unavailable", "active-overlay-unavailable"].contains(state) {
+            renderer.installUnavailableInterfaceFixture()
+        }
+        if state == "overlay-loading" { renderer.load("https://127.0.0.1:1/overlay") }
         guard state != "idle" && state != "permission-denied" else { return }
         phase = .preview
         audioRoute = "Fixture microphone"
