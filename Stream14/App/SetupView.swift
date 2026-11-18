@@ -575,8 +575,9 @@ struct SetupView: View {
                         Text("Finalize the local recording and close the camera to finish this session.")
                     }
                 }
-        } else if experiment.canRecord && !finished && !broadcast.requiresEndFirst {
+        } else if experiment.canShowRecordStart && !finished && !broadcast.requiresEndFirst {
             Button("Record only", systemImage: "record.circle") { Task { await experiment.record() } }
+                .disabled(!experiment.canRecord)
                 .accessibilityIdentifier("recordSample")
         }
         if experiment.recordingFailed {

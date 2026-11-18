@@ -23,6 +23,8 @@ gate is one continuous hour; the target is not a qualification claim. See the
   default; Ultra Wide and Telephoto are shown when supported. Zoom is relative
   to the selected lens and limited by the device and the 10× app cap. Use the
   system-selected microphone route, with input label, meter and mute.
+  Zoom adjustments retain the start controls in place, disabled while the camera
+  is applying the change, to preserve the control panel's scroll position.
 - The preview follows window orientation in portrait and both landscapes. The
   mixer rotates camera input before composition; portrait fits inside the fixed
   16:9 canvas. Start in landscape. Freeze the profile from camera open and the
@@ -43,7 +45,8 @@ gate is one continuous hour; the target is not a qualification claim. See the
 - Show **Start recording and streaming** in green when the selected destination,
   landscape preview, overlay and local writer are ready. **Record only** is
   neutral and appears when local recording can start. The landscape prompt
-  appears by the start actions. Use consistent button heights that accommodate
+  appears by the start actions in bold headline text with a rotate-phone icon and
+  Dynamic Type support. Use consistent button heights that accommodate
   Dynamic Type and matching destructive styling for the three stop actions.
 - **Stop recording only** confirms file finalization and preserves an active
   upload. **Stop streaming only** confirms detaching the upload and cancelling

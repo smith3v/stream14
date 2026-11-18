@@ -15,6 +15,10 @@ struct BroadcastControlsView: View {
         media.canConfirmLandscapeStart && media.broadcastCaptureReady && media.broadcastOverlayReady &&
             (media.canRecord || media.hasStartedWriting)
     }
+    private var canShowStart: Bool {
+        media.canConfirmLandscapeStart && media.broadcastCaptureReadyForDisplay && media.broadcastOverlayReady &&
+            (media.canShowRecordStart || media.hasStartedWriting)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -39,10 +43,16 @@ struct BroadcastControlsView: View {
                     .accessibilityIdentifier("resumeBroadcast")
             }
             if allowStart && media.previewNeedsLandscape {
-                Text("Turn your iPhone to landscape to record or stream.")
-                    .font(.footnote).accessibilityIdentifier("landscapeReadiness")
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: "rectangle.portrait.rotate")
+                        .accessibilityHidden(true)
+                    Text("Turn your iPhone to landscape to record or stream.")
+                        .accessibilityIdentifier("landscapeReadiness")
+                }
+                .font(.headline.bold())
+                .fixedSize(horizontal: false, vertical: true)
             }
-            if allowStart && readyToStart {
+            if allowStart && canShowStart {
                 if usesStreamKey && broadcast.canStartStreamKey {
                     streamKeyStartButton
                 } else if broadcast.canStart, let event = selection.selected, let channel = selection.channel {
@@ -50,6 +60,7 @@ struct BroadcastControlsView: View {
                         broadcast.requestConfirmation(channel: channel, event: event)
                     }
                     .buttonStyle(SessionActionButtonStyle.start)
+                    .disabled(!readyToStart)
                     .accessibilityIdentifier("goLive")
                 }
             }
@@ -124,6 +135,7 @@ struct BroadcastControlsView: View {
             broadcast.requestStreamKeyConfirmation()
         }
         .buttonStyle(SessionActionButtonStyle.start)
+        .disabled(!readyToStart)
         .accessibilityIdentifier("goLive")
         .confirmationDialog("Start recording and streaming?", isPresented: Binding(
             get: { broadcast.streamKeyConfirmation != nil },

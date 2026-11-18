@@ -277,6 +277,50 @@ final class SetupScreenTests: XCTestCase {
         }
     }
 
+    func testLandscapePromptSupportsLargerText() throws {
+        XCUIDevice.shared.orientation = .portrait
+        var standardHeight: CGFloat = 0
+        for largeText in [false, true] {
+            let app = fixtureApp("portrait-preview", largeText: largeText)
+            let prompt = app.staticTexts["landscapeReadiness"]
+            scrollTo(prompt, in: app)
+            XCTAssertEqual(prompt.label, "Turn your iPhone to landscape to record or stream.")
+            XCTAssertTrue(prompt.isHittable)
+            if largeText { XCTAssertGreaterThan(prompt.frame.height, standardHeight) }
+            else { standardHeight = prompt.frame.height }
+            let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            screenshot.name = "Landscape prompt, accessibility text \(largeText)"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            app.terminate()
+        }
+    }
+
+    func testZoomPreservesControlPanelScrollPosition() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        for orientation in [UIDeviceOrientation.landscapeLeft, .landscapeRight] {
+            XCUIDevice.shared.orientation = orientation
+            let app = fixtureApp("ready")
+            let zoom = app.sliders["cameraZoom"]
+            scrollTo(zoom, in: app)
+            for position in [CGFloat(0.85), CGFloat(0.15)] {
+                let originalY = zoom.frame.minY
+                let originalValue = zoom.value as? String
+                zoom.adjust(toNormalizedSliderPosition: position)
+                expectation(for: NSPredicate(format: "value != %@ AND enabled == true", originalValue ?? ""), evaluatedWith: zoom)
+                waitForExpectations(timeout: 5)
+                XCTAssertEqual(zoom.frame.minY, originalY, accuracy: 1)
+                XCTAssertTrue(app.buttons["recordSample"].exists)
+                XCTAssertTrue(app.buttons["goLive"].exists)
+            }
+            let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            screenshot.name = "Zoom retains scroll position, orientation \(orientation.rawValue)"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            app.terminate()
+        }
+    }
+
     func testMissingPermissionAndEventHaveDirectFixes() throws {
         XCUIDevice.shared.orientation = .portrait
         let denied = fixtureApp("permission-denied")

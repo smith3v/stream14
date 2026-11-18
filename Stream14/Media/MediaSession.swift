@@ -58,6 +58,7 @@ final class MediaSession {
     private(set) var microphoneLevel = 0.0
     private(set) var audioRoute = "Microphone not active"
     private(set) var cameraZoom = CameraZoom()
+    private(set) var isAdjustingCameraZoom = false
     var canAdjustMedia: Bool { !busy && !stopRequested && (phase == .preview || phase == .recording) }
     private let microphoneMeter = MicrophoneMeter()
     private var routeTask: Task<Void, Never>?
@@ -134,7 +135,10 @@ final class MediaSession {
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     var canSelectLens: Bool { !broadcastConfigurationLocked && !busy && !stopRequested && (phase == .idle || phase == .preview) }
-    var canRecord: Bool {
+    var canRecord: Bool { preparedRecordingPreview && !busy }
+    var canShowRecordStart: Bool { preparedRecordingPreview && (!busy || isAdjustingCameraZoom) }
+
+    private var preparedRecordingPreview: Bool {
         #if DEBUG
         if interfaceFixtureName == "writer-pending" { return false }
         #endif
@@ -143,7 +147,7 @@ final class MediaSession {
         #else
         let landscape = previewOrientation.isLandscape
         #endif
-        return phase == .preview && landscape && !previewOrientationSettling && !busy && !stopRequested &&
+        return phase == .preview && landscape && !previewOrientationSettling && !stopRequested &&
             recoveringSampleID == nil && fileFinalization.recordingID == nil
     }
     var canDeleteSamples: Bool { !busy && recoveringSampleID == nil && fileFinalization.recordingID == nil && (phase == .idle || phase == .preview) }
@@ -159,11 +163,14 @@ final class MediaSession {
     /// AVAssetWriter.startWriting/startSession must have accepted actual media;
     /// record() returning by itself is not the backup-admission signal.
     var hasStartedWriting: Bool { isRecording && recorder?.hasStarted == true }
-    var broadcastCaptureReady: Bool {
+    var broadcastCaptureReady: Bool { preparedBroadcastCapture && !busy }
+    var broadcastCaptureReadyForDisplay: Bool { preparedBroadcastCapture && (!busy || isAdjustingCameraZoom) }
+
+    private var preparedBroadcastCapture: Bool {
         #if DEBUG
-        if interfaceFixtureMode { return phase == .preview || phase == .recording }
+        if interfaceFixtureMode { return (phase == .preview || phase == .recording) && !stopRequested }
         #endif
-        return (phase == .preview || phase == .recording) && !busy && !stopRequested &&
+        return (phase == .preview || phase == .recording) && !stopRequested &&
         AVCaptureDevice.authorizationStatus(for: .video) == .authorized &&
         AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     }
@@ -255,8 +262,20 @@ final class MediaSession {
 
     func setCameraZoom(_ value: Double) async {
         guard canAdjustMedia else { return }
+        isAdjustingCameraZoom = true
         busy = true
-        defer { finishOperation() }
+        defer {
+            isAdjustingCameraZoom = false
+            finishOperation()
+        }
+        #if DEBUG
+        if interfaceFixtureMode {
+            // Give the interface a real asynchronous adjustment without capture.
+            do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+            cameraZoom = CameraZoom.clamped(value, minimum: cameraZoom.minimum, deviceMaximum: cameraZoom.maximum)
+            return
+        }
+        #endif
         do { cameraZoom = try await mixer.configureZoom(value) }
         catch { message = "Camera zoom could not change. Capture continues with the current zoom." }
     }
