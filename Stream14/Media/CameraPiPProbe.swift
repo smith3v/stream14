@@ -11,11 +11,14 @@ final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
     static let isEnabled = (Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String])?
         .contains("voip") == true
 
+    private(set) var isPrepared = false
     private(set) var isActive = false
     var canContinueInBackground: Bool {
         isActive && controller.isPictureInPictureActive && !controller.isPictureInPictureSuspended
     }
-    var hasFreshMedia: Bool { activity.isFresh }
+    func hasFreshMedia(after transition: ContinuousClock.Instant?) -> Bool {
+        activity.isFresh(after: transition, now: .now)
+    }
 
     private let mixer: MediaMixer
     private let controller: AVPictureInPictureController
@@ -70,7 +73,7 @@ final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
         controller.delegate = self
     }
 
-    func start() async {
+    func prepareForAutomaticStart() async {
         await mixer.addOutput(cameraTap)
         guard !stopped else { await mixer.removeOutput(cameraTap); return }
         await mixer.addOutput(compositionTap)
@@ -93,22 +96,16 @@ final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
                 }
             }
         }
-        let clock = ContinuousClock()
-        let deadline = clock.now + .seconds(4)
-        while !Task.isCancelled && !stopped && !isActive && clock.now < deadline {
-            if !awaitingStartResult && controller.isPictureInPicturePossible {
-                awaitingStartResult = true
-                controller.startPictureInPicture()
-            }
-            try? await Task.sleep(for: .milliseconds(50))
-        }
-        if !stopped && !isActive { onEnd(self, "Picture-in-Picture was unavailable or did not start.") }
+        controller.canStartPictureInPictureAutomaticallyFromInline = true
+        isPrepared = true
     }
 
     func stop() {
         guard !stopped else { return }
         stopped = true
         isActive = false
+        isPrepared = false
+        controller.canStartPictureInPictureAutomaticallyFromInline = false
         if awaitingStartResult {
             // AVKit cannot stop an opening window until it becomes active.
             // Keep the delegate alive briefly to close a late start callback.
@@ -129,6 +126,10 @@ final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
         }
     }
 
+    func pictureInPictureControllerWillStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        awaitingStartResult = true
+    }
+
     func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
         awaitingStartResult = false
         guard !stopped else { detachController(); return }
@@ -136,7 +137,9 @@ final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
     }
 
     func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        awaitingStartResult = false
         guard !stopped else { return }
+        isActive = false
         onEnd(self, "Picture-in-Picture closed.")
     }
 
@@ -150,6 +153,25 @@ final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
     private func detachController() {
         controller.delegate = nil
         if controller.isPictureInPictureActive { controller.stopPictureInPicture() }
+        controller.contentSource = nil
+    }
+}
+
+/// Allows AVKit's automatic start to finish after the scene backgrounds. Once
+/// PiP has opened, losing it interrupts capture without a second grace period.
+nonisolated struct CameraPiPBackgroundHandoff {
+    enum Decision: Equatable { case wait, keepRecording, interrupt }
+    private var startDeadline: ContinuousClock.Instant?
+
+    init(now: ContinuousClock.Instant) { startDeadline = now + .milliseconds(1500) }
+
+    mutating func decision(active: Bool, mediaFresh: Bool, now: ContinuousClock.Instant) -> Decision {
+        if let startDeadline {
+            guard now < startDeadline else { return .interrupt }
+            guard active && mediaFresh else { return .wait }
+            self.startDeadline = nil
+        }
+        return active && mediaFresh ? .keepRecording : .interrupt
     }
 }
 
@@ -157,19 +179,21 @@ private final class PiPVideoView: UIView {
     override class var layerClass: AnyClass { AVSampleBufferDisplayLayer.self }
 }
 
-private nonisolated final class PiPCaptureActivity: Sendable {
+nonisolated final class PiPCaptureActivity: Sendable {
     enum Track { case camera, composition, audio }
     private let activity = Mutex<[Track: ContinuousClock.Instant]>([:])
 
-    func mark(_ track: Track) {
-        let now = ContinuousClock.now
+    func mark(_ track: Track, at now: ContinuousClock.Instant = .now) {
         activity.withLock { $0[track] = now }
     }
 
-    var isFresh: Bool {
-        let cutoff = ContinuousClock.now - .seconds(2)
+    func isFresh(after transition: ContinuousClock.Instant? = nil, now: ContinuousClock.Instant) -> Bool {
+        let cutoff = now - .seconds(2)
         return activity.withLock { times in
-            times.count == 3 && times.values.allSatisfy { $0 >= cutoff }
+            guard times.count == 3 else { return false }
+            return times.values.allSatisfy { time in
+                time >= cutoff && (transition.map { time > $0 } ?? true)
+            }
         }
     }
 }

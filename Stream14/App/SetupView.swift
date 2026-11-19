@@ -452,7 +452,7 @@ struct SetupView: View {
             broadcastControls
             localActions
             #if DEBUG
-            cameraPiPControls
+            cameraPiPStatus
             #endif
             mediaControls
         }
@@ -461,17 +461,15 @@ struct SetupView: View {
     }
 
     #if DEBUG
-    @ViewBuilder private var cameraPiPControls: some View {
+    @ViewBuilder private var cameraPiPStatus: some View {
         if experiment.showsCameraPiP {
-            if let probe = experiment.cameraPiP {
-                Text(probe.isActive ? "Picture-in-Picture active. You can switch apps." : "Opening Picture-in-Picture…")
+            if experiment.cameraPiP?.isActive == true {
+                Text("Picture-in-Picture active")
                     .font(.footnote)
-            } else if experiment.cameraPiPSupported {
-                Button("Test Picture-in-Picture", systemImage: "pip.enter") {
-                    Task { await experiment.startCameraPiP() }
-                }
-                .frame(minHeight: 44)
-            } else {
+            } else if experiment.cameraPiP?.isPrepared == true {
+                Text("Automatic Picture-in-Picture ready")
+                    .font(.footnote)
+            } else if !experiment.cameraPiPSupported {
                 Text("This capture session does not support camera access in Picture-in-Picture.")
                     .font(.footnote)
             }
