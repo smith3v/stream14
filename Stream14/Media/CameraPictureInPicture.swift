@@ -1,4 +1,3 @@
-#if DEBUG
 import AVKit
 import HaishinKit
 import Observation
@@ -7,13 +6,12 @@ import UIKit
 
 @MainActor
 @Observable
-final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
+final class CameraPictureInPicture: NSObject, AVPictureInPictureControllerDelegate {
     enum PresentationEnd {
         case closing, failedToStart
     }
 
-    static let isEnabled = (Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String])?
-        .contains("voip") == true
+    static var isSupported: Bool { AVPictureInPictureController.isPictureInPictureSupported() }
 
     private(set) var isPrepared = false
     private(set) var isActive = false
@@ -35,16 +33,16 @@ final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
     private var displayTask: Task<Void, Never>?
     private var stopped = false
     private var awaitingStartResult = false
-    private let onEnd: (CameraPiPProbe, PresentationEnd) -> Void
+    private let onEnd: (CameraPictureInPicture, PresentationEnd) -> Void
 
     init?(mixer: MediaMixer, sourceView: UIView, size: CGSize,
-          onEnd: @escaping (CameraPiPProbe, PresentationEnd) -> Void) {
-        guard sourceView.window != nil, AVPictureInPictureController.isPictureInPictureSupported() else { return nil }
+          onEnd: @escaping (CameraPictureInPicture, PresentationEnd) -> Void) {
+        guard sourceView.window != nil, Self.isSupported else { return nil }
         let content = AVPictureInPictureVideoCallViewController()
         content.preferredContentSize = size
         let video = PiPVideoView()
         let badge = UILabel()
-        badge.text = " Recording "
+        badge.text = " Camera active "
         badge.font = .preferredFont(forTextStyle: .caption1)
         badge.adjustsFontForContentSizeCategory = true
         badge.textColor = .white
@@ -263,4 +261,3 @@ nonisolated struct PiPPreviewCadence {
         return true
     }
 }
-#endif

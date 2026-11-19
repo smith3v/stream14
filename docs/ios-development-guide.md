@@ -130,7 +130,7 @@ Track verification and fresh-account results in [issue #80](https://github.com/s
 
 Use a Studio Manager account and two disposable Unlisted encoder events. In
 Live Control Room, create one reusable stream key for the iPhone. Assign it to
-one upcoming event at a time. Enable Auto-start and Auto-stop.
+one upcoming event at a time. Enable Auto-start and turn Auto-stop off.
 
 1. In **Settings → YouTube → Stream key**, paste and save the key.
    Relaunch and confirm the saved status. Test replacement and confirmed
@@ -142,15 +142,15 @@ one upcoming event at a time. Enable Auto-start and Auto-stop.
    sends no video and **Record only** works in either case.
 3. Keep Studio open on another device. Confirm Start identifies the saved-key destination
    and enables upload and local saving. Verify Live in Studio. End from Stream14
-   and verify that local footage finalizes and Studio ends the event via Auto-stop.
+   and verify that local footage finalizes. Then end the event in Studio.
    Prepare the next session. Repeat with the second event using the same key
    without revisiting Settings.
 4. In an agreed outage test, interrupt the iPhone’s network while Stream14 is in
-   the foreground. Verify upload failure and continued local saving. Check Studio
-   before confirming a retry. A short outage may allow the same event to continue.
-   Around a minute without ingest can end the event via Auto-stop. A retry then
-   may fail or start another prepared event assigned to the key. Record what
-   Studio shows and whether the original recording remains playable.
+   the foreground or in PiP. Verify upload failure and continued local saving.
+   Restore network access and verify that the same event receives video and
+   audio again without replacing the local file. In a separate run, stop
+   streaming during the outage and confirm that upload stays stopped after the
+   network returns.
 
 ## TestFlight
 
@@ -165,6 +165,11 @@ one upcoming event at a time. Enable Auto-start and Auto-stop.
    signing, OAuth client/callback and third-party notices. Check that the app
    bundle's `Info.plist` contains the Boolean `ITSAppUsesNonExemptEncryption`
    set to `false`.
+   For internal PiP testing, verify `UIBackgroundModes` contains `audio` and
+   `voip` in the archive. AVFoundation uses the latter to enable multitasking
+   camera access on iPhone. Before a public release, confirm that this
+   one-way capture and streaming use is eligible under Apple's background
+   services rule. [Camera multitasking support](https://developer.apple.com/documentation/avfoundation/avcapturesession/ismultitaskingcameraaccesssupported), [App Review guideline 2.5.4](https://developer.apple.com/app-store/review/guidelines/#software-requirements)
 3. Recheck the current [Apple submission requirements](https://developer.apple.com/app-store/submitting/)
    and [privacy details](https://developer.apple.com/app-store/app-privacy-details/)
    against app and SDK behavior, including required reasons, manifests, privacy
@@ -174,7 +179,9 @@ one upcoming event at a time. Enable Auto-start and Auto-stop.
    [export compliance declaration](https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption)
    when transport or linked dependencies change. A successful build does not
    establish platform review or submission compliance.
-4. In Organizer, validate and distribute to App Store Connect. Wait for
+4. In Organizer, validate and distribute to App Store Connect. Use
+   **TestFlight Internal Only** for builds limited to internal testing, including
+   the current PiP configuration. Wait for
    processing, resolve any **Missing Compliance** state, set release-specific
    **What to Test**, assign the intended internal group, and confirm **Testing**.
    External TestFlight distribution may require Beta App Review.

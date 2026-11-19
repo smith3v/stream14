@@ -26,16 +26,12 @@ struct BroadcastControlsView: View {
                 if let message = broadcast.streamKeyMessage {
                     Text(message).accessibilityIdentifier("broadcastStatus")
                 }
-                if broadcast.streamKeyUploadFailed && !broadcast.isWorking {
+                if broadcast.showsManualStreamKeyRecovery {
                     streamKeyRecovery
                 }
             } else {
                 Text("YouTube: " + broadcast.message).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("broadcastStatus")
-            }
-            if broadcast.reconnectStatus == .exhausted {
-                Button("Retry upload to same event") { broadcast.retryUpload() }
-                    .frame(minHeight: 44)
             }
             if broadcast.canResume {
                 Button("Resume same event…") { broadcast.requestResumeConfirmation() }
@@ -80,7 +76,7 @@ struct BroadcastControlsView: View {
                     .buttonStyle(SessionActionButtonStyle.stop)
                     .accessibilityIdentifier("finishYouTubeEvent")
             }
-            if broadcast.state == .needsReconciliation {
+            if broadcast.canReconcile {
                 Button("Reconcile YouTube status") { broadcast.reconcile() }
                     .frame(minHeight: 44)
                     .disabled(broadcast.isWorking || broadcast.hasUnsettledMutation || !authorization.isAuthorized)
@@ -113,7 +109,7 @@ struct BroadcastControlsView: View {
                     Button((intent.isResume ? "Resume — " : "Go Live — ") + intent.event.visibility) { broadcast.confirmStart(intent) }
                     Button("Cancel", role: .cancel) { broadcast.dismissConfirmation() }
                 } message: { intent in
-                    Text("Channel: \(intent.channel.title) (\(intent.channel.id))\nEvent: \(intent.event.title)\nVisibility: \(intent.event.visibility)\nProfile: \(intent.profile.label)\nThis starts local recording and uploads camera and microphone media to this event.")
+                    Text("Channel: \(intent.channel.title) (\(intent.channel.id))\nEvent: \(intent.event.title)\nVisibility: \(intent.event.visibility)\nProfile: \(intent.profile.label)\nThis starts local recording and uploads camera and microphone media to this event." + captureRecoveryNotice)
                 }
             .alert(broadcast.hasRemoteEventToFinish ? "Finish YouTube event?" : "End session?", isPresented: $confirmingEnd) {
                 Button(broadcast.hasRemoteEventToFinish ? "Finish YouTube event" : "End session and local recording",
@@ -121,7 +117,7 @@ struct BroadcastControlsView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 if broadcast.activeStreamKey != nil {
-                    Text("Stop sending video to YouTube and finalize local recording? YouTube handles ending the event using Auto-stop. Check its status in YouTube Studio.")
+                    Text("Stop sending video to YouTube and finalize local recording? If Auto-stop is off, end the event in YouTube Studio.")
                 } else if let intent = broadcast.activeIntent {
                     Text("End \(intent.event.title) on \(intent.channel.title) (\(intent.event.visibility))? This ends the YouTube broadcast and stops local recording and capture. Upload and local capture will stop, even if YouTube completion cannot be confirmed.")
                 } else if let pending = broadcast.pendingRemote {
@@ -144,8 +140,12 @@ struct BroadcastControlsView: View {
                 Button("Start upload") { broadcast.confirmStreamKeyStart(intent) }
                 Button("Cancel", role: .cancel) { broadcast.dismissStreamKeyConfirmation() }
             } message: { intent in
-                Text("Destination: Saved YouTube stream key\nQuality: \(intent.upload.profile.label)\nSending camera and microphone media can start the event assigned to this key in YouTube Studio. Confirm it’s the intended event before starting.")
+                Text("Destination: Saved YouTube stream key\nQuality: \(intent.upload.profile.label)\nSending camera and microphone media can start the event assigned to this key in YouTube Studio. Confirm it’s the intended event before starting." + captureRecoveryNotice)
             }
+    }
+
+    private var captureRecoveryNotice: String {
+        " Stream14 retries interrupted uploads and can reopen the camera when you return to the app after an interruption."
     }
 
     private var streamKeyRecovery: some View {

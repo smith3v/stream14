@@ -1,4 +1,3 @@
-#if DEBUG
 import Testing
 @testable import Stream14
 
@@ -68,4 +67,3 @@ struct CameraPiPBackgroundHandoffTests {
         #expect(restored == [true, false, true])
     }
 }
-#endif

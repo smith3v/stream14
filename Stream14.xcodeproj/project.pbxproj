@@ -341,9 +341,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = Config/AppInfo.plist;
-				"INFOPLIST_FILE[sdk=iphoneos*]" = Config/CameraPiPProbeInfo.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = stream14;
-				"INFOPLIST_KEY_CFBundleDisplayName[sdk=iphoneos*]" = "stream14 PiP";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photo-video";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Show the rear camera for preview, local recording, and YouTube broadcasting after you confirm Go Live.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Include microphone audio in local recordings and YouTube broadcasts after you confirm Go Live.";

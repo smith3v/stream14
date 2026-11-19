@@ -51,6 +51,8 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
     let stopUpload: () async -> Void
     let stopAll: () -> Void
     let lockConfiguration: (Bool) -> Void
+    let canReopenCapture: () -> Bool
+    let reopenCapture: () async -> Void
 
     init(session: MediaSession) {
         snapshot = {
@@ -67,20 +69,36 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
         stopUpload = { await session.stopUpload() }
         stopAll = { session.requestStop() }
         lockConfiguration = { session.broadcastConfigurationLocked = $0 }
+        canReopenCapture = { session.canReopenBroadcastCapture }
+        reopenCapture = { await session.openPreview() }
     }
 
     init(snapshot: @escaping () -> Snapshot, record: @escaping () async -> Void,
          stopRecording: @escaping () async -> Void = {},
          startUpload: @escaping (RTMPSUpload) async throws -> Void,
          stopUpload: @escaping () async -> Void, stopAll: @escaping () -> Void,
-         lockConfiguration: @escaping (Bool) -> Void) {
+         lockConfiguration: @escaping (Bool) -> Void,
+         canReopenCapture: @escaping () -> Bool = { false },
+         reopenCapture: @escaping () async -> Void = {}) {
         self.snapshot = snapshot; self.record = record; self.startUpload = startUpload
         self.stopRecording = stopRecording
         self.stopUpload = stopUpload; self.stopAll = stopAll; self.lockConfiguration = lockConfiguration
+        self.canReopenCapture = canReopenCapture; self.reopenCapture = reopenCapture
     }
 }
 
 @MainActor @Observable final class BroadcastSession {
+    private enum CaptureRecovery {
+        case connected(BroadcastIntent)
+        case savedKey(StreamKeyIntent)
+
+        var profile: SessionProfile {
+            switch self {
+            case .connected(let intent): intent.profile
+            case .savedKey(let intent): intent.upload.profile
+            }
+        }
+    }
     enum State: Equatable { case idle, starting, waitingForIngestion, goingLive, live, uploading, streamingStopped, needsReconciliation, ending, ended, uploadStopped }
     private(set) var state: State = .idle
     private(set) var message = "Local rehearsal is available. Go Live requires a selected YouTube event and confirmation."
@@ -98,12 +116,14 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
     private(set) var isWorking = false
     private(set) var journalUnavailable = false
     private(set) var requiresStudioResolution = false
-    enum ReconnectStatus: Equatable { case inactive, monitoring, waiting, connecting, exhausted, authorizationRequired, stopped }
+    enum ReconnectStatus: Equatable { case inactive, monitoring, waiting, connecting, authorizationRequired, stopped }
     private(set) var reconnectStatus: ReconnectStatus = .inactive
-    private(set) var reconnectAttempts = 0
+    @ObservationIgnored private var reconnectAttempts = 0
     @ObservationIgnored private var supervision: Task<Void, Never>?
     @ObservationIgnored private var readNotBefore: Double = 0
     @ObservationIgnored private var admitted: PreparedYouTubeIngestion?
+    private var captureRecovery: CaptureRecovery?
+    @ObservationIgnored private var captureRecoveryAttempts = 0
     @ObservationIgnored private let reconnectClock: ReconnectClock
     @ObservationIgnored private let authorization: YouTubeAuthorization
     @ObservationIgnored private let client: YouTubeClient
@@ -122,7 +142,8 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
     init(authorization: YouTubeAuthorization, client: YouTubeClient, binding: YouTubeBinding,
          media: BroadcastMedia, store: PendingRemoteBroadcastStore = PendingRemoteBroadcastStore(),
          streamKeySettings: YouTubeStreamKeySettings = YouTubeStreamKeySettings(),
-         startupSeconds: Double = 60, endSeconds: Double = 15, pollSeconds: Double = 2, writerSeconds: Double = 5, reconnectClock: ReconnectClock = ReconnectClock()) {
+         startupSeconds: Double = 60, endSeconds: Double = 15, pollSeconds: Double = 2, writerSeconds: Double = 5,
+         reconnectClock: ReconnectClock = ReconnectClock()) {
         self.authorization = authorization; self.client = client; self.binding = binding
         self.media = media; self.store = store; self.startupSeconds = startupSeconds
         self.endSeconds = endSeconds; self.pollSeconds = pollSeconds; self.writerSeconds = writerSeconds
@@ -196,9 +217,15 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
             activeIntent != nil || activeStreamKey != nil || pendingRemote != nil
     }
     var requiresEndFirst: Bool {
-        isWorking || [.starting, .waitingForIngestion, .goingLive, .live, .uploading, .streamingStopped, .ending].contains(state)
+        hasPendingCaptureRecovery || isWorking ||
+            [.starting, .waitingForIngestion, .goingLive, .live, .uploading, .streamingStopped, .ending].contains(state)
     }
-    var canResume: Bool { !isWorking && !hasUnsettledMutation && !journalUnavailable && !requiresStudioResolution && authorization.isAuthorized && pendingRemote?.interrupted == true && pendingRemote?.transition == nil && pendingRemote?.streamID != nil }
+    var hasPendingCaptureRecovery: Bool { captureRecovery != nil }
+    var canResume: Bool { captureRecovery == nil && !isWorking && !hasUnsettledMutation && !journalUnavailable && !requiresStudioResolution && authorization.isAuthorized && pendingRemote?.interrupted == true && pendingRemote?.transition == nil && pendingRemote?.streamID != nil }
+    var canReconcile: Bool { captureRecovery == nil && state == .needsReconciliation && pendingRemote != nil }
+    var showsManualStreamKeyRecovery: Bool {
+        streamKeyUploadFailed && !isWorking && !streamKeyUploadAdmitted
+    }
     private var canStartNewBroadcast: Bool {
         !isWorking && !hasUnsettledMutation && !binding.isPreparing && activeIntent == nil &&
             activeStreamKey == nil && pendingRemote == nil && !journalUnavailable && !requiresStudioResolution
@@ -239,6 +266,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
 
     var canStopStreaming: Bool {
         guard !uploadStoppedByOperator, activeIntent != nil || activeStreamKey != nil else { return false }
+        if captureRecovery != nil { return true }
         let snapshot = media.snapshot()
         if isStartingUpload {
             if activeStreamKey != nil { return snapshot.writerStarted || streamKeyUploadAdmitted }
@@ -246,7 +274,8 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
         }
         return !isWorking && state != .streamingStopped &&
             (snapshot.hasUpload || snapshot.uploadFailed || streamKeyUploadFailed || reconnectStatus == .waiting ||
-             reconnectStatus == .connecting || reconnectStatus == .exhausted)
+             reconnectStatus == .connecting ||
+             (activeStreamKey != nil && reconnectStatus == .stopped))
     }
 
     var streamKeyConfigurationLocked: Bool { streamKeyConfirmation != nil || activeStreamKey != nil }
@@ -307,6 +336,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
         activeIntent = intent
         uploadStoppedByOperator = false
         recordingStoppedByOperator = false
+        captureRecoveryAttempts = 0
         epoch &+= 1
         let request = epoch
         isWorking = true; state = .starting
@@ -468,6 +498,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
         uploadStoppedByOperator = false
         recordingStoppedByOperator = false
         streamKeyUploadAdmitted = false
+        captureRecoveryAttempts = 0
         media.lockConfiguration(true)
         startStreamKeyUpload(intent, retry: false)
     }
@@ -478,6 +509,8 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
 
     var canRetryStreamKeyUpload: Bool {
         guard state == .uploading, !isWorking, streamKeyUploadFailed,
+              !uploadStoppedByOperator,
+              !streamKeyUploadAdmitted,
               !journalUnavailable, !requiresStudioResolution else { return false }
         let snapshot = media.snapshot()
         return snapshot.pipelineRunning && snapshot.canConfirmLandscapeStart &&
@@ -511,7 +544,8 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
                 guard request == epoch, !Task.isCancelled else { return }
                 streamKeyUploadAdmitted = true
                 state = .uploading
-                streamKeyMessage = "Check the event in YouTube Studio. YouTube handles start and end using the event’s settings."
+                streamKeyMessage = "Connected to YouTube ingest. Check the event in YouTube Studio."
+                beginStreamKeySupervision(intent, request: request)
             } catch {
                 guard request == epoch else { return }
                 if retry || attemptedUpload {
@@ -544,6 +578,8 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
 
     private func stopStreamKeySession(interruption: SessionInterruption? = nil) {
         guard state != .ending else { return }
+        captureRecovery = nil
+        cancelSupervision()
         epoch &+= 1
         let request = epoch
         let previous = operation
@@ -573,6 +609,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
     func interrupted(_ reason: SessionInterruption) {
         confirmation = nil
         streamKeyConfirmation = nil
+        if preserveCaptureRecovery(reason) { return }
         if activeStreamKey != nil {
             stopStreamKeySession(interruption: reason)
             return
@@ -589,9 +626,145 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
         message = reason.message + " Upload stopped and local writing is finalizing. YouTube end is unconfirmed. Reopen the camera explicitly; reconcile before resuming the same event."
     }
 
-    /// Foreground/relaunch performs reads only; no capture, writer or upload.
+    /// A recovery belongs to a destination already admitted in this process.
+    /// On cold launch the remote journal still goes through reconciliation.
     func foregroundReturned() {
+        if captureRecovery != nil {
+            recoverCaptureIfReady()
+            return
+        }
         if pendingRemote?.interrupted == true, !isWorking { reconcile() }
+    }
+
+    private func preserveCaptureRecovery(_ reason: SessionInterruption) -> Bool {
+        guard !uploadStoppedByOperator, !recordingStoppedByOperator, state != .ending,
+              !journalUnavailable, !requiresStudioResolution else { return false }
+        if captureRecovery == nil {
+            if state == .uploading, supervision != nil, streamKeyUploadAdmitted, let key = activeStreamKey {
+                captureRecovery = .savedKey(key)
+            } else if (state == .live || (state == .waitingForIngestion && reconnectStatus != .inactive)),
+                      let intent = activeIntent, admitted != nil,
+                      let pendingRemote, pendingRemote.transition == nil, !hasUnsettledMutation {
+                captureRecovery = .connected(intent)
+            }
+        }
+        guard captureRecovery != nil else { return false }
+        cancelSupervision()
+        epoch &+= 1
+        operation?.cancel()
+        operation = nil
+        isWorking = false
+        if var context = pendingRemote {
+            context.interrupted = true
+            do { try setPending(context) }
+            catch { captureRecovery = nil; return false }
+        }
+        state = .needsReconciliation
+        reconnectStatus = .waiting
+        let status = reason.message + " Waiting to reopen the camera in Stream14 and reconnect to the same destination."
+        if activeStreamKey != nil { streamKeyMessage = status } else { message = status }
+        return true
+    }
+
+    func recoverCaptureIfReady() {
+        guard let recovery = captureRecovery, !isWorking, !uploadStoppedByOperator,
+              !journalUnavailable, !requiresStudioResolution, !hasUnsettledMutation,
+              media.canReopenCapture(), media.snapshot().profile == recovery.profile else { return }
+        // A repeated native capture failure must not create files indefinitely.
+        guard captureRecoveryAttempts < 3 else {
+            captureRecovery = nil
+            reconnectStatus = .stopped
+            if activeStreamKey != nil {
+                stopStreamKeySession(interruption: .captureFailure)
+            } else {
+                message = "Camera recovery stopped after repeated failures. Reopen the camera to resume the same event."
+            }
+            return
+        }
+        captureRecoveryAttempts += 1
+        epoch &+= 1
+        let request = epoch
+        state = .starting
+        isWorking = true
+        reconnectStatus = .connecting
+        if activeStreamKey != nil { streamKeyMessage = "Reopening capture and reconnecting to YouTube ingest…" }
+        else { message = "Reopening capture and reconnecting to the same YouTube event…" }
+        operation = Task {
+            do {
+                try await withBroadcastDeadline(seconds: startupSeconds) {
+                    try await self.resumeInterruptedCapture(recovery, request: request)
+                }
+            } catch {
+                guard request == epoch else { return }
+                if (error as? StartError) == .capture || (error as? StartError) == .writer || error is BroadcastDeadlineError {
+                    // A native startup can fail without an interruption callback.
+                    // Settle that attempt before allowing the next foreground try.
+                    media.stopAll()
+                    state = .needsReconciliation
+                    reconnectStatus = .waiting
+                    let status = "Camera recovery couldn’t start. Waiting for capture to settle."
+                    if activeStreamKey != nil { streamKeyMessage = status } else { message = status }
+                    isWorking = false
+                    operation = nil
+                    return
+                }
+                await media.stopUpload()
+                guard request == epoch else { return }
+                captureRecovery = nil
+                reconnectStatus = .stopped
+                state = .needsReconciliation
+                if activeStreamKey != nil {
+                    // Retain the stopped destination's Studio status guidance.
+                    stopStreamKeySession(interruption: .captureFailure)
+                    return
+                }
+                message = "Automatic capture recovery stopped. Review the camera and original event in YouTube Studio."
+            }
+            if request == epoch { isWorking = false; operation = nil }
+        }
+    }
+
+    private func resumeInterruptedCapture(_ recovery: CaptureRecovery, request: UInt64) async throws {
+        try checkCaptureRecovery(recovery, request: request)
+        guard media.canReopenCapture() else { throw StartError.capture }
+        await media.reopenCapture()
+        try checkCaptureRecovery(recovery, request: request)
+        guard media.snapshot().captureReady else { throw StartError.capture }
+        try await awaitLocalWriter { try self.checkCaptureRecovery(recovery, request: request) }
+        try checkCaptureRecovery(recovery, request: request)
+        if var context = pendingRemote {
+            context.interrupted = false
+            try setPending(context)
+        }
+        captureRecovery = nil
+        switch recovery {
+        case .connected(let intent):
+            state = .waitingForIngestion
+            message = "Local saving started a new file. Reconnecting to the same event…"
+            beginSupervision(intent, request: request, needsUpload: true)
+        case .savedKey(let intent):
+            state = .uploading
+            streamKeyMessage = "Local saving started a new file. Reconnecting to the same ingest key…"
+            beginStreamKeySupervision(intent, request: request, needsUpload: true)
+        }
+    }
+
+    private func checkCaptureRecovery(_ recovery: CaptureRecovery, request: UInt64) throws {
+        try Task.checkCancellation()
+        guard request == epoch, !uploadStoppedByOperator, !recordingStoppedByOperator,
+              !journalUnavailable, !requiresStudioResolution, authorization.policyAccepted else { throw CancellationError() }
+        let snapshot = media.snapshot()
+        switch recovery {
+        case .connected(let intent):
+            try checkGeneration(request, intent.generation)
+            guard activeIntent?.id == intent.id, pendingRemote?.eventID == intent.event.id,
+                  pendingRemote?.streamID == admitted?.streamID,
+                  snapshot.profile == intent.profile, snapshot.overlayURL == intent.overlayURL else { throw StartError.changed }
+        case .savedKey(let intent):
+            guard activeStreamKey?.id == intent.id, snapshot.profile == intent.upload.profile,
+                  snapshot.overlayURL == intent.overlayURL,
+                  streamKeySettings.saved?.destination.streamName == intent.upload.destination.streamName else { throw StartError.changed }
+        }
     }
 
     /// The operator first reopens/checks preview. This button only reads and
@@ -636,6 +809,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
     /// Startup cancellation preserves a healthy recording. It is not End broadcast.
     func cancelStartup() {
         guard isStartingUpload else { return }
+        captureRecovery = nil
         cancelSupervision()
         epoch &+= 1
         let request = epoch
@@ -659,12 +833,15 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
     func confirmStopStreaming() {
         guard canStopStreaming else { return }
         uploadStoppedByOperator = true
+        let reopeningCapture = captureRecovery != nil && isStartingUpload && !media.snapshot().isRecording
+        captureRecovery = nil
         let previous = isStartingUpload ? operation : supervision
         let needsReconciliation = state == .needsReconciliation || (isStartingUpload && activeIntent != nil)
         previous?.cancel()
         cancelSupervision()
         epoch &+= 1
         let request = epoch
+        if reopeningCapture { media.stopAll() }
         state = .streamingStopped
         isWorking = true
         if activeStreamKey != nil {
@@ -726,6 +903,10 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
     /// deliberately stopped. Release a saved-key session and retain any API
     /// event for explicit reconciliation/completion without sending Complete.
     func finishAfterMediaSettles() {
+        if captureRecovery != nil {
+            recoverCaptureIfReady()
+            return
+        }
         let snapshot = media.snapshot()
         guard uploadStoppedByOperator, !isWorking, !snapshot.isRecording,
               !snapshot.hasUpload, snapshot.canPrepareNextSession else { return }
@@ -741,6 +922,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
     /// Whole-session stop is dispatched before remote work and never awaits it.
     func confirmEnd() {
         guard state != .ending else { return }
+        captureRecovery = nil
         if activeStreamKey != nil {
             stopStreamKeySession()
             return
@@ -797,7 +979,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
 
     /// Read only, including after relaunch. Never retries a mutation or reconnects.
     func reconcile() {
-        guard !isWorking, let context = pendingRemote, authorization.isAuthorized else { return }
+        guard captureRecovery == nil, !isWorking, let context = pendingRemote, authorization.isAuthorized else { return }
         guard !hasUnsettledMutation else {
             message = "A previous YouTube transition is still awaiting an outcome. Wait for it to settle, then reconcile; no new request was sent."
             return
@@ -877,7 +1059,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
             return erased
         }
         cancelSupervision(); epoch &+= 1; operation?.cancel()
-        confirmation = nil; activeIntent = nil; pendingRemote = nil; admitted = nil
+        confirmation = nil; activeIntent = nil; pendingRemote = nil; admitted = nil; captureRecovery = nil
         isWorking = true; state = needsGuard ? .needsReconciliation : .idle
         journalUnavailable = !erased
         media.lockConfiguration(false)
@@ -926,6 +1108,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
         confirmation = nil
         streamKeyConfirmation = nil
         guard let intent = activeIntent, intent.generation != authorization.generation else { return }
+        captureRecovery = nil
         cancelSupervision()
         epoch &+= 1
         operation?.cancel()
@@ -941,34 +1124,73 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
         message = "The YouTube account changed. Upload stopped; healthy local recording continues. Reconnect to the original channel and reconcile any attempted upload."
     }
 
-    /// Explicit retry repeats transport only, with the original frozen identity.
-    func retryUpload() {
-        guard !isWorking, !hasUnsettledMutation, reconnectStatus == .exhausted,
-              let intent = activeIntent, admitted != nil,
-              intent.generation == authorization.generation, authorization.isAuthorized else { return }
-        guard reconnectClock.now() >= readNotBefore else {
-            message = "YouTube requested a longer wait. Upload retry is paused; healthy local recording continues."
-            return
-        }
-        beginSupervision(intent, request: epoch)
-    }
-
     private func cancelSupervision() {
         supervision?.cancel(); supervision = nil
         reconnectStatus = .inactive
     }
 
-    private func beginSupervision(_ intent: BroadcastIntent, request: UInt64) {
+    private func beginStreamKeySupervision(_ intent: StreamKeyIntent, request: UInt64, needsUpload: Bool = false) {
         supervision?.cancel()
         reconnectAttempts = 0
         reconnectStatus = .monitoring
-        supervision = Task { await supervise(intent, request: request) }
+        supervision = Task {
+            var needsUpload = needsUpload
+            while !Task.isCancelled, request == epoch, !uploadStoppedByOperator,
+                  activeStreamKey?.id == intent.id, authorization.policyAccepted {
+                let snapshot = media.snapshot()
+                guard snapshot.pipelineRunning, snapshot.profile == intent.upload.profile,
+                      snapshot.overlayURL == intent.overlayURL else { return }
+                do {
+                    needsUpload = needsUpload || snapshot.uploadFailed
+                    if needsUpload && !snapshot.hasUpload {
+                        let delay = ReconnectClock.delay(attempt: reconnectAttempts, jitter: reconnectClock.jitter())
+                        reconnectAttempts = min(reconnectAttempts + 1, 12)
+                        reconnectStatus = .waiting
+                        streamKeyMessage = "Upload interrupted. Reconnecting to the same ingest key…"
+                        try await reconnectClock.sleep(delay)
+                        let latest = media.snapshot()
+                        guard request == epoch, !Task.isCancelled, !uploadStoppedByOperator, !latest.hasUpload,
+                              latest.pipelineRunning, latest.profile == intent.upload.profile,
+                              latest.overlayURL == intent.overlayURL, authorization.policyAccepted else { return }
+                        guard activeStreamKey?.id == intent.id,
+                              streamKeySettings.saved?.destination.streamName == intent.upload.destination.streamName,
+                              !journalUnavailable, !requiresStudioResolution else {
+                            reconnectStatus = .stopped
+                            streamKeyMessage = "Automatic retries stopped. Check the saved key and event in YouTube Studio."
+                            return
+                        }
+                        reconnectStatus = .connecting
+                        do {
+                            try await media.startUpload(intent.upload)
+                        } catch {
+                            guard request == epoch, !Task.isCancelled else { return }
+                            continue
+                        }
+                        guard request == epoch, !Task.isCancelled else { return }
+                        needsUpload = false
+                        reconnectAttempts = 0
+                        captureRecoveryAttempts = 0
+                        reconnectStatus = .monitoring
+                        streamKeyMessage = "Upload reconnected to the same ingest key. Check the event in YouTube Studio."
+                    } else {
+                        try await reconnectClock.sleep(1)
+                    }
+                } catch { return }
+            }
+        }
     }
 
-    private func supervise(_ intent: BroadcastIntent, request: UInt64) async {
+    private func beginSupervision(_ intent: BroadcastIntent, request: UInt64, needsUpload: Bool = false) {
+        supervision?.cancel()
+        reconnectAttempts = 0
+        reconnectStatus = .monitoring
+        supervision = Task { await supervise(intent, request: request, needsUpload: needsUpload) }
+    }
+
+    private func supervise(_ intent: BroadcastIntent, request: UInt64, needsUpload: Bool) async {
         guard let original = admitted else { return }
-        var nextRead = reconnectClock.now() + 10
-        var outageStart: Double?
+        var recoveryPending = needsUpload
+        var nextRead = max(reconnectClock.now() + 10, readNotBefore)
         var readFailures = 0
         do {
             while true {
@@ -976,19 +1198,14 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
                 let snapshot = media.snapshot()
                 guard snapshot.pipelineRunning, snapshot.profile == intent.profile,
                       snapshot.overlayURL == intent.overlayURL else { throw StartError.changed }
-                let failed = snapshot.uploadFailed
-                if failed, outageStart == nil { outageStart = reconnectClock.now() }
+                recoveryPending = recoveryPending || snapshot.uploadFailed
+                let failed = recoveryPending && !snapshot.hasUpload
                 if failed {
-                    guard reconnectAttempts < 12, reconnectClock.now() - outageStart! < 180 else {
-                        reconnectStatus = .exhausted
-                        message = "Upload retries exhausted. Healthy local recording continues. Retry upload to the same event, or stop recording."
-                        return
-                    }
                     reconnectStatus = .waiting
                     let delay = ReconnectClock.delay(attempt: reconnectAttempts, jitter: reconnectClock.jitter())
-                    reconnectAttempts += 1
-                    message = "Upload interrupted. Retrying the same YouTube event (\(reconnectAttempts)/12). Healthy local recording continues."
-                    try await reconnectClock.sleep(delay)
+                    reconnectAttempts = min(reconnectAttempts + 1, 12)
+                    message = "Upload interrupted. Retrying the same YouTube event. Healthy local recording continues."
+                    try await reconnectClock.sleep(max(delay, readNotBefore - reconnectClock.now()))
                     try checkGeneration(request, intent.generation)
                 } else if reconnectClock.now() < nextRead {
                     try await reconnectClock.sleep(1)
@@ -998,12 +1215,14 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
                     let prepared = try await reconnectDestination(intent, original: original, request: request)
                     readFailures = 0
                     if failed {
-                        guard reconnectClock.now() - outageStart! < 180 else { continue }
+                        guard !journalUnavailable, !requiresStudioResolution else { throw StartError.journal }
                         reconnectStatus = .connecting
                         guard let upload = RTMPSUpload(prepared) else { throw StartError.changed }
                         try await media.startUpload(upload)
                         try checkGeneration(request, intent.generation)
-                        outageStart = nil; reconnectAttempts = 0
+                        recoveryPending = false
+                        reconnectAttempts = 0
+                        captureRecoveryAttempts = 0
                         message = "Upload reconnected to the same event. YouTube status was read separately; check the receiver."
                     }
                     reconnectStatus = .monitoring
@@ -1015,14 +1234,10 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
                     let serverDelay = (error as? YouTubeReadBackoff)?.seconds ?? 0
                     readNotBefore = reconnectClock.now() + serverDelay
                     let delay = max(serverDelay, min(60, 10 * pow(2, Double(min(readFailures - 1, 3)))))
-                    message = "YouTube status is temporarily unavailable. Healthy upload and local recording continue independently."
-                    // Respect server delay without an unbounded automatic reconnect.
-                    if failed, reconnectClock.now() + delay - outageStart! >= 180 {
-                        try await reconnectClock.sleep(max(0, 180 - (reconnectClock.now() - outageStart!)))
-                        reconnectAttempts = 12
-                    } else {
-                        try await reconnectClock.sleep(delay)
-                    }
+                    message = failed
+                        ? "Upload interrupted. Waiting to reconnect to the same YouTube event."
+                        : "YouTube status is temporarily unavailable. Healthy upload and local recording continue independently."
+                    try await reconnectClock.sleep(delay)
                     nextRead = reconnectClock.now()
                 }
             }
@@ -1034,9 +1249,13 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
             if !auth || media.snapshot().uploadFailed { await media.stopUpload() }
             guard request == epoch else { return }
             state = .needsReconciliation
-            message = auth
-                ? "YouTube authorization needs attention. Automatic retries stopped; an existing healthy upload and local recording are preserved. No sign-in opens automatically."
-                : "The original YouTube event ended, disappeared or changed. Upload stopped; healthy local recording continues. Inspect YouTube Studio and reconcile."
+            if (error as? StartError) == .journal {
+                message = "Automatic retries stopped because saved YouTube session data needs attention. Check YouTube Studio and reconcile."
+            } else {
+                message = auth
+                    ? "YouTube authorization needs attention. Automatic retries stopped; an existing healthy upload and local recording are preserved. No sign-in opens automatically."
+                    : "The original YouTube event ended, disappeared or changed. Upload stopped; healthy local recording continues. Inspect YouTube Studio and reconcile."
+            }
         }
     }
 
@@ -1047,8 +1266,8 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
         let event = try await client.broadcast(id: intent.event.id, channelID: intent.channel.id, generation: intent.generation)
         try checkGeneration(request, intent.generation)
         if ["complete", "revoked"].contains(event.status?.lifeCycleStatus ?? "") { throw StartError.ended }
+        guard event.status?.lifeCycleStatus == "live" else { throw StartError.remoteUnknown }
         try sameBoundEvent(event, intent, streamID: original.streamID)
-        guard ["ready", "testing", "testStarting", "liveStarting", "live"].contains(event.status?.lifeCycleStatus ?? "") else { throw StartError.remoteUnknown }
         let stream = try await client.ingestionStream(id: original.streamID, channelID: intent.channel.id, generation: intent.generation)
         try checkGeneration(request, intent.generation)
         // This is an already-admitted stream. Active ingestion is expected during
@@ -1061,14 +1280,13 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
                                                          streamName: stream.cdn?.ingestionInfo?.streamName)
         guard destination.endpoint == original.destination.endpoint, destination.streamName == original.destination.streamName else { throw StartError.changed }
         // A socket never establishes Live. This value comes only from this read.
-        if event.status?.lifeCycleStatus == "live" { state = .live }
-        else { state = .waitingForIngestion }
+        state = .live
         return PreparedYouTubeIngestion(broadcast: event, streamID: original.streamID, profile: intent.profile,
                                         generation: intent.generation, destination: destination)
     }
 
     private func isPermanentSupervisionError(_ error: any Error) -> Bool {
-        if let error = error as? StartError { return error == .ended || error == .changed }
+        if let error = error as? StartError { return [.ended, .changed, .journal].contains(error) }
         if let error = error as? YouTubeBindingError { return error == .invalidDestination }
         guard let error = error as? YouTubeReadError else { return false }
         return ![.network, .rateLimited, .unavailable, .malformedResponse].contains(error)
@@ -1147,7 +1365,7 @@ nonisolated struct StreamKeyIntent: Identifiable, Sendable, CustomReflectable {
         do { try store.save(context); pendingRemote = context; journalUnavailable = false }
         catch { journalUnavailable = true; throw StartError.journal }
     }
-    private enum StartError: Error { case writer, changed, overlay, upload, ended, remoteUnknown, journal, monitorUnknown }
+    private enum StartError: Error { case capture, writer, changed, overlay, upload, ended, remoteUnknown, journal, monitorUnknown }
     private func startupMessage(_ error: any Error) -> String {
         let suffix = " Healthy local recording continues while available; Stop recording remains available."
         if error is BroadcastDeadlineError { return "YouTube startup timed out. Upload stopped; reconcile before trying again." + suffix }

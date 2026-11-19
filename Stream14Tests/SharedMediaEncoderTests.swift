@@ -98,7 +98,6 @@ struct SharedMediaEncoderTests {
         #expect(encoder.metrics.failure == .rawOverflow)
     }
 
-    #if DEBUG
     @Test func pictureInPictureAudioBacklogDrainsWithoutLosingSamples() async throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp4")
         defer { try? FileManager.default.removeItem(at: file) }
@@ -121,7 +120,6 @@ struct SharedMediaEncoderTests {
         #expect(result.audioDropped == 0)
         #expect(result.videoWritten == 2)
     }
-    #endif
 
     @Test func persistentEncoderPassthroughFilesPreservePacketsAndDecodedMidpoint() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

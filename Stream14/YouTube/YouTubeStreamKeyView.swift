@@ -11,7 +11,7 @@ struct YouTubeStreamKeyView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Stream key").font(.headline).accessibilityAddTraits(.isHeader)
             Text("Stream14 uses the saved key when no YouTube account is connected.")
-            Text("In YouTube Studio, choose Create → Go live. In Live Control Room, open Stream settings → Stream key and create a reusable key for this iPhone. Assign it to one upcoming encoder event with Auto-start and Auto-stop enabled.")
+            Text("In YouTube Studio, choose Create → Go live. In Live Control Room, open Stream settings → Stream key and create a key for this iPhone. Assign it to one upcoming encoder event. Use Auto-start to go live on ingest. Keep Auto-stop off to leave the event open during an outage, then end the event in Studio.")
                 .font(.footnote)
             if broadcast.streamKeySettings.saved != nil {
                 Label("Saved on this iPhone", systemImage: "lock.fill")

@@ -2,9 +2,7 @@ import AVFoundation
 import HaishinKit
 import Observation
 import UIKit
-#if DEBUG
 import Synchronization
-#endif
 
 nonisolated enum SessionInterruption: CaseIterable {
     case background, camera, audio, captureFailure, encoderFailure, criticalHeat, audioUnavailable
@@ -37,14 +35,7 @@ final class MediaSession {
     let renderer: WebOverlayRenderer
     private(set) var profile: SessionProfile
     var broadcastConfigurationLocked = false {
-        didSet {
-            if broadcastConfigurationLocked {
-                clearPreviewIntent()
-                #if DEBUG
-                if captureForeground { closeCameraPiP() }
-                #endif
-            }
-        }
+        didSet { if broadcastConfigurationLocked { clearPreviewIntent() } }
     }
     var canSelectProfile: Bool { !broadcastConfigurationLocked && phase == .idle && !busy && !stopRequested }
     private let authorizeCapture: @MainActor () async -> Bool
@@ -138,15 +129,21 @@ final class MediaSession {
     private var previewCloseFixture: (@MainActor () async -> Void)?
     private var previewReadyFixture: (@MainActor () -> Bool)?
     private var previewFrameTimeout: Duration = .seconds(5)
-    private(set) var cameraPiP: CameraPiPProbe?
+    #endif
+    private(set) var cameraPiP: CameraPictureInPicture?
     private(set) var cameraPiPSupported = false
     private(set) var cameraPiPMessage = ""
     private var cameraPiPWatch: Task<Void, Never>?
     private var cameraPiPTransitionPending = false
     var showsCameraPiP: Bool {
-        CameraPiPProbe.isEnabled && !interfaceFixtureMode && isRecording && !broadcastConfigurationLocked && !hasUpload
+        #if DEBUG
+        if interfaceFixtureMode { return false }
+        #endif
+        return isRecording || uploadNeedsEncoder
     }
-    #endif
+    private var canKeepCameraPiPCapture: Bool {
+        showsCameraPiP && !stopRequested && (hasStartedWriting || uploadNeedsEncoder)
+    }
     var backupWarning: String { recordingFailed ? "Backup failed. Saved footage is retained as incomplete; healthy upload continues independently." : "" }
     private var previousIdleTimerDisabled: Bool?
     private var interruptedUploadClosing: Task<Void, Never>?
@@ -211,6 +208,13 @@ final class MediaSession {
     var canPrepareNextSession: Bool {
         !busy && !stopRequested && !hasUpload && fileFinalization.recordingID == nil &&
         (phase == .idle || phase == .preview)
+    }
+    var canReopenBroadcastCapture: Bool {
+        phase == .idle && canPrepareNextSession && captureForeground &&
+            UIApplication.shared.applicationState == .active && canConfirmLandscapeStart &&
+            UIApplication.shared.isProtectedDataAvailable && ProcessInfo.processInfo.thermalState != .critical &&
+            AVCaptureDevice.authorizationStatus(for: .video) == .authorized &&
+            AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     }
 
     /// Reset only the settled workspace. Archive originals/sidecars are retained.
@@ -559,8 +563,8 @@ final class MediaSession {
                 self.updateThermalState()
             }
         }
-        #if DEBUG
-        if CameraPiPProbe.isEnabled {
+        cameraPiPSupported = false
+        if CameraPictureInPicture.isSupported {
             let enabled = Mutex(false)
             await mixer.configuration { session in
                 if session.isMultitaskingCameraAccessSupported {
@@ -570,7 +574,6 @@ final class MediaSession {
             }
             cameraPiPSupported = enabled.withLock { $0 }
         }
-        #endif
         guard !stopRequested else { return }
         await mixer.startRunning()
         overlayTask = Task { [weak self] in
@@ -634,28 +637,23 @@ final class MediaSession {
     func setCaptureForeground(_ foreground: Bool) {
         captureForeground = foreground
         if foreground {
-            #if DEBUG
             preview.videoTrackId = .max
             cameraPiPWatch?.cancel()
             cameraPiPWatch = nil
             completeCameraPiPTransition()
-            #endif
             schedulePreviewResume()
         } else {
-            #if DEBUG
-            if showsCameraPiP, hasStartedWriting, !stopRequested, UIApplication.shared.isProtectedDataAvailable,
+            if canKeepCameraPiPCapture, UIApplication.shared.isProtectedDataAvailable,
                let cameraPiP, cameraPiP.isPrepared {
                 if cameraPiPWatch == nil { watchBackgroundCameraPiP(cameraPiP) }
                 return
             }
-            #endif
             previewResumePending = previewRequested && !broadcastConfigurationLocked &&
                 recorder == nil && sharedEncoder == nil && publisher == nil && !failure
             interrupt(.background)
         }
     }
 
-    #if DEBUG
     private func prepareCameraPiP(recordingID expectedID: UUID) async {
         let deadline = ContinuousClock.now + .seconds(2)
         while showsCameraPiP && captureForeground && !stopRequested && recordingID == expectedID {
@@ -667,7 +665,7 @@ final class MediaSession {
             do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
         }
         guard showsCameraPiP, captureForeground, !stopRequested, recordingID == expectedID, hasStartedWriting else { return }
-        guard let probe = CameraPiPProbe(mixer: mixer, sourceView: preview,
+        guard let probe = CameraPictureInPicture(mixer: mixer, sourceView: preview,
                 size: CGSize(width: profile.width, height: profile.height), onEnd: { [weak self] probe, reason in
                     guard let self, self.cameraPiP === probe, !self.captureForeground,
                           UIApplication.shared.applicationState == .background else { return }
@@ -695,7 +693,7 @@ final class MediaSession {
         if cameraPiP != nil { setCaptureForeground(true) }
     }
 
-    private func watchBackgroundCameraPiP(_ probe: CameraPiPProbe) {
+    private func watchBackgroundCameraPiP(_ probe: CameraPictureInPicture) {
         // Keep the inline view as the AVKit transition source, but pause its
         // Metal frame delivery while the floating window supplies the preview.
         preview.videoTrackId = nil
@@ -706,7 +704,7 @@ final class MediaSession {
         cameraPiPWatch = Task { [weak self, weak probe] in
             while !Task.isCancelled {
                 guard let self, let probe, self.cameraPiP === probe, !self.captureForeground else { return }
-                let canRecord = self.showsCameraPiP && self.hasStartedWriting && UIApplication.shared.isProtectedDataAvailable
+                let canRecord = self.canKeepCameraPiPCapture && UIApplication.shared.isProtectedDataAvailable
                 // Before releasing the background assertion, require each
                 // input to have advanced since this app switch.
                 let mediaFresh = probe.hasFreshMedia(after: self.cameraPiPTransitionPending ? transitionedAt : nil)
@@ -731,7 +729,7 @@ final class MediaSession {
         }
     }
 
-    private func waitForCameraPiPForegroundReturn(_ probe: CameraPiPProbe) {
+    private func waitForCameraPiPForegroundReturn(_ probe: CameraPictureInPicture) {
         // AVKit begins closing PiP before UIKit may report the app's return.
         // Hold the same writer during that animation. A close while still away
         // transfers this assertion to normal file finalization.
@@ -761,7 +759,6 @@ final class MediaSession {
         cameraPiPWatch = nil
         probe?.stop()
     }
-    #endif
 
     private func clearPreviewIntent() {
         previewRequested = false
@@ -839,8 +836,8 @@ final class MediaSession {
     }
 
     func record(injection: LocalRecorder.Injection = .none) async {
-        #if DEBUG
         cameraPiPMessage = ""
+        #if DEBUG
         if interfaceFixtureMode {
             guard canRecord else { return }
             phase = .recording; recordingFailed = false
@@ -883,12 +880,7 @@ final class MediaSession {
             try recorder.start(directory.appendingPathComponent(sample.fileName), injection: injection, profile: profile)
             let destinations = SharedMediaDestinations(recorder: recorder)
             mediaDestinations = destinations
-            #if DEBUG
-            let limits: SharedMediaEncoder.Limits = cameraPiPSupported && !broadcastConfigurationLocked && !hasUpload
-                ? .pictureInPicture : .init()
-            #else
-            let limits = SharedMediaEncoder.Limits()
-            #endif
+            let limits: SharedMediaEncoder.Limits = cameraPiPSupported ? .pictureInPicture : .init()
             let encoder = try SharedMediaEncoder(profile: profile, limits: limits, output: { sample in
                 destinations.append(sample)
             }, failed: { _ in destinations.encoderFailed() })
@@ -909,12 +901,10 @@ final class MediaSession {
             startedAt = Date()
             phase = .recording
             message = "Recording locally · camera, microphone and composed overlay."
-            #if DEBUG
             if showsCameraPiP && cameraPiPSupported {
                 let recordingID = sample.id
                 Task { [weak self] in await self?.prepareCameraPiP(recordingID: recordingID) }
             }
-            #endif
         } catch {
             failure = true
             message = "Recording could not start. Any partial sample is retained."
@@ -946,9 +936,7 @@ final class MediaSession {
         sample?.status = .failed
         if let sample, let directory { try? sample.save(in: directory) }
         restoreIdleTimer()
-        #if DEBUG
         if cameraPiPTransitionPending { interrupt(.background) }
-        #endif
         endBackgroundTime()
     }
 
@@ -978,17 +966,11 @@ final class MediaSession {
         guard phase != .idle || busy else { return }
         interrupted = interrupted || interruption
         let backgrounded = UIApplication.shared.applicationState == .background
-        #if DEBUG
         // A lock notification can precede didEnterBackground. Reserve time
         // before closing PiP, which can relinquish background execution.
         let needsFinalizationTime = backgrounded || (interruption && cameraPiP != nil)
-        #else
-        let needsFinalizationTime = backgrounded
-        #endif
         if needsFinalizationTime { reserveBackgroundTime() }
-        #if DEBUG
         closeCameraPiP()
-        #endif
         stopRequested = true
         uploadStopGeneration &+= 1
         mediaDestinations?.detachPublisher()
@@ -1206,9 +1188,7 @@ final class MediaSession {
     }
 
     private func finishRecording(keepEncoding: Bool = false, closingSession: Bool = false) async {
-        #if DEBUG
-        closeCameraPiP()
-        #endif
+        if !keepEncoding { closeCameraPiP() }
         await checkpointQualification()
         if !keepEncoding, let sharedEncoder {
             await mixer.removeOutput(sharedEncoder)
