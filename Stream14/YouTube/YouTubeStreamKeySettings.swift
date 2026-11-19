@@ -5,9 +5,10 @@ import Security
 /// Keep credentials out of reflection and encoders other than the Keychain store.
 nonisolated struct SavedYouTubeStreamKey: Sendable, CustomReflectable {
     let destination: YouTubeIngestionDestination
+    var recoveryProfile: SessionProfile?
     var customMirror: Mirror { Mirror(self, children: ["credentials": "<redacted>"]) }
 
-    init(key: String) throws {
+    init(key: String, recoveryProfile: SessionProfile? = nil) throws {
         let streamName = key.trimmingCharacters(in: .whitespacesAndNewlines)
         // Accept a key pasted from Studio, with no URL or path components.
         guard !streamName.isEmpty, streamName.utf8.allSatisfy({
@@ -16,6 +17,7 @@ nonisolated struct SavedYouTubeStreamKey: Sendable, CustomReflectable {
         }) else { throw YouTubeBindingError.invalidDestination }
         destination = try YouTubeIngestionDestination(
             address: "rtmps://a.rtmps.youtube.com:443/live2", streamName: streamName)
+        self.recoveryProfile = recoveryProfile
     }
 }
 
@@ -39,6 +41,20 @@ nonisolated struct SavedYouTubeStreamKey: Sendable, CustomReflectable {
 
     func retryReadIfNeeded() {
         if readFailed { reload() }
+    }
+
+    @discardableResult func setRecoveryProfile(_ profile: SessionProfile?) -> Bool {
+        guard var candidate = saved else { return profile == nil && !readFailed }
+        guard candidate.recoveryProfile != profile else { return true }
+        candidate.recoveryProfile = profile
+        do {
+            try write(candidate)
+            saved = candidate
+            return true
+        } catch {
+            feedback = "Couldn’t update saved stream recovery on this iPhone."
+            return false
+        }
     }
 
     private func reload() {
@@ -89,6 +105,7 @@ enum YouTubeStreamKeyStore {
     // The earlier payload's additional name field is ignored by JSONDecoder.
     struct Payload: Codable {
         let key: String
+        var recoveryProfile: String? = nil
     }
 
     private static var query: [String: Any] {
@@ -107,7 +124,8 @@ enum YouTubeStreamKeyStore {
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess, let data = result as? Data,
               let payload = try? JSONDecoder().decode(Payload.self, from: data) else { throw StoreError.unavailable }
-        return try SavedYouTubeStreamKey(key: payload.key)
+        return try SavedYouTubeStreamKey(key: payload.key,
+                                         recoveryProfile: payload.recoveryProfile.flatMap(SessionProfile.init(rawValue:)))
     }
 
     static func write(_ value: SavedYouTubeStreamKey?) throws {
@@ -116,7 +134,8 @@ enum YouTubeStreamKeyStore {
             guard status == errSecSuccess || status == errSecItemNotFound else { throw StoreError.unavailable }
             return
         }
-        let data = try JSONEncoder().encode(Payload(key: value.destination.streamName))
+        let data = try JSONEncoder().encode(Payload(key: value.destination.streamName,
+                                                    recoveryProfile: value.recoveryProfile?.rawValue))
         let attributes: [String: Any] = [kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
         // Update the single record in place so replacement failure preserves it.

@@ -26,6 +26,18 @@ Keep all originals and do not uninstall the app.
   YouTube-confirmed Live and picture/speech at the receiver. End, then verify
   remote completion and local file playback. If ending is uncertain, reconcile
   in the app or Studio; ensure someone takes responsibility for the remote event.
+- **Picture-in-Picture:** with automatic PiP enabled, switch to Settings and
+  return twice. Check continuous picture and speech at the receiver and in one
+  local original. The overlay should pause while away and refresh after return.
+  In separate short cases, interrupt the network to verify same-destination
+  recovery without replacing the file, and close PiP while away to verify a
+  new local file and automatic upload recovery on return. Confirm that an
+  explicit streaming stop cancels any pending retry.
+- **Relaunch recovery:** with the owner's agreement, terminate the app during an
+  unlisted broadcast with Auto-stop off. Reopen Stream14 and use the resume
+  control. Check that the same receiver gets picture and speech and the new
+  recording is separate from the retained original. Repeat after explicitly
+  stopping upload and verify that the old session offers no resume action.
 - **Fault cases:** choose one scenario per visit from the acceptance gates.
   For recovery, test termination before and after a fragment; inspect retained
   originals and any separate copy. Keep the non-private scene and test event
@@ -81,7 +93,7 @@ and receiver latency are not lip sync; missing markers leave the gate open.
 | A1 Overlay | Exact full-canvas alpha, text and logos across reloads without white/blank flashes; compare physical preview, original and receiver, with no app controls in output. |
 | A2 Smooth video | At least 30 measured minutes on 13 mini; <1% measured pipeline drops, no repeated stalls of 500 ms or more, and no monotonic memory or queue growth. State any coverage gaps. |
 | A3 YouTube | Correct channel, event and visibility; real picture and audio at a second-device receiver; confirmed start/end and no publication from preparation. |
-| A4 Independence | Startup rejection, loss of at least two minutes, retry exhaustion and remote end leave a healthy original uninterrupted; verify same-event recovery and automatic overlay hide/restore. Verify healthy upload continues through a post-start writer failure. |
+| A4 Independence | Startup rejection, loss of at least two minutes, and remote end leave a healthy original uninterrupted. Verify same-event recovery after the loss and automatic overlay hide/restore. Verify healthy upload continues through a post-start writer failure. |
 | A5 Recovery | Multiple physical interruption/termination points; retained original, separate recovery copy when possible, measured lost tail, playback and export. |
 | A6 Failure UX | Actionable, distinct permission, event, auth, quota/rate limit, overlay outage, disk-full/writer failure and uncertain end states. |
 | A7 Endurance | One continuous powered hour at 1080p30 on 13 mini with broadcast and local recording; A2 targets and physical beginning/end sync within 100 ms, with uncertainty. |

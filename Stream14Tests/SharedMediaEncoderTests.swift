@@ -98,6 +98,29 @@ struct SharedMediaEncoderTests {
         #expect(encoder.metrics.failure == .rawOverflow)
     }
 
+    @Test func pictureInPictureAudioBacklogDrainsWithoutLosingSamples() async throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp4")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let recorder = LocalRecorder()
+        try recorder.start(file, profile: .hd)
+        let encoder = try SharedMediaEncoder(profile: .hd, limits: .pictureInPicture,
+                                             output: { recorder.append($0) }, failed: { _ in })
+        #expect(encoder.offer(try LocalRecorderTests.video(30, profile: .hd)))
+        // Hold the worker while contiguous PCM arrives during a short stall.
+        for index in 30..<52 {
+            #expect(encoder.offer(try LocalRecorderTests.audio(index)))
+        }
+        #expect(encoder.offer(try LocalRecorderTests.video(51, profile: .hd)))
+        #expect(encoder.metrics.highWaterAudioFrames == 22 * 1470)
+        #expect(encoder.metrics.rejectedAudioFrames == 0)
+        try await encoder.finish()
+        #expect(encoder.metrics.failure == nil)
+        let result = try await recorder.finish()
+        #expect(try #require(result.audioWritten) > 30)
+        #expect(result.audioDropped == 0)
+        #expect(result.videoWritten == 2)
+    }
+
     @Test func persistentEncoderPassthroughFilesPreservePacketsAndDecodedMidpoint() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

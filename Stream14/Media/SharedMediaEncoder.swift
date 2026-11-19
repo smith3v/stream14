@@ -11,6 +11,9 @@ actor SharedMediaEncoder: MediaMixerOutput {
         var videoFrames = 2
         var audioFrames = 11_025 // 250 ms at the selected 44.1 kHz mixer rate
         var bytes = 16 * 1024 * 1024
+        // Absorb a short video encoder stall during a PiP transition without
+        // dropping PCM. The two-frame video and total byte bounds still apply.
+        static let pictureInPicture = Self(audioFrames: 44_100)
     }
     struct Metrics: Sendable {
         var admittedVideoFrames = 0

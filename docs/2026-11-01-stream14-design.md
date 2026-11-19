@@ -159,7 +159,7 @@ and reconciliation state. See [OAuth setup](ios-development-guide.md#google-oaut
 same media owner used for rehearsal. An explicit start freezes the account,
 event, settings and confirmation metadata, rechecks readiness and waits for the
 local writer to accept media before starting upload. An initial writer failure
-blocks publishing. API/startup failure, lost transport, exhausted retries and a
+blocks publishing. API/startup failure, lost transport and a
 remotely ended event do not stop a healthy writer.
 
 For a **Connected YouTube event**, use the following lifecycle.
@@ -185,13 +185,12 @@ For a **Connected YouTube event**, use the following lifecycle.
   repeated. Keep publishing blocked when journal state is corrupt or status
   cannot be safely reconciled. End starts local shutdown independently of the
   bounded remote Complete attempt.
-- While the shared capture and encoder pipeline is active, retry transport up
-  to 12 times within a 180-second outage budget, using the same admitted event,
-  binding and profile. Respect service backoff. Stop retries on completion,
-  unsafe state or interrupted capture. Temporary status-read failures leave
-  healthy outputs running. Keep recording if healthy, and report exhaustion
-  and same-event Retry upload separately. Never create a replacement or repeat
-  Live on reconnect.
+- While the shared capture and encoder pipeline is active, retry a dropped
+  transport using the same admitted event, binding and profile. Back off
+  between attempts and respect service retry delays. Stop retries on operator
+  stop, event completion or an unsafe destination. Temporary status-read
+  failures leave healthy outputs running. Never create a replacement event or
+  repeat the Live transition on reconnect.
 - Sign-out retains reconciliation state. Explicit local data deletion, revoke
   and confirmed access loss clear saved API-derived IDs and invalidate readiness,
   retaining recordings and overlay settings. Local deletion does not revoke
@@ -214,8 +213,10 @@ An unresolved API session retains its reconciliation controls and blocks a new
 stream. A confirmed or active session keeps its captured destination.
 
 In YouTube Studio, assign the key to one upcoming encoder event with Auto-start
-and Auto-stop enabled. In Session, the Start confirmation identifies the saved-key
-destination and warns that sending video can start the assigned event. The app uses the
+if the event should go live on ingest. Turn Auto-stop off to keep the event open
+through an outage. End it in Studio after stopping the saved-key upload.
+In Session, the Start confirmation identifies the saved-key destination and
+warns that sending video can start the assigned event. The app uses the
 existing writer and RTMPS publisher with YouTube’s primary ingest endpoint
 (`rtmps://a.rtmps.youtube.com:443/live2`). It makes no event API calls or changes
 to the Studio event. End stops upload and local capture and finalizes the file.
@@ -224,14 +225,12 @@ The app reports the connection and local saving states. Verify the event itself
 in Studio. See [YouTube’s RTMPS requirements](https://developers.google.com/youtube/data/live/guides/rtmps-ingestion)
 and [Auto-start and Auto-stop](https://developers.google.com/youtube/data/live/life-of-a-broadcast).
 
-After upload loss, a healthy recording continues. An extended outage can trigger
-Auto-stop. Retry requires an explicit confirmation after checking the assignment
-in Studio, preferably from another device while local recording continues.
-The app retries the frozen ingest destination for that session. Studio may have
-ended the intended event or assigned another one to the key. On capture
-interruption, reopen the camera and explicitly start a new session after checking
-Studio. Use the same saved key for the next event by assigning it in Studio and
-choosing **Prepare next session** in the app.
+After an admitted upload drops, a healthy recording continues while the app
+retries the frozen ingest destination. An extended outage can trigger Auto-stop
+if enabled. For an initial connection failure, check the assignment in Studio,
+then explicitly confirm a retry while local recording continues. Use the same
+saved key for the next event by assigning it in Studio and choosing **Prepare
+next session** in the app.
 
 ## Interruptions, files and recovery
 
@@ -240,13 +239,38 @@ setting at teardown. Background/lock, capture or encoder failure, loss of
 required audio input, and critical heat can stop both outputs. Preserve the
 file and pending event; an interruption does not send Complete. Preview-only
 intent may restore in foreground using a fresh mixer and moving-frame readiness;
-manual Close cancels it. Never start capture on launch or automatically resume
-recording or upload. Reopen preview and explicitly confirm **Resume same event**
-for a connected event after rechecking the original compatible inactive binding and absence of
-uncertain mutations. Resume creates a new file and timeline.
+manual Close cancels it. After process termination, **Resume streaming** is
+available for a previously admitted saved-key upload. Its profile is stored
+with the key in Keychain and is cleared on key replacement or explicit stop.
+The operator starts recovery in the foreground. For a connected event,
+**Resume same event** checks the original compatible inactive binding and
+absence of uncertain mutations, opens the preview if needed, and asks the
+operator to confirm the event and visibility. If resuming an already-live
+event, publication requires it to remain live and never repeats the Live
+transition. Either recovery creates a new file and timeline.
+
+On a device with multitasking camera access, Picture-in-Picture keeps the same
+capture, writer and admitted upload running while the PiP window is active.
+The web overlay pauses in the
+background and refreshes on return. An upload failure retries the frozen ingest
+destination with bounded backoff and service retry delays. Returning to the app
+leaves a healthy transport in place. A connected event must still be live and
+match its original channel, event, binding and RTMPS destination. A native
+capture interruption finalizes the original file. When Stream14 can reopen
+capture in the foreground with previously granted permissions, it starts a new
+local file before reattaching upload to the same destination. The recovery
+control shows why capture cannot reopen yet and lets the operator retry after
+automatic attempts stop. Saved-key retries use the frozen RTMPS key. YouTube Studio
+determines which event receives the stream if the key is reassigned.
+An explicit upload stop or End
+disarms recovery, including after relaunch. Stopping local recording leaves
+transport recovery available while capture stays open and disarms recovery that
+would start a new file. If the Keychain or journal update fails, a protected
+local marker blocks old recovery until a newly confirmed upload succeeds.
 
 The writer requests ten-second MP4 fragments and declares completion only after
-confirmed finalization. Wait at most five seconds; an outstanding native
+confirmed finalization and bounded structural validation. Wait at most five
+seconds for native writer finalization; an outstanding native
 finalizer keeps ownership and blocks a new writer until it returns. A timeout
 preserves the original and a late result cannot mark it complete. Disk/write
 faults or interrupted sessions retain usable or partial files. Files lacking

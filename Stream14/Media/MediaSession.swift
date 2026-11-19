@@ -2,6 +2,7 @@ import AVFoundation
 import HaishinKit
 import Observation
 import UIKit
+import Synchronization
 
 nonisolated enum SessionInterruption: CaseIterable {
     case background, camera, audio, captureFailure, encoderFailure, criticalHeat, audioUnavailable
@@ -129,6 +130,20 @@ final class MediaSession {
     private var previewReadyFixture: (@MainActor () -> Bool)?
     private var previewFrameTimeout: Duration = .seconds(5)
     #endif
+    private(set) var cameraPiP: CameraPictureInPicture?
+    private(set) var cameraPiPSupported = false
+    private(set) var cameraPiPMessage = ""
+    private var cameraPiPWatch: Task<Void, Never>?
+    private var cameraPiPTransitionPending = false
+    var showsCameraPiP: Bool {
+        #if DEBUG
+        if interfaceFixtureMode { return false }
+        #endif
+        return isRecording || uploadNeedsEncoder
+    }
+    private var canKeepCameraPiPCapture: Bool {
+        showsCameraPiP && !stopRequested && (hasStartedWriting || uploadNeedsEncoder)
+    }
     var backupWarning: String { recordingFailed ? "Backup failed. Saved footage is retained as incomplete; healthy upload continues independently." : "" }
     private var previousIdleTimerDisabled: Bool?
     private var interruptedUploadClosing: Task<Void, Never>?
@@ -193,6 +208,24 @@ final class MediaSession {
     var canPrepareNextSession: Bool {
         !busy && !stopRequested && !hasUpload && fileFinalization.recordingID == nil &&
         (phase == .idle || phase == .preview)
+    }
+    var canReopenBroadcastCapture: Bool {
+        cameraRecoveryBlockReason == nil
+    }
+    var cameraRecoveryBlockReason: String? {
+        if !captureForeground || UIApplication.shared.applicationState != .active {
+            return "Bring Stream14 to the foreground to resume."
+        }
+        if !UIApplication.shared.isProtectedDataAvailable { return "Unlock your iPhone to resume." }
+        if !canPrepareNextSession { return "Waiting for the previous camera session and recording to finish." }
+        if !canConfirmLandscapeStart { return "Turn your iPhone to landscape to resume." }
+        if phase == .preview && !canRecord { return "Wait for the camera preview to be ready." }
+        if ProcessInfo.processInfo.thermalState == .critical { return "Let your iPhone cool down to resume." }
+        if AVCaptureDevice.authorizationStatus(for: .video) != .authorized ||
+            AVCaptureDevice.authorizationStatus(for: .audio) != .authorized {
+            return "Allow camera and microphone access in iPhone Settings to resume."
+        }
+        return nil
     }
 
     /// Reset only the settled workspace. Archive originals/sidecars are retained.
@@ -541,6 +574,17 @@ final class MediaSession {
                 self.updateThermalState()
             }
         }
+        cameraPiPSupported = false
+        if CameraPictureInPicture.isSupported {
+            let enabled = Mutex(false)
+            await mixer.configuration { session in
+                if session.isMultitaskingCameraAccessSupported {
+                    session.isMultitaskingCameraAccessEnabled = true
+                }
+                enabled.withLock { $0 = session.isMultitaskingCameraAccessEnabled }
+            }
+            cameraPiPSupported = enabled.withLock { $0 }
+        }
         guard !stopRequested else { return }
         await mixer.startRunning()
         overlayTask = Task { [weak self] in
@@ -604,12 +648,127 @@ final class MediaSession {
     func setCaptureForeground(_ foreground: Bool) {
         captureForeground = foreground
         if foreground {
+            preview.videoTrackId = .max
+            cameraPiPWatch?.cancel()
+            cameraPiPWatch = nil
+            completeCameraPiPTransition()
             schedulePreviewResume()
         } else {
+            if canKeepCameraPiPCapture, UIApplication.shared.isProtectedDataAvailable,
+               let cameraPiP, cameraPiP.isPrepared {
+                if cameraPiPWatch == nil { watchBackgroundCameraPiP(cameraPiP) }
+                return
+            }
             previewResumePending = previewRequested && !broadcastConfigurationLocked &&
                 recorder == nil && sharedEncoder == nil && publisher == nil && !failure
             interrupt(.background)
         }
+    }
+
+    private func prepareCameraPiP(recordingID expectedID: UUID) async {
+        let deadline = ContinuousClock.now + .seconds(2)
+        while showsCameraPiP && captureForeground && !stopRequested && recordingID == expectedID {
+            if hasStartedWriting { break }
+            guard ContinuousClock.now < deadline else {
+                cameraPiPMessage = "Automatic Picture-in-Picture is unavailable."
+                return
+            }
+            do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
+        }
+        guard showsCameraPiP, captureForeground, !stopRequested, recordingID == expectedID, hasStartedWriting else { return }
+        guard let probe = CameraPictureInPicture(mixer: mixer, sourceView: preview,
+                size: CGSize(width: profile.width, height: profile.height), onEnd: { [weak self] probe, reason in
+                    guard let self, self.cameraPiP === probe, !self.captureForeground,
+                          UIApplication.shared.applicationState == .background else { return }
+                    switch reason {
+                    case .closing:
+                        self.waitForCameraPiPForegroundReturn(probe)
+                    case .failedToStart:
+                        self.cameraPiPMessage = "Picture-in-Picture failed to start."
+                        self.interrupt(.background)
+                    }
+                }) else {
+            cameraPiPMessage = "Picture-in-Picture is unavailable on this device."
+            return
+        }
+        cameraPiPMessage = ""
+        cameraPiP = probe
+        await probe.prepareForAutomaticStart()
+    }
+
+    func cameraPiPDeviceLocked() {
+        if cameraPiP != nil { interrupt(.background) }
+    }
+
+    func cameraPiPWillEnterForeground() {
+        if cameraPiP != nil { setCaptureForeground(true) }
+    }
+
+    private func watchBackgroundCameraPiP(_ probe: CameraPictureInPicture) {
+        // Keep the inline view as the AVKit transition source, but pause its
+        // Metal frame delivery while the floating window supplies the preview.
+        preview.videoTrackId = nil
+        let transitionedAt = ContinuousClock.now
+        var handoff = CameraPiPBackgroundHandoff(now: transitionedAt)
+        cameraPiPTransitionPending = true
+        reserveBackgroundTime()
+        cameraPiPWatch = Task { [weak self, weak probe] in
+            while !Task.isCancelled {
+                guard let self, let probe, self.cameraPiP === probe, !self.captureForeground else { return }
+                let canRecord = self.canKeepCameraPiPCapture && UIApplication.shared.isProtectedDataAvailable
+                // Before releasing the background assertion, require each
+                // input to have advanced since this app switch.
+                let mediaFresh = probe.hasFreshMedia(after: self.cameraPiPTransitionPending ? transitionedAt : nil)
+                let decision = canRecord
+                    ? handoff.decision(active: probe.canContinueInBackground, mediaFresh: mediaFresh, now: .now)
+                    : .interrupt
+                switch decision {
+                case .wait:
+                    break
+                case .keepRecording:
+                    self.completeCameraPiPTransition()
+                case .interrupt:
+                    self.cameraPiPMessage = self.cameraPiPTransitionPending
+                        ? "Automatic Picture-in-Picture could not keep recording."
+                        : "Picture-in-Picture ended or a camera, video, or microphone feed stopped."
+                    self.interrupt(.background)
+                    return
+                }
+                let interval: Duration = decision == .wait ? .milliseconds(50) : .milliseconds(250)
+                do { try await Task.sleep(for: interval) } catch { return }
+            }
+        }
+    }
+
+    private func waitForCameraPiPForegroundReturn(_ probe: CameraPictureInPicture) {
+        // AVKit begins closing PiP before UIKit may report the app's return.
+        // Hold the same writer during that animation. A close while still away
+        // transfers this assertion to normal file finalization.
+        cameraPiPWatch?.cancel()
+        cameraPiPTransitionPending = true
+        reserveBackgroundTime()
+        cameraPiPWatch = Task { [weak self, weak probe] in
+            do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            guard !Task.isCancelled, let self, let probe, self.cameraPiP === probe, !self.captureForeground else { return }
+            self.cameraPiPMessage = "Picture-in-Picture closed while Stream14 was in the background."
+            self.interrupt(.background)
+        }
+    }
+
+    private func completeCameraPiPTransition() {
+        guard cameraPiPTransitionPending else { return }
+        cameraPiPTransitionPending = false
+        endBackgroundTime()
+    }
+
+    private func closeCameraPiP() {
+        let probe = cameraPiP
+        cameraPiP = nil
+        // An interruption hands the existing background time to file finalization.
+        cameraPiPTransitionPending = false
+        cameraPiPWatch?.cancel()
+        cameraPiPWatch = nil
+        probe?.stop()
     }
 
     private func clearPreviewIntent() {
@@ -688,6 +847,7 @@ final class MediaSession {
     }
 
     func record(injection: LocalRecorder.Injection = .none) async {
+        cameraPiPMessage = ""
         #if DEBUG
         if interfaceFixtureMode {
             guard canRecord else { return }
@@ -731,7 +891,8 @@ final class MediaSession {
             try recorder.start(directory.appendingPathComponent(sample.fileName), injection: injection, profile: profile)
             let destinations = SharedMediaDestinations(recorder: recorder)
             mediaDestinations = destinations
-            let encoder = try SharedMediaEncoder(profile: profile, output: { sample in
+            let limits: SharedMediaEncoder.Limits = cameraPiPSupported ? .pictureInPicture : .init()
+            let encoder = try SharedMediaEncoder(profile: profile, limits: limits, output: { sample in
                 destinations.append(sample)
             }, failed: { _ in destinations.encoderFailed() })
             sharedEncoder = encoder
@@ -751,6 +912,10 @@ final class MediaSession {
             startedAt = Date()
             phase = .recording
             message = "Recording locally · camera, microphone and composed overlay."
+            if showsCameraPiP && cameraPiPSupported {
+                let recordingID = sample.id
+                Task { [weak self] in await self?.prepareCameraPiP(recordingID: recordingID) }
+            }
         } catch {
             failure = true
             message = "Recording could not start. Any partial sample is retained."
@@ -782,10 +947,21 @@ final class MediaSession {
         sample?.status = .failed
         if let sample, let directory { try? sample.save(in: directory) }
         restoreIdleTimer()
-        if backgroundTask != .invalid {
-            UIApplication.shared.endBackgroundTask(backgroundTask)
-            backgroundTask = .invalid
+        if cameraPiPTransitionPending { interrupt(.background) }
+        endBackgroundTime()
+    }
+
+    private func reserveBackgroundTime() {
+        guard backgroundTask == .invalid else { return }
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Finish local sample") { [weak self] in
+            self?.backgroundTimeExpired()
         }
+    }
+
+    private func endBackgroundTime() {
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask)
+        backgroundTask = .invalid
     }
 
     /// Background/interruption wins over in-flight setup/start without racing writer state.
@@ -800,11 +976,12 @@ final class MediaSession {
         }
         guard phase != .idle || busy else { return }
         interrupted = interrupted || interruption
-        if UIApplication.shared.applicationState == .background && backgroundTask == .invalid {
-            backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Finish local sample") { [weak self] in
-                self?.backgroundTimeExpired()
-            }
-        }
+        let backgrounded = UIApplication.shared.applicationState == .background
+        // A lock notification can precede didEnterBackground. Reserve time
+        // before closing PiP, which can relinquish background execution.
+        let needsFinalizationTime = backgrounded || (interruption && cameraPiP != nil)
+        if needsFinalizationTime { reserveBackgroundTime() }
+        closeCameraPiP()
         stopRequested = true
         uploadStopGeneration &+= 1
         mediaDestinations?.detachPublisher()
@@ -1022,6 +1199,7 @@ final class MediaSession {
     }
 
     private func finishRecording(keepEncoding: Bool = false, closingSession: Bool = false) async {
+        if !keepEncoding { closeCameraPiP() }
         await checkpointQualification()
         if !keepEncoding, let sharedEncoder {
             await mixer.removeOutput(sharedEncoder)
@@ -1048,14 +1226,17 @@ final class MediaSession {
             guard let sample, let directory else { throw ExperimentError.emptySample }
             let url = directory.appendingPathComponent(sample.fileName)
             // Final writer success plus structural validation is required for completion.
-            let asset = AVURLAsset(url: url)
-            let videos = try await asset.loadTracks(withMediaType: .video)
-            let audios = try await asset.loadTracks(withMediaType: .audio)
-            let duration = try await asset.load(.duration)
-            guard !videos.isEmpty, !audios.isEmpty, duration.seconds > 0 else {
-                throw ExperimentError.emptySample
+            let duration = try await withBroadcastDeadline(seconds: 5) {
+                let asset = AVURLAsset(url: url)
+                let videos = try await asset.loadTracks(withMediaType: .video)
+                let audios = try await asset.loadTracks(withMediaType: .audio)
+                let duration = try await asset.load(.duration)
+                guard !videos.isEmpty, !audios.isEmpty, duration.seconds > 0 else {
+                    throw ExperimentError.emptySample
+                }
+                return duration.seconds
             }
-            self.sample?.recordStructuralValidation(duration: duration.seconds,
+            self.sample?.recordStructuralValidation(duration: duration,
                                                     byteCount: sample.fileSize(in: directory))
             sampleURL = url
             if !failure {
@@ -1205,10 +1386,7 @@ final class MediaSession {
         previewOrientationSettling = false
         overlay = nil
         _ = try? await AVAudioSession.sharedInstance().deactivate(options: [.notifyOthersOnDeactivation])
-        if backgroundTask != .invalid {
-            UIApplication.shared.endBackgroundTask(backgroundTask)
-            backgroundTask = .invalid
-        }
+        endBackgroundTime()
         if let uploadClosing {
             _ = try? await withBroadcastDeadline(seconds: 3) { await uploadClosing.value }
         }

@@ -64,7 +64,7 @@ import UIKit
         #expect(h.server.requests.isEmpty)
     }
 
-    @Test func streamKeyTransportFailureKeepsWriterAndRequiresExplicitRetry() async throws {
+    @Test func initialSavedKeyFailureKeepsWriterAndRequiresExplicitRetry() async throws {
         let h = try await Harness(fastClock: true, authorizationDriver: nil)
         defer { h.cleanup() }
         #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
@@ -81,17 +81,9 @@ import UIKit
         h.session.confirmStreamKeyRetry()
         await h.session.waitForOperation()
         #expect(h.uploaded && !h.session.streamKeyUploadFailed)
-        h.uploaded = false
-        h.snapshot.uploadFailed = true
-        await Task.yield()
-        #expect(h.session.streamKeyUploadFailed && h.session.canRetryStreamKeyUpload)
-        #expect(h.timeline.filter { $0 == "upload" }.count == 2)
-
-        h.session.confirmStreamKeyRetry()
-        await h.session.waitForOperation()
         #expect(h.uploaded && h.snapshot.writerStarted)
-        #expect(h.timeline == ["lock", "record", "writer", "upload", "upload", "upload"])
-        #expect(h.uploadContexts == Array(repeating: intent.upload.context, count: 3))
+        #expect(h.timeline == ["lock", "record", "writer", "upload", "upload"])
+        #expect(h.uploadContexts == [intent.upload.context, intent.upload.context])
         #expect(h.server.requests.isEmpty)
         h.session.confirmEnd()
         await h.session.waitForOperation()
@@ -124,7 +116,7 @@ import UIKit
     }
 
     @Test func stoppingSavedKeyRetryRejectsHeldConnectAndPreservesRecording() async throws {
-        let h = try await Harness(authorizationDriver: nil)
+        let h = try await Harness(fastClock: true, authorizationDriver: nil)
         defer { h.cleanup() }
         #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
         h.session.requestStreamKeyConfirmation()
@@ -133,7 +125,6 @@ import UIKit
         h.snapshot.uploadFailed = true
         h.uploaded = false
         h.hold = "upload"
-        h.session.confirmStreamKeyRetry()
         try await h.until { h.pending != nil }
 
         #expect(h.session.canStopStreaming)
@@ -226,7 +217,7 @@ import UIKit
 
     @Test func uploadFailureDuringFileFinalizationDoesNotAuthorizeRemoteEnd() async throws {
         for savedKey in [false, true] {
-            let h = try await Harness(authorizationDriver: savedKey ? nil : BroadcastAuthDriver())
+            let h = try await Harness(fastClock: true, authorizationDriver: savedKey ? nil : BroadcastAuthDriver())
             defer { h.cleanup() }
             if savedKey {
                 #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
@@ -248,7 +239,8 @@ import UIKit
             #expect(h.session.state == (savedKey ? .uploading : .live))
             #expect(!h.timeline.contains("stopAll") && h.session.canStopStreaming)
             #expect(!h.server.transitions.contains("complete"))
-            if savedKey { #expect(h.session.canRetryStreamKeyUpload) }
+            try await h.until { h.uploaded && h.uploadContexts.count == 2 }
+            #expect(!h.snapshot.isRecording && h.uploadContexts[0] == h.uploadContexts[1])
         }
     }
 
@@ -611,7 +603,7 @@ import UIKit
         }
     }
 
-    @Test func interruptedLiveRequiresNewWriterAndExplicitSameEventConfirmation() async throws {
+    @Test func coldRelaunchRequiresNewWriterAndExplicitSameEventConfirmation() async throws {
         let h = try await Harness(fastClock: true)
         defer { h.cleanup() }
         h.start(); await h.session.waitForOperation()
@@ -619,25 +611,115 @@ import UIKit
         h.uploaded = false
         h.snapshot.writerStarted = false; h.snapshot.isRecording = false
         h.snapshot.canRecord = false; h.snapshot.captureReady = false
+        let store = PendingRemoteBroadcastStore(url: h.directory.appendingPathComponent("remote.json"))
+        let saved = try store.load()
+        var previous = try #require(saved)
+        previous.liveConfirmed = nil
+        try store.save(previous)
+        h.session = h.makeSession()
         h.session.foregroundReturned(); await h.session.waitForOperation()
         #expect(h.session.state == .needsReconciliation && h.session.canResume)
+        #expect(h.session.pendingRemote?.liveConfirmed == true)
         #expect(h.server.transitions == ["live"])
         let uploads = h.timeline.filter { $0 == "upload" }.count
         h.session.requestResumeConfirmation(); await h.session.waitForOperation()
         #expect(h.session.confirmation == nil)
-        h.snapshot.canRecord = true; h.snapshot.captureReady = true
+        h.mayReopenCapture = true
+        h.snapshot.overlayReady = false
         h.session.requestResumeConfirmation(); await h.session.waitForOperation()
         let intent = try #require(h.session.confirmation)
         #expect(intent.isResume && intent.event.id == "event")
         #expect(h.timeline.filter { $0 == "upload" }.count == uploads)
+        #expect(h.timeline.filter { $0 == "reopen" }.count == 1)
         h.session.confirmStart(intent); await h.session.waitForOperation()
         #expect(h.session.state == .live && h.uploaded)
         #expect(h.timeline.filter { $0 == "record" }.count == 2)
         #expect(h.server.transitions == ["live"])
     }
 
+    @Test func admittedSavedKeyCanResumeAfterRelaunchUntilUploadIsExplicitlyStopped() async throws {
+        let h = try await Harness(fastClock: true, authorizationDriver: nil)
+        defer { h.cleanup() }
+        #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
+        h.session.requestStreamKeyConfirmation()
+        h.session.confirmStreamKeyStart(try #require(h.session.streamKeyConfirmation))
+        await h.session.waitForOperation()
+        #expect(h.storedStreamKey?.recoveryProfile == .hd)
+        h.session.interrupted(.camera)
+        h.uploaded = false
+        h.snapshot.captureReady = false
+        h.snapshot.writerStarted = false
+        h.snapshot.isRecording = false
+        h.snapshot.pipelineRunning = false
+
+        h.session = h.makeSession()
+        #expect(h.session.captureRecoveryProfile == .hd)
+        h.session.foregroundReturned()
+        #expect(!h.timeline.contains("reopen") && !h.uploaded)
+        #expect(!h.session.canRequestCaptureRecovery)
+        h.mayReopenCapture = true
+        #expect(h.session.canRequestCaptureRecovery)
+        h.session.requestCaptureRecovery()
+        await h.session.waitForOperation()
+        try await h.until { h.uploaded }
+        #expect(h.timeline.filter { $0 == "record" }.count == 2)
+        #expect(h.timeline.filter { $0 == "reopen" }.count == 1)
+        #expect(h.uploadContexts.map(\.endpoint) == [h.uploadContexts[0].endpoint, h.uploadContexts[0].endpoint])
+        #expect(h.server.requests.isEmpty)
+
+        h.session.confirmStopStreaming()
+        await h.session.waitForOperation()
+        #expect(h.storedStreamKey?.recoveryProfile == nil)
+        h.session = h.makeSession()
+        #expect(!h.session.canRequestCaptureRecovery && h.session.captureRecoveryProfile == nil)
+    }
+
+    @Test func connectedUploadStopCannotBeResumedAfterRelaunch() async throws {
+        let h = try await Harness()
+        defer { h.cleanup() }
+        h.start()
+        await h.session.waitForOperation()
+        h.session.confirmStopStreaming()
+        await h.session.waitForOperation()
+        #expect(h.session.pendingRemote?.resumeDisallowed == true)
+        h.session = h.makeSession()
+        h.session.foregroundReturned()
+        await h.session.waitForOperation()
+        #expect(!h.session.canResume && h.session.pendingRemote != nil)
+        #expect(h.server.transitions == ["live"])
+    }
+
+    @Test func failedPrimaryDisarmStillBlocksRelaunchRecoveryForBothDestinations() async throws {
+        for savedKey in [false, true] {
+            let h = try await Harness(fastClock: true, authorizationDriver: savedKey ? nil : BroadcastAuthDriver())
+            defer { h.cleanup() }
+            if savedKey {
+                #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
+                h.session.requestStreamKeyConfirmation()
+                h.session.confirmStreamKeyStart(try #require(h.session.streamKeyConfirmation))
+            } else {
+                h.start()
+            }
+            await h.session.waitForOperation()
+            #expect(h.uploaded)
+            h.rejectRecoveryDisarm = true
+            h.session.confirmStopStreaming()
+            await h.session.waitForOperation()
+            #expect(!h.uploaded)
+            #expect(h.storedStreamKey?.recoveryProfile == (savedKey ? .hd : nil))
+            #expect(h.session.pendingRemote?.resumeDisallowed == nil)
+
+            h.rejectRecoveryDisarm = false
+            h.session = h.makeSession()
+            h.session.foregroundReturned()
+            await h.session.waitForOperation()
+            #expect(!h.session.canResume && h.session.captureRecoveryProfile == nil)
+            #expect(h.uploadContexts.count == 1)
+        }
+    }
+
     @Test func relaunchResumeUsesDurableIdentityAndRejectsChangedBindingOrProfile() async throws {
-        for invalid in ["none", "binding", "profile", "ended", "active"] {
+        for invalid in ["none", "binding", "profile", "ended", "active", "upcoming"] {
             let h = try await Harness()
             defer { h.cleanup() }
             h.start(); await h.session.waitForOperation()
@@ -647,6 +729,7 @@ import UIKit
             if invalid == "binding" { h.server.boundStreamID = "replacement" }
             if invalid == "profile" { h.snapshot.profile = .fullHD }
             if invalid == "ended" { h.server.remoteState = "complete" }
+            if invalid == "upcoming" { h.server.remoteState = "ready" }
             let relaunched = h.makeSession()
             relaunched.foregroundReturned(); await relaunched.waitForOperation()
             relaunched.requestResumeConfirmation(); await relaunched.waitForOperation()
@@ -671,7 +754,7 @@ import UIKit
             h.release()
             try await Task.sleep(for: .milliseconds(15))
             #expect(!h.uploaded && h.session.state != .live)
-            #expect(h.session.reconnectStatus == .inactive)
+            #expect(h.session.reconnectStatus == (phase == "reconnect" ? .waiting : .inactive))
             #expect(!h.server.transitions.contains("complete"))
             #expect(!h.timeline.contains("stopAll"))
         }
@@ -720,6 +803,117 @@ import UIKit
         #expect(h.uploaded)
     }
 
+    @Test func savedKeyKeepsHealthyUploadAndRetriesOnlyAfterLoss() async throws {
+        let h = try await Harness(fastClock: true, authorizationDriver: nil)
+        defer { h.cleanup() }
+        #expect(h.session.saveStreamKey(key: "fake-key-for-testing"))
+        h.session.requestStreamKeyConfirmation()
+        let intent = try #require(h.session.streamKeyConfirmation)
+        h.session.confirmStreamKeyStart(intent)
+        await h.session.waitForOperation()
+        h.session.foregroundReturned()
+        try await h.until { h.elapsed >= 3 }
+        #expect(h.uploadContexts == [intent.upload.context])
+
+        h.uploaded = false
+        h.snapshot.uploadFailed = true
+        try await h.until { h.uploaded && h.uploadContexts.count == 2 }
+        #expect(h.uploadContexts.allSatisfy { $0 == intent.upload.context })
+        #expect(h.timeline.filter { $0 == "writer" }.count == 1)
+        #expect(h.server.requests.isEmpty)
+
+    }
+
+    @Test func captureInterruptionReopensOnlyWhenReadyThenReattachesToOriginalEvent() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start()
+        await h.session.waitForOperation()
+        let original = try #require(h.uploadContexts.first)
+
+        h.uploaded = false
+        h.snapshot.pipelineRunning = false
+        h.snapshot.writerStarted = false
+        h.snapshot.isRecording = false
+        h.session.interrupted(.background)
+        h.session.foregroundReturned()
+        #expect(h.session.state == .needsReconciliation && h.session.canStopStreaming)
+        #expect(!h.timeline.contains("reopen"))
+
+        h.mayReopenCapture = true
+        h.previewReopenFails = true
+        h.session.finishAfterMediaSettles()
+        await h.session.waitForOperation()
+        #expect(h.session.state == .needsReconciliation && !h.uploaded)
+        #expect(h.timeline.filter { $0 == "reopen" }.count == 1)
+
+        h.previewReopenFails = false
+        h.mayReopenCapture = true
+        h.session.finishAfterMediaSettles()
+        await h.session.waitForOperation()
+        try await h.until { h.uploaded && h.uploadContexts.count == 2 }
+        #expect(h.timeline.filter { $0 == "writer" }.count == 2)
+        #expect(h.uploadContexts == [original, original])
+        #expect(h.server.transitions == ["live"])
+    }
+
+    @Test func interruptedCaptureNeverPublishesToACompletedEvent() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start()
+        await h.session.waitForOperation()
+        h.uploaded = false
+        h.snapshot.pipelineRunning = false
+        h.snapshot.writerStarted = false
+        h.snapshot.isRecording = false
+        h.session.interrupted(.camera)
+        h.server.remoteState = "complete"
+        h.mayReopenCapture = true
+        h.session.foregroundReturned()
+        await h.session.waitForOperation()
+        try await h.until { h.session.reconnectStatus == .stopped }
+        #expect(!h.uploaded && h.uploadContexts.count == 1)
+        #expect(h.server.transitions == ["live"])
+    }
+
+    @Test func repeatedCaptureLossDuringOneUploadOutageBoundsNewFiles() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start()
+        await h.session.waitForOperation()
+        h.server.failure = "network"
+        for _ in 0..<4 {
+            h.uploaded = false
+            h.snapshot.pipelineRunning = false
+            h.snapshot.writerStarted = false
+            h.snapshot.isRecording = false
+            h.session.interrupted(.camera)
+            h.mayReopenCapture = true
+            h.session.foregroundReturned()
+            await h.session.waitForOperation()
+        }
+        #expect(h.timeline.filter { $0 == "reopen" }.count == 3)
+        #expect(h.timeline.filter { $0 == "writer" }.count == 4)
+        #expect(h.session.reconnectStatus == .stopped)
+        #expect(!h.uploaded && h.server.transitions == ["live"])
+        #expect(h.session.canRequestCaptureRecovery)
+        h.session.requestCaptureRecovery()
+        await h.session.waitForOperation()
+        #expect(h.timeline.filter { $0 == "reopen" }.count == 4)
+    }
+
+    @Test func ambiguousLiveReadPreservesHealthyUpload() async throws {
+        let h = try await Harness(fastClock: true)
+        defer { h.cleanup() }
+        h.start()
+        await h.session.waitForOperation()
+        h.server.remoteState = "unknown-future-state"
+        h.session.foregroundReturned()
+        try await h.until { h.session.message.contains("temporarily unavailable") }
+        #expect(h.uploaded && h.uploadContexts.count == 1 && h.session.state == .live)
+        #expect(h.snapshot.writerStarted)
+    }
+
     @Test func reconnectDelayIsPositiveCappedAndJitterBounded() {
         #expect(ReconnectClock.delay(attempt: 0, jitter: 0) == 0.8)
         #expect(ReconnectClock.delay(attempt: 1, jitter: 10) == 2.4)
@@ -741,18 +935,17 @@ import UIKit
         #expect(h.server.requests.filter { $0.httpMethod == "POST" }.count == 1)
     }
 
-    @Test func exhaustedRecoveryPreservesFileAndExplicitRetryOnlyUsesOriginalEvent() async throws {
+    @Test func extendedOutageKeepsRetryingTheOriginalEventWithoutReplacingTheFile() async throws {
         let h = try await Harness(fastClock: true)
         defer { h.cleanup() }
         h.start(); await h.session.waitForOperation()
-        h.snapshot.uploadFailed = true; h.uploaded = false; h.rejectUpload = true
-        try await h.until { h.session.reconnectStatus == .exhausted }
-        #expect(h.elapsed >= 180)
-        #expect(h.session.reconnectAttempts <= 12)
-        #expect(h.snapshot.isRecording && !h.timeline.contains("stopAll"))
-        h.rejectUpload = false
-        h.session.retryUpload()
+        let original = try #require(h.uploadContexts.first)
+        h.snapshot.uploadFailed = true; h.uploaded = false; h.rejectUntil = 240
         try await h.until { h.uploaded }
+        #expect(h.elapsed >= 240)
+        #expect(h.snapshot.isRecording && !h.timeline.contains("stopAll"))
+        #expect(h.timeline.filter { $0 == "writer" }.count == 1)
+        #expect(h.uploadContexts.allSatisfy { $0 == original })
         #expect(h.server.transitions == ["live"])
     }
 
@@ -837,18 +1030,20 @@ import UIKit
         #expect(!h.timeline.contains("stopAll"))
     }
 
-    @Test func longRetryAfterCannotBeBypassedByExplicitRetry() async throws {
+    @Test func longRetryAfterIsHonoredUntilOperatorStop() async throws {
         let h = try await Harness(fastClock: true)
         defer { h.cleanup() }
         h.start(); await h.session.waitForOperation()
         h.server.failure = "backoff"
+        h.hold = "retryAfter"
         h.snapshot.uploadFailed = true; h.uploaded = false
-        try await h.until { h.session.reconnectStatus == .exhausted }
+        try await h.until { h.pending != nil }
         let requests = h.server.requests.count
-        h.session.retryUpload()
-        try await Task.sleep(for: .milliseconds(5))
+        h.session.confirmStopStreaming()
+        h.release()
+        await h.session.waitForOperation()
         #expect(h.server.requests.count == requests)
-        #expect(h.session.message.contains("longer wait"))
+        #expect(h.session.state == .streamingStopped && !h.uploaded)
         #expect(h.snapshot.isRecording)
     }
 
@@ -863,7 +1058,7 @@ import UIKit
         try await h.until { h.timeline.contains("stopUpload") }
         h.release()
         await h.session.waitForOperation()
-        h.session.retryUpload()
+        h.session.foregroundReturned()
         #expect(h.timeline.filter { $0 == "upload" }.count == 1)
         #expect(h.snapshot.isRecording && !h.timeline.contains("stopAll"))
         #expect(h.session.state == .streamingStopped && !h.session.canPrepareNextSession)
@@ -1260,6 +1455,8 @@ import UIKit
     var snapshot = BroadcastMedia.Snapshot(captureReady: true, canRecord: true, writerStarted: false,
         isRecording: false, profile: .hd, overlayURL: "", overlayReady: true, uploadFailed: false)
     var actualMedia: MediaSession?
+    var storedStreamKey: SavedYouTubeStreamKey?
+    var rejectRecoveryDisarm = false
     var fixturePublisherCloses = 0
     var uploaded = false
     var uploadContexts: [RTMPSUploadContext] = []
@@ -1276,6 +1473,8 @@ import UIKit
     var elapsed: Double = 0
     var rejectUntil: Double = 0
     let fastClock: Bool
+    var mayReopenCapture = false
+    var previewReopenFails = false
     let startup: Double
     let end: Double
     let channel = YouTubeChannel(id: "channel", snippet: .init(title: "Fixture channel"))
@@ -1305,7 +1504,7 @@ import UIKit
             self.timeline.append("record")
             await self.pause("record")
             if self.writerMode == "init" { return }
-            self.snapshot.isRecording = true; self.snapshot.canRecord = false
+            self.snapshot.isRecording = true; self.snapshot.canRecord = false; self.snapshot.pipelineRunning = true
             if self.writerMode != "noSamples" { self.snapshot.writerStarted = true; self.timeline.append("writer") }
         }, stopRecording: {
             await self.pause("stopRecording")
@@ -1326,12 +1525,31 @@ import UIKit
         }, stopAll: {
             self.timeline.append("stopAll"); self.uploaded = false
             self.snapshot.isRecording = false; self.snapshot.writerStarted = false
-        }, lockConfiguration: { self.timeline.append($0 ? "lock" : "unlock") })
+        }, lockConfiguration: { self.timeline.append($0 ? "lock" : "unlock") },
+           canReopenCapture: { self.mayReopenCapture }, reopenCapture: {
+            self.timeline.append("reopen")
+            self.mayReopenCapture = false
+            self.snapshot.captureReady = !self.previewReopenFails
+            self.snapshot.canRecord = !self.previewReopenFails
+        })
         return BroadcastSession(authorization: authorization, client: client,
             binding: YouTubeBinding(client: client, store: PendingBroadcastIntentStore(directory: directory.appendingPathComponent("bindings"))),
-            media: media, store: PendingRemoteBroadcastStore(url: directory.appendingPathComponent("remote.json")),
+            media: media, store: PendingRemoteBroadcastStore(url: directory.appendingPathComponent("remote.json"),
+                writePending: { data, url in
+                    if self.rejectRecoveryDisarm,
+                       try JSONDecoder().decode(PendingRemoteBroadcast.self, from: data).resumeDisallowed == true {
+                        throw CocoaError(.fileWriteNoPermission)
+                    }
+                    try data.write(to: url, options: .atomic)
+                }),
+            streamKeySettings: YouTubeStreamKeySettings(read: { self.storedStreamKey }, write: { value in
+                if self.rejectRecoveryDisarm, value?.recoveryProfile == nil { throw CocoaError(.fileWriteNoPermission) }
+                self.storedStreamKey = value
+            }),
             startupSeconds: startup, endSeconds: end, pollSeconds: 0.005, writerSeconds: 0.05,
             reconnectClock: fastClock ? ReconnectClock(now: { self.elapsed }, sleep: { seconds in
+                if seconds >= 3_600 { await self.pause("retryAfter") }
+                try Task.checkCancellation()
                 try await Task.sleep(for: .milliseconds(1))
                 self.elapsed += seconds
             }, jitter: { 0.8 }) : ReconnectClock())

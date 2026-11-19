@@ -156,7 +156,9 @@ nonisolated enum YouTubeBindingError: Error, Equatable, LocalizedError {
         let channel = try await client.authorizedChannel(generation: generation)
         guard channel.id == context.channelID else { throw YouTubeReadError.wrongChannel }
         let event = try await client.broadcast(id: context.eventID, channelID: context.channelID, generation: generation)
-        guard ["created", "ready", "testing", "live"].contains(event.status?.lifeCycleStatus ?? ""),
+        let lifecycle = event.status?.lifeCycleStatus ?? ""
+        guard ["created", "ready", "testing", "live"].contains(lifecycle),
+              context.liveConfirmed != true || lifecycle == "live",
               event.contentDetails?.enableAutoStop == false, event.contentDetails?.enableAutoStart != nil,
               event.contentDetails?.boundStreamId == streamID,
               event.snippet?.isDefaultBroadcast != true, event.snippet?.title?.isEmpty == false,

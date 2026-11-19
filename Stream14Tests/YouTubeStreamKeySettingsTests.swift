@@ -15,9 +15,11 @@ import Testing
 
         let first = makeSettings()
         #expect(first.save(key: "  fake-initial-key\n"))
+        #expect(first.setRecoveryProfile(.hd))
         let relaunched = makeSettings()
         #expect(relaunched.saved?.destination.streamName == "fake-initial-key")
         #expect(relaunched.saved?.destination.endpoint.absoluteString == "rtmps://a.rtmps.youtube.com:443/live2")
+        #expect(relaunched.saved?.recoveryProfile == .hd)
 
         rejectWrite = true
         #expect(!relaunched.save(key: "fake-replacement-key"))
@@ -29,6 +31,7 @@ import Testing
 
         #expect(relaunched.save(key: "fake-replacement-key"))
         #expect(makeSettings().saved?.destination.streamName == "fake-replacement-key")
+        #expect(makeSettings().saved?.recoveryProfile == nil)
         #expect(relaunched.remove())
         #expect(makeSettings().saved == nil)
     }
@@ -37,8 +40,14 @@ import Testing
         let legacy = Data(#"{"name":"Legacy name","key":"fake-legacy-key"}"#.utf8)
         let payload = try JSONDecoder().decode(YouTubeStreamKeyStore.Payload.self, from: legacy)
         #expect(try SavedYouTubeStreamKey(key: payload.key).destination.streamName == "fake-legacy-key")
+        #expect(payload.recoveryProfile == nil)
         let encoded = try JSONEncoder().encode(payload)
         #expect(!String(decoding: encoded, as: UTF8.self).contains("Legacy name"))
+    }
+
+    @Test func clearingAnUnreadKeyDoesNotCountAsDisarmed() {
+        let settings = YouTubeStreamKeySettings(read: { throw CocoaError(.fileReadNoPermission) })
+        #expect(!settings.setRecoveryProfile(nil))
     }
 
     @Test func validationAndReflectionDoNotExposeKey() throws {

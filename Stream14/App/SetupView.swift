@@ -105,6 +105,7 @@ struct SetupView: View {
                 if scenePhase == .active { activateYouTube() }
                 while !Task.isCancelled {
                     experiment.reconcileOverlay()
+                    if scenePhase == .active { broadcast.recoverCaptureIfReady() }
                     do { try await Task.sleep(for: .seconds(1)) } catch { break }
                 }
                 experiment.setOverlayForeground(false)
@@ -135,6 +136,17 @@ struct SetupView: View {
                     experiment.setOverlayForeground(false)
                     experiment.setCaptureForeground(false)
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                experiment.cameraPiPWillEnterForeground()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                guard !runsIsolatedMediaHarness else { return }
+                experiment.setCaptureForeground(true)
+                broadcast.recoverCaptureIfReady()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in
+                experiment.cameraPiPDeviceLocked()
             }
     }
 
@@ -424,7 +436,7 @@ struct SetupView: View {
             if let started = experiment.startedAt {
                 Text(started, style: .timer).monospacedDigit().accessibilityLabel("Recording duration")
             }
-            if finished || broadcast.state == .needsReconciliation {
+            if !broadcast.hasPendingCaptureRecovery && (finished || broadcast.state == .needsReconciliation) {
                 finishControls
             } else {
                 readinessControls
@@ -432,7 +444,7 @@ struct SetupView: View {
             if !finished && experiment.canSelectProfile {
                 profileControls
             }
-            if experiment.phase == .idle && !finished {
+            if experiment.phase == .idle && !finished && !broadcast.hasPendingCaptureRecovery {
                 Button("Camera preview", systemImage: "camera") { Task { await experiment.openPreview() } }
                     .accessibilityIdentifier("openExperiment")
             } else if experiment.phase == .preview && !experiment.hasUpload &&
@@ -446,16 +458,35 @@ struct SetupView: View {
             }
             broadcastControls
             localActions
+            cameraPiPStatus
             mediaControls
         }
         .fixedSize(horizontal: false, vertical: true)
         .buttonStyle(SessionActionButtonStyle.standard)
     }
 
+    @ViewBuilder private var cameraPiPStatus: some View {
+        if experiment.showsCameraPiP {
+            if experiment.cameraPiP?.isActive == true {
+                Text("Picture-in-Picture active")
+                    .font(.footnote)
+            } else if experiment.cameraPiP?.isPrepared == true {
+                Text("Picture-in-Picture opens automatically when you switch apps if enabled in Settings.")
+                    .font(.footnote)
+            } else if !experiment.cameraPiPSupported {
+                Text("Keep Stream14 open to continue capture on this device.")
+                    .font(.footnote)
+            }
+        }
+        if !experiment.cameraPiPMessage.isEmpty {
+            Text(experiment.cameraPiPMessage).font(.footnote)
+        }
+    }
+
     private var streamKeySummary: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("YouTube stream key").font(.headline).accessibilityIdentifier("streamKeyDestination")
-            Text("Assign this key to the event in YouTube Studio. Enable Auto-start and Auto-stop.")
+            Text("In YouTube Studio, assign this key to one event. Keep Auto-stop off if you want the event to stay open during an outage.")
                 .font(.footnote)
             if !authorization.policyAccepted {
                 Button("Review YouTube terms") { showingConnection = true }.frame(minHeight: 44)
@@ -504,13 +535,12 @@ struct SetupView: View {
     }
 
     private var uploadStatus: String {
-        if usesStreamKey && broadcast.streamKeyUploadFailed && !broadcast.isWorking {
+        if usesStreamKey && broadcast.showsManualStreamKeyRecovery {
             return "Failed to send video. Check the event in YouTube Studio."
         }
         switch broadcast.reconnectStatus {
-        case .waiting: return "Reconnecting · attempt \(broadcast.reconnectAttempts)/12. " + experiment.uploadMessage
+        case .waiting: return "Waiting to reconnect. " + experiment.uploadMessage
         case .connecting: return "Reconnecting · connecting to the same event"
-        case .exhausted: return "Failed · recovery exhausted. Retry upload to the same event or stop streaming."
         case .authorizationRequired: return "Authorization needs attention. " + experiment.uploadMessage
         default: return experiment.uploadMessage
         }
