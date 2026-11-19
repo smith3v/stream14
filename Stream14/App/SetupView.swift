@@ -137,6 +137,9 @@ struct SetupView: View {
                 }
             }
             #if DEBUG
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                experiment.cameraPiPWillEnterForeground()
+            }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in
                 experiment.cameraPiPDeviceLocked()
             }

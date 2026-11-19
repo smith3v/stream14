@@ -142,7 +142,7 @@ final class MediaSession {
     private(set) var cameraPiPSupported = false
     private(set) var cameraPiPMessage = ""
     private var cameraPiPWatch: Task<Void, Never>?
-    private var cameraPiPStartingInBackground = false
+    private var cameraPiPTransitionPending = false
     var showsCameraPiP: Bool {
         CameraPiPProbe.isEnabled && !interfaceFixtureMode && isRecording && !broadcastConfigurationLocked && !hasUpload
     }
@@ -635,9 +635,10 @@ final class MediaSession {
         captureForeground = foreground
         if foreground {
             #if DEBUG
+            preview.videoTrackId = .max
             cameraPiPWatch?.cancel()
             cameraPiPWatch = nil
-            completeCameraPiPStart()
+            completeCameraPiPTransition()
             #endif
             schedulePreviewResume()
         } else {
@@ -667,10 +668,14 @@ final class MediaSession {
         }
         guard showsCameraPiP, captureForeground, !stopRequested, recordingID == expectedID, hasStartedWriting else { return }
         guard let probe = CameraPiPProbe(mixer: mixer, sourceView: preview,
-                size: CGSize(width: profile.width, height: profile.height), onEnd: { [weak self] probe, message in
-                    guard let self, self.cameraPiP === probe else { return }
-                    if UIApplication.shared.applicationState == .background {
-                        self.cameraPiPMessage = message
+                size: CGSize(width: profile.width, height: profile.height), onEnd: { [weak self] probe, reason in
+                    guard let self, self.cameraPiP === probe, !self.captureForeground,
+                          UIApplication.shared.applicationState == .background else { return }
+                    switch reason {
+                    case .closing:
+                        self.waitForCameraPiPForegroundReturn(probe)
+                    case .failedToStart:
+                        self.cameraPiPMessage = "Picture-in-Picture failed to start."
                         self.interrupt(.background)
                     }
                 }) else {
@@ -686,10 +691,17 @@ final class MediaSession {
         if cameraPiP != nil { interrupt(.background) }
     }
 
+    func cameraPiPWillEnterForeground() {
+        if cameraPiP != nil { setCaptureForeground(true) }
+    }
+
     private func watchBackgroundCameraPiP(_ probe: CameraPiPProbe) {
+        // Keep the inline view as the AVKit transition source, but pause its
+        // Metal frame delivery while the floating window supplies the preview.
+        preview.videoTrackId = nil
         let transitionedAt = ContinuousClock.now
         var handoff = CameraPiPBackgroundHandoff(now: transitionedAt)
-        cameraPiPStartingInBackground = true
+        cameraPiPTransitionPending = true
         reserveBackgroundTime()
         cameraPiPWatch = Task { [weak self, weak probe] in
             while !Task.isCancelled {
@@ -697,7 +709,7 @@ final class MediaSession {
                 let canRecord = self.showsCameraPiP && self.hasStartedWriting && UIApplication.shared.isProtectedDataAvailable
                 // Before releasing the background assertion, require each
                 // input to have advanced since this app switch.
-                let mediaFresh = probe.hasFreshMedia(after: self.cameraPiPStartingInBackground ? transitionedAt : nil)
+                let mediaFresh = probe.hasFreshMedia(after: self.cameraPiPTransitionPending ? transitionedAt : nil)
                 let decision = canRecord
                     ? handoff.decision(active: probe.canContinueInBackground, mediaFresh: mediaFresh, now: .now)
                     : .interrupt
@@ -705,9 +717,9 @@ final class MediaSession {
                 case .wait:
                     break
                 case .keepRecording:
-                    self.completeCameraPiPStart()
+                    self.completeCameraPiPTransition()
                 case .interrupt:
-                    self.cameraPiPMessage = self.cameraPiPStartingInBackground
+                    self.cameraPiPMessage = self.cameraPiPTransitionPending
                         ? "Automatic Picture-in-Picture could not keep recording."
                         : "Picture-in-Picture ended or a camera, video, or microphone feed stopped."
                     self.interrupt(.background)
@@ -719,9 +731,24 @@ final class MediaSession {
         }
     }
 
-    private func completeCameraPiPStart() {
-        guard cameraPiPStartingInBackground else { return }
-        cameraPiPStartingInBackground = false
+    private func waitForCameraPiPForegroundReturn(_ probe: CameraPiPProbe) {
+        // AVKit begins closing PiP before UIKit may report the app's return.
+        // Hold the same writer during that animation. A close while still away
+        // transfers this assertion to normal file finalization.
+        cameraPiPWatch?.cancel()
+        cameraPiPTransitionPending = true
+        reserveBackgroundTime()
+        cameraPiPWatch = Task { [weak self, weak probe] in
+            do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            guard !Task.isCancelled, let self, let probe, self.cameraPiP === probe, !self.captureForeground else { return }
+            self.cameraPiPMessage = "Picture-in-Picture closed while Stream14 was in the background."
+            self.interrupt(.background)
+        }
+    }
+
+    private func completeCameraPiPTransition() {
+        guard cameraPiPTransitionPending else { return }
+        cameraPiPTransitionPending = false
         endBackgroundTime()
     }
 
@@ -729,7 +756,7 @@ final class MediaSession {
         let probe = cameraPiP
         cameraPiP = nil
         // An interruption hands the existing background time to file finalization.
-        cameraPiPStartingInBackground = false
+        cameraPiPTransitionPending = false
         cameraPiPWatch?.cancel()
         cameraPiPWatch = nil
         probe?.stop()
@@ -856,7 +883,13 @@ final class MediaSession {
             try recorder.start(directory.appendingPathComponent(sample.fileName), injection: injection, profile: profile)
             let destinations = SharedMediaDestinations(recorder: recorder)
             mediaDestinations = destinations
-            let encoder = try SharedMediaEncoder(profile: profile, output: { sample in
+            #if DEBUG
+            let limits: SharedMediaEncoder.Limits = cameraPiPSupported && !broadcastConfigurationLocked && !hasUpload
+                ? .pictureInPicture : .init()
+            #else
+            let limits = SharedMediaEncoder.Limits()
+            #endif
+            let encoder = try SharedMediaEncoder(profile: profile, limits: limits, output: { sample in
                 destinations.append(sample)
             }, failed: { _ in destinations.encoderFailed() })
             sharedEncoder = encoder
@@ -914,7 +947,7 @@ final class MediaSession {
         if let sample, let directory { try? sample.save(in: directory) }
         restoreIdleTimer()
         #if DEBUG
-        if cameraPiPStartingInBackground { interrupt(.background) }
+        if cameraPiPTransitionPending { interrupt(.background) }
         #endif
         endBackgroundTime()
     }

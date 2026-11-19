@@ -8,6 +8,10 @@ import UIKit
 @MainActor
 @Observable
 final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
+    enum PresentationEnd {
+        case closing, failedToStart
+    }
+
     static let isEnabled = (Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String])?
         .contains("voip") == true
 
@@ -31,10 +35,10 @@ final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
     private var displayTask: Task<Void, Never>?
     private var stopped = false
     private var awaitingStartResult = false
-    private let onEnd: (CameraPiPProbe, String) -> Void
+    private let onEnd: (CameraPiPProbe, PresentationEnd) -> Void
 
     init?(mixer: MediaMixer, sourceView: UIView, size: CGSize,
-          onEnd: @escaping (CameraPiPProbe, String) -> Void) {
+          onEnd: @escaping (CameraPiPProbe, PresentationEnd) -> Void) {
         guard sourceView.window != nil, AVPictureInPictureController.isPictureInPictureSupported() else { return nil }
         let content = AVPictureInPictureVideoCallViewController()
         content.preferredContentSize = size
@@ -128,6 +132,7 @@ final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
 
     func pictureInPictureControllerWillStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
         awaitingStartResult = true
+        compositionTap.setWindowVisible(true)
     }
 
     func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
@@ -136,18 +141,24 @@ final class CameraPiPProbe: NSObject, AVPictureInPictureControllerDelegate {
         isActive = true
     }
 
+    func pictureInPictureControllerWillStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        guard !stopped else { return }
+        onEnd(self, .closing)
+    }
+
     func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
         awaitingStartResult = false
         guard !stopped else { return }
         isActive = false
-        onEnd(self, "Picture-in-Picture closed.")
+        compositionTap.setWindowVisible(false)
     }
 
     func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController,
                                     failedToStartPictureInPictureWithError error: Error) {
         awaitingStartResult = false
         guard !stopped else { detachController(); return }
-        onEnd(self, "Picture-in-Picture failed to start.")
+        compositionTap.setWindowVisible(false)
+        onEnd(self, .failedToStart)
     }
 
     private func detachController() {
@@ -204,6 +215,7 @@ private nonisolated final class PiPFrameTap: MediaMixerOutput, Sendable {
     let audioTrackId: UInt8?
     private let activity: PiPCaptureActivity
     private let sink: AsyncStream<Frame>.Continuation?
+    private let renderCadence = Mutex(PiPPreviewCadence())
 
     init(track: UInt8, activity: PiPCaptureActivity, sink: AsyncStream<Frame>.Continuation? = nil) {
         videoTrackId = track
@@ -213,6 +225,7 @@ private nonisolated final class PiPFrameTap: MediaMixerOutput, Sendable {
     }
 
     func finish() { sink?.finish() }
+    func setWindowVisible(_ visible: Bool) { renderCadence.withLock { $0.setWindowVisible(visible) } }
     func selectTrack(_ id: UInt8?, mediaType: CMFormatDescription.MediaType) async {}
 
     func mixer(_ mixer: MediaMixer, didOutput buffer: AVAudioPCMBuffer, when: AVAudioTime) {
@@ -222,12 +235,32 @@ private nonisolated final class PiPFrameTap: MediaMixerOutput, Sendable {
     func mixer(_ mixer: MediaMixer, didOutput sampleBuffer: CMSampleBuffer) {
         guard sampleBuffer.imageBuffer != nil, sampleBuffer.presentationTimeStamp.isNumeric else { return }
         guard let sink else { activity.mark(.camera); return }
+        guard renderCadence.withLock({ $0.admit(at: .now) }) else { return }
         // Copy the sample metadata for PiP. The encoder and renderer retain
         // the shared pixel contents read-only until their respective work ends.
         guard let copy = try? CMSampleBuffer(copying: sampleBuffer) else { return }
         var frame = Frame(unsafeWithPixelBuffer: copy)
         frame.sampleAttachments.displayImmediately = true
         sink.yield(frame)
+    }
+}
+
+/// Prime the renderer while inline. A small floating preview can run at a
+/// lower cadence than the recording, which keeps its own encoder input.
+nonisolated struct PiPPreviewCadence {
+    private var windowVisible = false
+    private var nextFrame: ContinuousClock.Instant?
+
+    mutating func setWindowVisible(_ visible: Bool) {
+        guard visible != windowVisible else { return }
+        windowVisible = visible
+        nextFrame = nil
+    }
+
+    mutating func admit(at now: ContinuousClock.Instant) -> Bool {
+        if let nextFrame, now < nextFrame { return false }
+        nextFrame = now + (windowVisible ? .milliseconds(80) : .milliseconds(250))
+        return true
     }
 }
 #endif
