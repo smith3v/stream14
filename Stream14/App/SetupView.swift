@@ -136,6 +136,11 @@ struct SetupView: View {
                     experiment.setCaptureForeground(false)
                 }
             }
+            #if DEBUG
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in
+                experiment.cameraPiPDeviceLocked()
+            }
+            #endif
     }
 
     private var usesStreamKey: Bool { broadcast.usesStreamKey }
@@ -446,11 +451,36 @@ struct SetupView: View {
             }
             broadcastControls
             localActions
+            #if DEBUG
+            cameraPiPControls
+            #endif
             mediaControls
         }
         .fixedSize(horizontal: false, vertical: true)
         .buttonStyle(SessionActionButtonStyle.standard)
     }
+
+    #if DEBUG
+    @ViewBuilder private var cameraPiPControls: some View {
+        if experiment.showsCameraPiP {
+            if let probe = experiment.cameraPiP {
+                Text(probe.isActive ? "Picture-in-Picture active. You can switch apps." : "Opening Picture-in-Picture…")
+                    .font(.footnote)
+            } else if experiment.cameraPiPSupported {
+                Button("Test Picture-in-Picture", systemImage: "pip.enter") {
+                    Task { await experiment.startCameraPiP() }
+                }
+                .frame(minHeight: 44)
+            } else {
+                Text("This capture session does not support camera access in Picture-in-Picture.")
+                    .font(.footnote)
+            }
+        }
+        if !experiment.cameraPiPMessage.isEmpty {
+            Text(experiment.cameraPiPMessage).font(.footnote)
+        }
+    }
+    #endif
 
     private var streamKeySummary: some View {
         VStack(alignment: .leading, spacing: 4) {
