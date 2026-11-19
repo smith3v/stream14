@@ -33,6 +33,26 @@ struct BroadcastControlsView: View {
                 Text("YouTube: " + broadcast.message).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("broadcastStatus")
             }
+            if let profile = broadcast.captureRecoveryProfile {
+                Button("Resume streaming", systemImage: "arrow.clockwise") {
+                    broadcast.requestCaptureRecovery()
+                }
+                .frame(minHeight: 44)
+                .disabled(!broadcast.canRequestCaptureRecovery)
+                .accessibilityIdentifier("resumeInterruptedUpload")
+                if profile != media.profile {
+                    Text("Select \(profile.label) to resume the previous stream.").font(.footnote)
+                } else if !broadcast.isWorking, let reason = media.cameraRecoveryBlockReason {
+                    Text(reason).font(.footnote)
+                    if media.capturePermissionDenied {
+                        Link("Open iPhone Settings", destination: URL(string: UIApplication.openSettingsURLString)!)
+                            .frame(minHeight: 44)
+                    }
+                } else if broadcast.savedKeyRecoveryProfile != nil {
+                    Text("Resume the previous upload using the saved YouTube stream key. A new local recording will start.")
+                        .font(.footnote)
+                }
+            }
             if broadcast.canResume {
                 Button("Resume same event…") { broadcast.requestResumeConfirmation() }
                     .frame(minHeight: 44)

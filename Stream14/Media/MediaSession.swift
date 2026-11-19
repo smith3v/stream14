@@ -210,11 +210,22 @@ final class MediaSession {
         (phase == .idle || phase == .preview)
     }
     var canReopenBroadcastCapture: Bool {
-        phase == .idle && canPrepareNextSession && captureForeground &&
-            UIApplication.shared.applicationState == .active && canConfirmLandscapeStart &&
-            UIApplication.shared.isProtectedDataAvailable && ProcessInfo.processInfo.thermalState != .critical &&
-            AVCaptureDevice.authorizationStatus(for: .video) == .authorized &&
-            AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+        cameraRecoveryBlockReason == nil
+    }
+    var cameraRecoveryBlockReason: String? {
+        if !captureForeground || UIApplication.shared.applicationState != .active {
+            return "Bring Stream14 to the foreground to resume."
+        }
+        if !UIApplication.shared.isProtectedDataAvailable { return "Unlock your iPhone to resume." }
+        if !canPrepareNextSession { return "Waiting for the previous camera session and recording to finish." }
+        if !canConfirmLandscapeStart { return "Turn your iPhone to landscape to resume." }
+        if phase == .preview && !canRecord { return "Wait for the camera preview to be ready." }
+        if ProcessInfo.processInfo.thermalState == .critical { return "Let your iPhone cool down to resume." }
+        if AVCaptureDevice.authorizationStatus(for: .video) != .authorized ||
+            AVCaptureDevice.authorizationStatus(for: .audio) != .authorized {
+            return "Allow camera and microphone access in iPhone Settings to resume."
+        }
+        return nil
     }
 
     /// Reset only the settled workspace. Archive originals/sidecars are retained.
@@ -1215,14 +1226,17 @@ final class MediaSession {
             guard let sample, let directory else { throw ExperimentError.emptySample }
             let url = directory.appendingPathComponent(sample.fileName)
             // Final writer success plus structural validation is required for completion.
-            let asset = AVURLAsset(url: url)
-            let videos = try await asset.loadTracks(withMediaType: .video)
-            let audios = try await asset.loadTracks(withMediaType: .audio)
-            let duration = try await asset.load(.duration)
-            guard !videos.isEmpty, !audios.isEmpty, duration.seconds > 0 else {
-                throw ExperimentError.emptySample
+            let duration = try await withBroadcastDeadline(seconds: 5) {
+                let asset = AVURLAsset(url: url)
+                let videos = try await asset.loadTracks(withMediaType: .video)
+                let audios = try await asset.loadTracks(withMediaType: .audio)
+                let duration = try await asset.load(.duration)
+                guard !videos.isEmpty, !audios.isEmpty, duration.seconds > 0 else {
+                    throw ExperimentError.emptySample
+                }
+                return duration.seconds
             }
-            self.sample?.recordStructuralValidation(duration: duration.seconds,
+            self.sample?.recordStructuralValidation(duration: duration,
                                                     byteCount: sample.fileSize(in: directory))
             sampleURL = url
             if !failure {

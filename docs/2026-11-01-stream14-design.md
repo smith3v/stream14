@@ -239,11 +239,15 @@ setting at teardown. Background/lock, capture or encoder failure, loss of
 required audio input, and critical heat can stop both outputs. Preserve the
 file and pending event; an interruption does not send Complete. Preview-only
 intent may restore in foreground using a fresh mixer and moving-frame readiness;
-manual Close cancels it. After iOS terminates the process, reopen preview and
-explicitly start the saved-key session or confirm **Resume same event** for a
-connected event. Connected resume rechecks the original compatible inactive
-binding and absence of uncertain mutations. Resume creates a new file and
-timeline.
+manual Close cancels it. After process termination, **Resume streaming** is
+available for a previously admitted saved-key upload. Its profile is stored
+with the key in Keychain and is cleared on key replacement or explicit stop.
+The operator starts recovery in the foreground. For a connected event,
+**Resume same event** checks the original compatible inactive binding and
+absence of uncertain mutations, opens the preview if needed, and asks the
+operator to confirm the event and visibility. If resuming an already-live
+event, publication requires it to remain live and never repeats the Live
+transition. Either recovery creates a new file and timeline.
 
 On a device with multitasking camera access, Picture-in-Picture keeps the same
 capture, writer and admitted upload running while the PiP window is active.
@@ -253,16 +257,20 @@ destination with bounded backoff and service retry delays. Returning to the app
 leaves a healthy transport in place. A connected event must still be live and
 match its original channel, event, binding and RTMPS destination. A native
 capture interruption finalizes the original file. When Stream14 can reopen
-capture in the foreground with previously granted
-permissions, it starts a new local file before reattaching upload to the same
-destination. Saved-key retries use the frozen RTMPS key. YouTube Studio
+capture in the foreground with previously granted permissions, it starts a new
+local file before reattaching upload to the same destination. The recovery
+control shows why capture cannot reopen yet and lets the operator retry after
+automatic attempts stop. Saved-key retries use the frozen RTMPS key. YouTube Studio
 determines which event receives the stream if the key is reassigned.
 An explicit upload stop or End
-disarms recovery. If local recording was explicitly stopped, full capture
-recovery requires a deliberate restart.
+disarms recovery, including after relaunch. Stopping local recording leaves
+transport recovery available while capture stays open and disarms recovery that
+would start a new file. If the Keychain or journal update fails, a protected
+local marker blocks old recovery until a newly confirmed upload succeeds.
 
 The writer requests ten-second MP4 fragments and declares completion only after
-confirmed finalization. Wait at most five seconds; an outstanding native
+confirmed finalization and bounded structural validation. Wait at most five
+seconds for native writer finalization; an outstanding native
 finalizer keeps ownership and blocks a new writer until it returns. A timeout
 preserves the original and a late result cannot mark it complete. Disk/write
 faults or interrupted sessions retain usable or partial files. Files lacking

@@ -33,6 +33,11 @@ Keep all originals and do not uninstall the app.
   recovery without replacing the file, and close PiP while away to verify a
   new local file and automatic upload recovery on return. Confirm that an
   explicit streaming stop cancels any pending retry.
+- **Relaunch recovery:** with the owner's agreement, terminate the app during an
+  unlisted broadcast with Auto-stop off. Reopen Stream14 and use the resume
+  control. Check that the same receiver gets picture and speech and the new
+  recording is separate from the retained original. Repeat after explicitly
+  stopping upload and verify that the old session offers no resume action.
 - **Fault cases:** choose one scenario per visit from the acceptance gates.
   For recovery, test termination before and after a fragment; inspect retained
   originals and any separate copy. Keep the non-private scene and test event

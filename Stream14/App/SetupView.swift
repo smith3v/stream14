@@ -140,6 +140,11 @@ struct SetupView: View {
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 experiment.cameraPiPWillEnterForeground()
             }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                guard !runsIsolatedMediaHarness else { return }
+                experiment.setCaptureForeground(true)
+                broadcast.recoverCaptureIfReady()
+            }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in
                 experiment.cameraPiPDeviceLocked()
             }
@@ -431,7 +436,7 @@ struct SetupView: View {
             if let started = experiment.startedAt {
                 Text(started, style: .timer).monospacedDigit().accessibilityLabel("Recording duration")
             }
-            if finished || broadcast.state == .needsReconciliation {
+            if !broadcast.hasPendingCaptureRecovery && (finished || broadcast.state == .needsReconciliation) {
                 finishControls
             } else {
                 readinessControls
