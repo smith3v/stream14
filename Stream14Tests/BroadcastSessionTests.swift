@@ -612,7 +612,8 @@ import UIKit
         h.snapshot.writerStarted = false; h.snapshot.isRecording = false
         h.snapshot.canRecord = false; h.snapshot.captureReady = false
         let store = PendingRemoteBroadcastStore(url: h.directory.appendingPathComponent("remote.json"))
-        var previous = try #require(store.load())
+        let saved = try store.load()
+        var previous = try #require(saved)
         previous.liveConfirmed = nil
         try store.save(previous)
         h.session = h.makeSession()
